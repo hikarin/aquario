@@ -6,6 +6,7 @@
 #include "aquario.h"
 #include "gc_base.h"
 #include "gc_copy.h"
+#include "gc_markcompact.h"
 
 static Boolean is_equal(Cell cell1, Cell cell2);
 static void gc_init();
@@ -986,7 +987,7 @@ void op_gc_stress()
 void gc_init()
 {
   GC_Init_Info gc_init;
-#if !defined( _CUT )
+#if defined( _CUT )
   copy_gc_init(&gc_init);
 #else
   markcompact_gc_init(&gc_init);
