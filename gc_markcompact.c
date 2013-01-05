@@ -125,6 +125,7 @@ int get_obj_size( size_t size ){
 
 void update(Cell* cellp)
 {
+#if defined( _CUT )
   if( cellp && *cellp ){
 #if defined( _DEBUG )
     if( !(heap <= (char*)FORWARDING(*cellp) && (char*)FORWARDING(*cellp) < new_top ) ){
@@ -135,6 +136,11 @@ void update(Cell* cellp)
 #endif //_DEBUG
     *cellp = FORWARDING(*cellp);
   }
+#else
+  if( *cellp ){
+    *cellp = FORWARDING(*cellp);
+  }
+#endif //_CUT
 }
 
 void calc_new_address()
@@ -175,8 +181,8 @@ void slide()
 	printf( "WARNING: %p => %p\n", cell, new_cell );
       }
 #endif //_DEBUG
+      trace_object(cell, update);
       move_object(cell);
-      trace_object(new_cell, update);
     }
     scanned += obj_size;
   }
