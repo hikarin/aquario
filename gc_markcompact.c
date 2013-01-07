@@ -25,8 +25,11 @@ static void markcompact_gc_stack_check(Cell cell);
 #define GET_OBJECT_SIZE(obj) (((MarkCompact_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((MarkCompact_GC_Header*)(obj)-1)->forwarding)
-#define IS_MOVED(obj) (FORWARDING(obj) == (obj))
+#if defined( _CUT )
 #define IS_MARKED(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit==TRUE)
+#else
+#define IS_MARKED(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit)
+#endif //_CUT
 #define SET_MARK(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit=TRUE)
 #define CLEAR_MARK(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit=FALSE)
 
@@ -42,6 +45,7 @@ static void mark_object(Cell* objp);
 static void move_object(Cell obj);
 static void update(Cell* objp);
 static void calc_new_address();
+static void update_pointer();
 static void slide();
 static void mark();
 static void compact();
@@ -55,9 +59,6 @@ void mark_object(Cell* objp)
       printf("[GC] mark stack overflow.\n");
       exit(-1);
     }
-#if defined( _DEBUG )
-    printf("mark stack: %d\n", mark_stack_top);
-#endif //_DEBUG
     mark_stack[mark_stack_top++] = obj;
   }
 }
@@ -65,16 +66,12 @@ void mark_object(Cell* objp)
 void move_object(Cell obj)
 {
   long size = GET_OBJECT_SIZE(obj);
-  MarkCompact_GC_Header* new_header = (MarkCompact_GC_Header*)(FORWARDING(obj))-1;
+  MarkCompact_GC_Header* new_header = ((MarkCompact_GC_Header*)(FORWARDING(obj)))-1;
   MarkCompact_GC_Header* old_header = ((MarkCompact_GC_Header*)obj)-1;
   memcpy(new_header, old_header, size);
   Cell new_cell = (Cell)(((MarkCompact_GC_Header*)new_header)+1);
 
-#if !defined( _CUT )
   FORWARDING(new_cell) = new_cell;
-#else
-  FORWARDING(new_cell) = NULL;
-#endif //_CUT
 }
 
 //Initialization.
@@ -93,7 +90,7 @@ void markcompact_gc_init(GC_Init_Info* gc_info){
 //Allocation.
 inline void* gc_malloc_markcompact( size_t size )
 {
-  if( !IS_ALLOCATABLE( size ) ){
+  if( g_bGC || !IS_ALLOCATABLE( size ) ){
     gc_start_markcompact();
     if( !IS_ALLOCATABLE( size ) ){
       printf("Heap Exhausted.\n");
@@ -125,22 +122,9 @@ int get_obj_size( size_t size ){
 
 void update(Cell* cellp)
 {
-#if defined( _CUT )
-  if( cellp && *cellp ){
-#if defined( _DEBUG )
-    if( !(heap <= (char*)FORWARDING(*cellp) && (char*)FORWARDING(*cellp) < new_top ) ){
-      printf("OMG: %p\n", FORWARDING(*cellp));
-    }else{
-      //      printf("OKOKOK\n");
-    }
-#endif //_DEBUG
-    *cellp = FORWARDING(*cellp);
-  }
-#else
   if( *cellp ){
     *cellp = FORWARDING(*cellp);
   }
-#endif //_CUT
 }
 
 void calc_new_address()
@@ -154,17 +138,13 @@ void calc_new_address()
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       FORWARDING(cell) = (Cell)((MarkCompact_GC_Header*)new_top+1);
-#if defined( _DEBUG )
-      printf("%p => %p\n", cell, FORWARDING(cell));
-#endif //_DEBUG
       new_top += obj_size;
     }
     scanned += obj_size;
   }
-  printf("calc phase done. %d, %d\n", (int)(new_top - heap), (int)(new_top - heap));
 }
 
-void slide()
+void update_pointer()
 {
   char* scanned = heap;
   Cell cell = NULL;
@@ -174,14 +154,22 @@ void slide()
     cell = (Cell)((MarkCompact_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
-      CLEAR_MARK(cell);
-      Cell new_cell = FORWARDING(cell);
-#if defined( _DEBUG )
-      if( !( heap <= (char*)new_cell && (char*)new_cell < heap + HEAP_SIZE ) ){
-	printf( "WARNING: %p => %p\n", cell, new_cell );
-      }
-#endif //_DEBUG
       trace_object(cell, update);
+    }
+    scanned += obj_size;
+  }
+}
+
+void slide()
+{
+  char* scanned = heap;
+  Cell cell = NULL;
+  int obj_size = 0;
+  while( scanned < top ){
+    cell = (Cell)((MarkCompact_GC_Header*)scanned+1);
+    obj_size = GET_OBJECT_SIZE(cell);
+    if( IS_MARKED(cell) ){
+      CLEAR_MARK(cell);
       move_object(cell);
     }
     scanned += obj_size;
@@ -209,6 +197,7 @@ void mark()
 void compact()
 {
   calc_new_address();
+  update_pointer();
   slide();
 }
 

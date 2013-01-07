@@ -450,7 +450,6 @@ Cell applyList(Cell ls)
   Cell tmp2 = NIL;
 
   for(;!nullp(tmp); tmp=cdr(tmp) ){
-#if !defined( _CUT )
     pushArg(last);
     pushArg(tmp);
     Cell tmpCar = evalExp(car(tmp));
@@ -462,15 +461,6 @@ Cell applyList(Cell ls)
     last = popArg();
     cdr(last) = tmp2;
     last = tmp2;
-#else
-    pushArg(last);
-    pushArg(tmp);
-    tmp2 = pairCell(evalExp(car(tmp)), NIL);
-    tmp = popArg();
-    last = popArg();
-    cdr(last) = tmp2;
-    last = tmp2;
-#endif //_CUT
   }
   top = popArg();
   return top;
@@ -888,40 +878,12 @@ void clearError()
 void init()
 {
   gc_init();
-#if defined( _CUT )
-  NIL = pairCell(NIL, NIL);
-  type(NIL) = T_NONE;
-#else
+
   NIL = noneCell();
-#endif //_DEBUG
-
-#if defined( _CUT )
-  T = pairCell(T, T);
-  type(T) = T_NONE;
-#else
   T = noneCell();
-#endif //_CUT
-
-#if defined( _CUT )
-  F = pairCell(F, F);
-  type(F) = T_NONE;
-#else
   F = noneCell();
-#endif //_CUT
-
-#if defined( _CUT )
-  UNDEF = pairCell(UNDEF, UNDEF);
-  type(UNDEF) = T_NONE;
-#else
   UNDEF = noneCell();
-#endif //_CUT
-
-#if defined( _CUT )
-  EOFobj = pairCell(EOFobj, EOFobj);
-  type(EOFobj) = T_NONE;
-#else
   EOFobj = noneCell();
-#endif //_CUT
 
   setReturn(NIL);
 
