@@ -159,5 +159,4 @@ int repl();
 
 int getCellSize(Cell cell);
 
-extern Boolean g_bGC;
 #endif	//!defined( __ISTSP_H__ )

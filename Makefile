@@ -26,7 +26,7 @@ debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g
 
 opt: $(CSOURCES)
-	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -O2
+	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -O3
 
 prof: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -pg

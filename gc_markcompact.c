@@ -90,7 +90,7 @@ void markcompact_gc_init(GC_Init_Info* gc_info){
 //Allocation.
 inline void* gc_malloc_markcompact( size_t size )
 {
-  if( g_bGC || !IS_ALLOCATABLE( size ) ){
+  if( g_GC_stress || !IS_ALLOCATABLE( size ) ){
     gc_start_markcompact();
     if( !IS_ALLOCATABLE( size ) ){
       printf("Heap Exhausted.\n");
@@ -211,4 +211,8 @@ void gc_start_markcompact()
 
   //compaction phase.
   compact();
+
+#if defined( _DEBUG )
+  printf("gc end\n");
+#endif //_DEBUG
 }

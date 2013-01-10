@@ -11,7 +11,7 @@
 static Boolean is_equal(Cell cell1, Cell cell2);
 static void gc_init();
 
-Boolean g_bGC;
+Boolean g_GC_stress;
 
 static void* (*gc_malloc) (size_t size);
 static void (*gc_start) ();
@@ -936,13 +936,14 @@ void init()
 
 void op_gc()
 {
+  popArg();
   gc_start();
   setReturn(T);
 }
 
 void op_gc_stress()
 {
-  g_bGC = TRUE;
+  g_GC_stress = TRUE;
   setReturn(T);
 }
 
@@ -960,6 +961,8 @@ void gc_init()
 #if defined( _DEBUG )
   gc_stack_check = gc_init.gc_stack_check;
 #endif //_DEBUG
+
+  g_GC_stress = FALSE;
 }
 
 void op_unknown()
