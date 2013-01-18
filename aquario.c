@@ -9,7 +9,7 @@
 #include "gc_markcompact.h"
 
 static Boolean is_equal(Cell cell1, Cell cell2);
-static void gc_init();
+static void set_gc(char*);
 
 Boolean g_GC_stress;
 
@@ -877,8 +877,6 @@ void clearError()
 
 void init()
 {
-  gc_init();
-
   NIL = noneCell();
   T = noneCell();
   F = noneCell();
@@ -947,19 +945,17 @@ void op_gc_stress()
   setReturn(T);
 }
 
-void gc_init()
+void set_gc(char* gc_char)
 {
-  GC_Init_Info gc_init;
-#if defined( _CUT )
-  copy_gc_init(&gc_init);
-#else
-  markcompact_gc_init(&gc_init);
-#endif //_CUT
+  GC_Init_Info gc_info;
+  printf("%s\n", gc_char);
+  gc_init( gc_char, &gc_info );
+  printf("%s\n", gc_char);
 
-  gc_malloc = gc_init.gc_malloc;
-  gc_start = gc_init.gc_start;
+  gc_malloc = gc_info.gc_malloc;
+  gc_start = gc_info.gc_start;
 #if defined( _DEBUG )
-  gc_stack_check = gc_init.gc_stack_check;
+  gc_stack_check = gc_info.gc_stack_check;
 #endif //_DEBUG
 
   g_GC_stress = FALSE;
@@ -1514,15 +1510,19 @@ int repl()
 
 int main(int argc, char *argv[])
 {
+  int i = 1;
+  if( argc >= 3 && strcmp(argv[ 1 ], "-GC" ) == 0 ){
+    set_gc(argv[ 2 ]);
+    i += 2;
+  }else{
+    set_gc("copying");
+  }
   init();
 
-  if( argc >= 2 ){
-   int i;
-    for( i = 1; i < argc; i++ ){
-      load_file( argv[ i ] );
-    }
-  }else{
+  if( i >= argc ){
     repl();
+  }else{
+    load_file( argv[ i ] );
   }
   return 0;
 }

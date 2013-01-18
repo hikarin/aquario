@@ -1,9 +1,22 @@
 #if !defined( __GC_BASE_H__ )
 #define __GC_BASE_H__
 
-#include "gc_base.h"
-#include "aquario.h"
 #include <stdlib.h>
+#include "aquario.h"
+#include "gc_base.h"
+#include "gc_copy.h"
+#include "gc_markcompact.h"
+
+void gc_init(const char* gc_char, GC_Init_Info* gc_init)
+{
+  if( strcmp( gc_char, "copying" ) == 0 ){
+    copy_gc_init(gc_init);
+  }else if( strcmp( gc_char, "mark_compact" ) == 0 ){
+    markcompact_gc_init(gc_init);
+  }else{
+    copy_gc_init(gc_init);
+  }
+}
 
 void trace_roots(void (*trace) (Cell* cellp)){
   //trace machine stack.

@@ -12,3 +12,4 @@ void print_env();
 #endif //defined( _DEBUG )
 
 extern Boolean g_GC_stress;
+extern void gc_init(const char* gc_char, GC_Init_Info* gc_init);
