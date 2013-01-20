@@ -6,6 +6,7 @@
 #include "gc_base.h"
 #include "gc_copy.h"
 #include "gc_markcompact.h"
+#include "gc_generational.h"
 
 void gc_init(const char* gc_char, GC_Init_Info* gc_init)
 {
@@ -13,6 +14,8 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     copy_gc_init(gc_init);
   }else if( strcmp( gc_char, "mark_compact" ) == 0 ){
     markcompact_gc_init(gc_init);
+  }else if( strcmp( gc_char, "generational" ) == 0 ){
+    generational_gc_init(gc_init);
   }else{
     copy_gc_init(gc_init);
   }
