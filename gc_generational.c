@@ -15,6 +15,9 @@ typedef struct generational_gc_header{
 }Generational_GC_Header;
 
 static void gc_start_generational();
+static void minor_gc();
+static void major_gc();
+
 static void* gc_malloc_generational(size_t size);
 static int get_obj_size( size_t size );
 
@@ -24,16 +27,27 @@ static void copy_and_update(Cell* objp);
 static void generational_gc_stack_check(Cell cell);
 #endif //_DEBUG
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( Generational_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
+#define NERSARY_SIZE (HEAP_SIZE/32)
+#define IS_ALLOCATABLE_NERSARY( size ) (top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj))
-#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->obj_age)
 
+#define TENURING_THRESHOLD 10
+#define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
+#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->obj_age)
+#define IS_OLD(obj) (AGE(obj) >= TENURING_THRESHOLD)
+#define IS_ALLOCATABLE_TENURED() (tenured_top + NERSARY_SIZE < tenured_space + NERSARY_SIZE )
+
+//nersary space.
 static char* from_space  = NULL;
 static char* to_space    = NULL;
 static char* top         = NULL;
+
+//tenured space.
+static char* tenured_space = NULL;
+static char* tenured_top   = NULL;
 
 void* copy_object(Cell obj)
 {
@@ -47,7 +61,7 @@ void* copy_object(Cell obj)
   if( IS_COPIED(obj) ){
     return FORWARDING(obj);
   }
-  Generational_GC_Header* new_header = (Generational_GC_Header*)top;
+  Generational_GC_Header* new_header = (Generational_GC_Header*)( IS_OLD(obj) ? tenured_top : top );
   Generational_GC_Header* old_header = ((Generational_GC_Header*)obj)-1;
   size = GET_OBJECT_SIZE(obj);
   memcpy(new_header, old_header, size);
@@ -68,10 +82,16 @@ void copy_and_update(Cell* objp)
 
 //Initialization.
 void generational_gc_init(GC_Init_Info* gc_info){
-  printf( "copy gc init\n");
-  from_space = (char*)malloc(HEAP_SIZE/2);
-  to_space = (char*)malloc(HEAP_SIZE/2);
+  printf( "generational gc init\n");
+
+  //nersary space.
+  from_space = (char*)malloc(NERSARY_SIZE);
+  to_space = (char*)malloc(NERSARY_SIZE);
   top = from_space;
+
+  //tenured space.
+  tenured_space = (char*)malloc(TENURED_SIZE);
+  tenured_top   = tenured_space;
   
   gc_info->gc_malloc = gc_malloc_generational;
   gc_info->gc_start  = gc_start_generational;
@@ -82,9 +102,9 @@ void generational_gc_init(GC_Init_Info* gc_info){
 
 //Allocation.
 inline void* gc_malloc_generational( size_t size ){
-  if( g_GC_stress || !IS_ALLOCATABLE(size) ){
+  if( g_GC_stress || !IS_ALLOCATABLE_NERSARY(size) ){
     gc_start_generational();
-    if( !IS_ALLOCATABLE( size ) ){
+    if( !IS_ALLOCATABLE_NERSARY( size ) ){
       printf("Heap Exhausted.\n ");
       exit(-1);
     }
@@ -100,7 +120,7 @@ inline void* gc_malloc_generational( size_t size ){
 
 #if defined( _DEBUG )
 void generational_gc_stack_check(Cell cell){
-  if( !(from_space <= (char*)cell && (char*)cell < from_space + HEAP_SIZE/2 ) && cell ){
+  if( !(from_space <= (char*)cell && (char*)cell < from_space + NERSARY_SIZE ) && cell ){
     printf("[WARNING] cell %p points out of heap\n", cell);
   }
 }
@@ -110,7 +130,20 @@ int get_obj_size( size_t size ){
 }
 
 //Start Garbage Collection.
-void gc_start_generational(){
+void gc_start_generational()
+{
+  if( !IS_ALLOCATABLE_TENURED() ){
+    major_gc();
+    if( !IS_ALLOCATABLE_TENURED() ){
+      printf("Heap Exhausted!\n");
+      exit(-1);
+    }
+  }
+  minor_gc();
+}
+
+void minor_gc()
+{
 #if defined( _DEBUG )
   printf("GC start\n");
 #endif //_DEBUG
@@ -132,7 +165,7 @@ void gc_start_generational(){
   from_space = to_space;
   to_space = tmp;
 #if defined( _DEBUG )
-  memset(to_space, 0, HEAP_SIZE/2);
+  memset(to_space, 0, NERSARY_SIZE);
 #endif //_DEBUG
 
 #if defined( _DEBUG )
@@ -146,3 +179,9 @@ void gc_start_generational(){
   printf("\n");
 #endif //_DEBUG
 }
+
+void major_gc()
+{
+  
+}
+
