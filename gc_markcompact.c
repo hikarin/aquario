@@ -25,11 +25,7 @@ static void markcompact_gc_stack_check(Cell cell);
 #define GET_OBJECT_SIZE(obj) (((MarkCompact_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((MarkCompact_GC_Header*)(obj)-1)->forwarding)
-#if defined( _CUT )
-#define IS_MARKED(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit==TRUE)
-#else
 #define IS_MARKED(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit)
-#endif //_CUT
 #define SET_MARK(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit=TRUE)
 #define CLEAR_MARK(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit=FALSE)
 

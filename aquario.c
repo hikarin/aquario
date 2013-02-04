@@ -847,7 +847,6 @@ void setReturn(Cell c)
 {
 #if defined( _DEBUG )
   gc_stack_check(c);
-  //  printCell( c );
 #endif //_DEBUG
   retReg = c;
 }

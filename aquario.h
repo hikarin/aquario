@@ -39,13 +39,7 @@ Cell newCell(Type t, size_t size);
 #define isLambda(p)     ((p)->_type==T_LAMBDA)
 void setString(Cell c, char* str);
 
-#if defined( _CUT )
-Cell apply(Cell c);
-#endif //_CUT
 Cell clone(Cell c);
-#if defined( _CUT )
-void set(Cell cell, Cell dst);
-#endif //_CUT
 
 Cell charCell(char ch);
 Cell stringCell(char* str);
