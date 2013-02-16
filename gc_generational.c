@@ -28,6 +28,8 @@ static void copy_and_update(Cell* objp);
 static void generational_gc_stack_check(Cell cell);
 #endif //_DEBUG
 
+static Boolean is_nersary_space = FALSE;
+
 //nersary space.
 static char* from_space  = NULL;
 static char* to_space    = NULL;
@@ -41,6 +43,7 @@ static char* tenured_new_top = NULL;
 #define NERSARY_SIZE (HEAP_SIZE/32)
 #define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
+#define IS_TENURED(obj) (tenured_space <= (char*)(obj) && (char*)(obj) < tenured_top )
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj))
@@ -77,12 +80,12 @@ void* copy_object(Cell obj)
     return NULL;
   }
   
-  if( IS_COPIED(obj) ){
+  if( IS_COPIED(obj) || IS_TENURED( obj ) ){
     return FORWARDING(obj);
   }
   size = GET_OBJECT_SIZE(obj);
   Generational_GC_Header* new_header = NULL;
-  if( IS_OLD( obj ) ){
+  if( IS_OLD( obj ) || !is_nersary_space ) {
     new_header = (Generational_GC_Header*)tenured_top;
     tenured_top += size;
   }else{
@@ -155,6 +158,7 @@ void generational_gc_stack_check(Cell cell){
   }
 }
 #endif //_DEBUG
+
 int get_obj_size( size_t size ){
   return sizeof( Generational_GC_Header ) + size;
 }
@@ -174,15 +178,13 @@ void gc_start_generational()
 
 void minor_gc()
 {
-#if defined( _DEBUG )
-  printf("GC start\n");
-#endif //_DEBUG
   nersary_top = to_space;
   
   //Copy all objects that are reachable from roots.
+  is_nersary_space = FALSE;
   trace_roots(copy_and_update);
 
-  //Trace all objects that are in to space but not scanned.
+  //Trace all objects that are in to_space but not scanned.
   char* scanned = to_space;
   while( scanned < nersary_top ){
     Cell cell = (Cell)(((Generational_GC_Header*)scanned) + 1);
@@ -190,8 +192,8 @@ void minor_gc()
     scanned += GET_OBJECT_SIZE(cell);
   }
 
-  //TODO scan tenured space.
-  scanned = tenured_new_top;
+  scanned = tenured_space;
+  is_nersary_space = TRUE;
   while( scanned < tenured_top ){
     Cell cell = (Cell)(((Generational_GC_Header*)scanned) + 1);
     trace_object(cell, copy_and_update);
@@ -205,8 +207,6 @@ void minor_gc()
 #if defined( _DEBUG )
   memset(to_space, 0, NERSARY_SIZE);
 #endif //_DEBUG
-  tenured_new_top = tenured_top;
-  printf("GC end\n");
 }
 
 void mark_object(Cell* objp)
@@ -259,10 +259,21 @@ void calc_new_address()
 
 void update_pointer()
 {
-  char* scanned = tenured_space;
+  trace_roots(update);
+
+  char* scanned = NULL;
   Cell cell = NULL;
   int obj_size = 0;
-  trace_roots(update);
+
+  scanned = from_space;
+  while( scanned < nersary_top ){
+    cell = (Cell)((Generational_GC_Header*)scanned+1);
+    obj_size = GET_OBJECT_SIZE(cell);
+    trace_object(cell, update);
+    scanned += obj_size;
+  }
+
+  scanned = tenured_space;
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
@@ -278,6 +289,8 @@ void slide()
   char* scanned = tenured_space;
   Cell cell = NULL;
   int obj_size = 0;
+
+  //scan tenured space.
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
@@ -288,9 +301,15 @@ void slide()
     scanned += obj_size;
   }
   tenured_top = tenured_new_top;
-#if defined( _DEBUG )
-  //  memset(tenured_top, 0, tenured_space+HEAP_SIZE-tenured_top);
-#endif //_DEBUG
+
+  //scan nersary space.
+  scanned = from_space;
+  while( scanned < nersary_top ){
+    cell = (Cell)((Generational_GC_Header*)scanned+1);
+    obj_size = GET_OBJECT_SIZE(cell);
+    CLEAR_MARK(cell);
+    scanned += obj_size;
+  }
 }
 
 
@@ -317,6 +336,7 @@ void compact()
 void major_gc()
 {
 #if defined( _DEBUG )
+  static int gc_count = 0;
   printf("major GC start\n");
 #endif //_DEBUG
   //initialization.
@@ -329,7 +349,7 @@ void major_gc()
   compact();
 
 #if defined( _DEBUG )
-  printf("gc end\n");
+  printf("gc end %d\n", gc_count++);
 #endif //_DEBUG
 }
 
