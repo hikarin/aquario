@@ -28,8 +28,6 @@ static void copy_and_update(Cell* objp);
 static void generational_gc_stack_check(Cell cell);
 #endif //_DEBUG
 
-static Boolean is_nersary_space = FALSE;
-
 //nersary space.
 static char* from_space  = NULL;
 static char* to_space    = NULL;
@@ -85,11 +83,11 @@ void* copy_object(Cell obj)
   }
   size = GET_OBJECT_SIZE(obj);
   Generational_GC_Header* new_header = NULL;
-  if( IS_OLD( obj ) || !is_nersary_space ) {
+  if( IS_OLD( obj ) ){
     new_header = (Generational_GC_Header*)tenured_top;
     tenured_top += size;
   }else{
-    new_header = (Generational_GC_Header*)nersary_top;
+    new_header =( Generational_GC_Header*)nersary_top;
     nersary_top += size;
   }
   Generational_GC_Header* old_header = ((Generational_GC_Header*)obj)-1;
@@ -181,23 +179,28 @@ void minor_gc()
   nersary_top = to_space;
   
   //Copy all objects that are reachable from roots.
-  is_nersary_space = FALSE;
   trace_roots(copy_and_update);
 
-  //Trace all objects that are in to_space but not scanned.
-  char* scanned = to_space;
-  while( scanned < nersary_top ){
-    Cell cell = (Cell)(((Generational_GC_Header*)scanned) + 1);
-    trace_object(cell, copy_and_update);
-    scanned += GET_OBJECT_SIZE(cell);
-  }
+  char* tenured_scanned = tenured_space;
+  char* nersary_scanned = to_space;
 
-  scanned = tenured_space;
-  is_nersary_space = TRUE;
-  while( scanned < tenured_top ){
-    Cell cell = (Cell)(((Generational_GC_Header*)scanned) + 1);
-    trace_object(cell, copy_and_update);
-    scanned += GET_OBJECT_SIZE(cell);
+  //tenured space is also scanned as roots.
+  
+  while( tenured_scanned < tenured_top || nersary_scanned < nersary_top ){
+
+    while( tenured_scanned < tenured_top ){
+      //tenured space is also scanned as roots.
+      Cell cell = (Cell)(((Generational_GC_Header*)tenured_scanned) + 1);
+      trace_object(cell, copy_and_update);
+      tenured_scanned += GET_OBJECT_SIZE(cell);
+    }
+
+    //Trace all objects that are in to_space but not scanned.
+    while( nersary_scanned < nersary_top ){
+      Cell cell = (Cell)(((Generational_GC_Header*)nersary_scanned) + 1);
+      trace_object(cell, copy_and_update);
+      nersary_scanned += GET_OBJECT_SIZE(cell);
+    }
   }
 
   //swap from space and to space.
@@ -243,7 +246,13 @@ void update(Cell* cellp)
 void calc_new_address()
 {
   char* scanned = tenured_space;
-  tenured_new_top = tenured_space;
+  tenured_new_top =  scanned = tenured_space;
+  while( scanned < tenured_top ){
+    Cell cell = (Cell)(((Generational_GC_Header*)scanned) + 1);
+    trace_object(cell, copy_and_update);
+    scanned += GET_OBJECT_SIZE(cell);
+  }
+
   Cell cell = NULL;
   int obj_size = 0;
   while( scanned < tenured_top ){
@@ -311,7 +320,6 @@ void slide()
     scanned += obj_size;
   }
 }
-
 
 //Start Garbage Collection.
 void mark()
