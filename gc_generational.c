@@ -39,6 +39,14 @@ static char* tenured_space   = NULL;
 static char* tenured_top     = NULL;
 static char* tenured_new_top = NULL;
 
+//remembered set.
+#define REMEMBERED_SET_SIZE 300
+static Cell remembered_set[ REMEMBERED_SET_SIZE ];
+static int remembered_set_top = 0;
+static void add_remembered_set(Cell obj);
+static void remove_remembered_set();
+static void write_barrier(Cell* objp, Cell newcell);
+
 #define NERSARY_SIZE (HEAP_SIZE/32)
 #define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
 #define TENURING_THRESHOLD 4
@@ -444,7 +452,7 @@ void major_gc()
   compact();
 
 #if defined( _DEBUG )
-  memset(tenured_top, 0, tenured_space + TENURED_SIZE - tenured_top);
+  //memset(tenured_top, 0, tenured_space + TENURED_SIZE - tenured_top);
   printf("major GC end(%d)\n", gc_count++);
 #endif //defined( _DEBUG )
 }
