@@ -14,7 +14,8 @@ typedef struct copy_gc_header{
 }Copy_GC_Header;
 
 static void gc_start_copy();
-static void* gc_malloc_copy(size_t size);
+static inline void* gc_malloc_copy(size_t size);
+static void gc_write_barrier_copy(Cell* cellp, Cell newcell);
 static int get_obj_size( size_t size );
 
 static void* copy_object(Cell obj);
@@ -72,15 +73,16 @@ void copy_gc_init(GC_Init_Info* gc_info){
   to_space = (char*)malloc(HEAP_SIZE/2);
   top = from_space;
   
-  gc_info->gc_malloc = gc_malloc_copy;
-  gc_info->gc_start  = gc_start_copy;
+  gc_info->gc_malloc        = gc_malloc_copy;
+  gc_info->gc_start         = gc_start_copy;
+  gc_info->gc_write_barrier = gc_write_barrier_copy;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = copy_gc_stack_check;
 #endif //_DEBUG
 }
 
 //Allocation.
-inline void* gc_malloc_copy( size_t size ){
+void* gc_malloc_copy( size_t size ){
   if( g_GC_stress || !IS_ALLOCATABLE(size) ){
     gc_start_copy();
     if( !IS_ALLOCATABLE( size ) ){
@@ -137,4 +139,10 @@ void gc_start_copy(){
 #if defined( _DEBUG )
   printf("GC end\n");
 #endif //_DEBUG
+}
+
+//Write Barrier(do nothing.)
+void gc_write_barrier_copy(Cell* cellp, Cell newcell)
+{
+  *cellp = newcell;
 }

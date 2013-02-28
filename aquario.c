@@ -15,6 +15,7 @@ Boolean g_GC_stress;
 
 static void* (*gc_malloc) (size_t size);
 static void (*gc_start) ();
+static void (*gc_write_barrier) (Cell* cellp, Cell newcell);
 #if defined( _DEBUG )
 static void (*gc_stack_check)(Cell cell);
 #endif //_DEBUG
@@ -134,10 +135,15 @@ Cell cloneTree(Cell src)
     while(stack_top_origin != stack_top){
       tmp = &stack[ stack_top-1 ];
       if(isPair(car(*tmp))){
+#if defined( _CUT )
 	car(*tmp) = clone(car(*tmp));
+#else
+	gc_write_barrier( &car(*tmp), clone(car(*tmp)) );
+	//gc_write_barrier(*tmp, clone(car(*tmp)));
+#endif
       }
       if(isPair(cdr(*tmp))){
-	cdr(*tmp) = clone(cdr(*tmp));
+	gc_write_barrier( &cdr(*tmp), clone(cdr(*tmp)) );
       }
       Cell newCell = popArg();
       if(isPair(car(newCell))){
@@ -172,26 +178,26 @@ Cell cloneSymbolTree(Cell src)
 	pushArg(tmp);
 	Cell newCell = clone(car(tmp));
 	tmp = popArg();
-	car(tmp) = newCell;
+	gc_write_barrier(&car(tmp), newCell);
 	pushArg(newCell);
       }else if(isSymbol(car(tmp))){
 	pushArg(tmp);
 	Cell newCell = clone(car(tmp));
 	tmp = popArg();
-	car(tmp) = newCell;
+	gc_write_barrier( &car(tmp), newCell );
       }
       //clone cdr.
       if(isPair(cdr(tmp))){
 	pushArg(tmp);
 	Cell newCell = clone(cdr(tmp));
 	tmp = popArg();
-	cdr(tmp) = newCell;
+	gc_write_barrier( &cdr(tmp), newCell );
 	pushArg(newCell);
       }else if(isSymbol(cdr(tmp))){
 	pushArg(tmp);
 	Cell newCell = clone(cdr(tmp));
 	tmp = popArg();
-	cdr(tmp) = newCell;
+	gc_write_barrier( &cdr(tmp), newCell);
       }
     }
     return popArg();
@@ -280,8 +286,8 @@ Cell evalExp(Cell exp)
 	      tmps = pairCell(symbolCell("begin"), tmps);
 	      exp = popArg();                             //=> [....exps]
 	      type(exp) = type(tmps);
-	      car(exp) = car(tmps);
-	      cdr(exp) = cdr(tmps);
+	      gc_write_barrier( &car(exp), car(tmps) );
+	      gc_write_barrier( &cdr(exp), cdr(tmps) );
 	      evalExp(exp);
 	    }
 	  }
@@ -313,7 +319,7 @@ void letParam(Cell exp, Cell dummyParams, Cell realParams)
     else if(isSymbol(carCell)){
       Cell find = findParam(carCell, dummyParams, realParams);
       if(find!=UNDEF){
-        car(exp) = find;
+	gc_write_barrier( &car(exp), find );
       }
     }
     Cell cdrCell = cdr(exp);
@@ -323,7 +329,7 @@ void letParam(Cell exp, Cell dummyParams, Cell realParams)
     else if(isSymbol(cdrCell)){
       Cell find = findParam(cdrCell, dummyParams, realParams);
       if(find!=UNDEF){
-        cdr(exp) = find;
+        gc_write_barrier( &cdr(exp), find );
       }
     }
   }
@@ -407,7 +413,7 @@ Cell setAppendCell(Cell ls, Cell c)
   pushArg(cdr);
   Cell tmp = pairCell(c, NIL);
   cdr = popArg();
-  cdr(cdr) = tmp;
+  gc_write_barrier( &cdr(cdr), tmp );
   ls = popArg();
   return ls;
 }
@@ -421,7 +427,7 @@ Cell setAppendList(Cell ls, Cell append)
   while(!nullp(cdr(cdr))){
     cdr = cdr(cdr);
   }
-  cdr(cdr) = append;
+  gc_write_barrier( &cdr(cdr), append );
   return ls;
 }
 
@@ -442,7 +448,7 @@ Cell applyList(Cell ls)
   pushArg(c);
   Cell top = pairCell(NIL, NIL);
   c = popArg();
-  car(top) = c;
+  gc_write_barrier( &car(top), c );
   ls = popArg();
   pushArg(top);
   Cell last = top;
@@ -456,10 +462,10 @@ Cell applyList(Cell ls)
     pushArg(tmpCar);
     tmp2 = pairCell(NIL, NIL);
     tmpCar = popArg();
-    car(tmp2) = tmpCar;
+    gc_write_barrier( &car(tmp2), tmpCar );
     tmp = popArg();
     last = popArg();
-    cdr(last) = tmp2;
+    gc_write_barrier( &cdr(last), tmp2 );
     last = tmp2;
   }
   top = popArg();
@@ -755,11 +761,15 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
     pushArg(chain);
     Cell pair = pairCell(nameCell, c);
     chain = popArg();
-    car(chain) = pair;
+    gc_write_barrier( &car(chain), pair );
   }
   else{
     Cell entry = pairCell(nameCell, c);
+#if defined( _CUT )
+    gc_write_barrier( env, pairCell(entry, *env) );
+#else
     *env = pairCell(entry, *env);
+#endif
   }  
 }
 
@@ -951,8 +961,9 @@ void set_gc(char* gc_char)
   gc_init( gc_char, &gc_info );
   printf("%s\n", gc_char);
 
-  gc_malloc = gc_info.gc_malloc;
-  gc_start = gc_info.gc_start;
+  gc_malloc        = gc_info.gc_malloc;
+  gc_start         = gc_info.gc_start;
+  gc_write_barrier = gc_info.gc_write_barrier;
 #if defined( _DEBUG )
   gc_stack_check = gc_info.gc_stack_check;
 #endif //_DEBUG
@@ -1091,7 +1102,7 @@ void op_lessoreqdigitp()
   Cell c2 = cadr(args);
   pushArg(c2);
   int i1 = ivalue(evalExp(c1));
-  c2 = popArg(c2);
+  c2 = popArg();
   int i2 = ivalue(evalExp(c2));
   if( i1 <= i2 ){
     setReturn(T);

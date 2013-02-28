@@ -19,7 +19,7 @@ static void gc_start_generational();
 static void minor_gc();
 static void major_gc();
 
-static void* gc_malloc_generational(size_t size);
+static inline void* gc_malloc_generational(size_t size);
 static int get_obj_size( size_t size );
 
 static void* copy_object(Cell obj);
@@ -180,7 +180,7 @@ void generational_gc_init(GC_Init_Info* gc_info)
 }
 
 //Allocation.
-inline void* gc_malloc_generational( size_t size )
+void* gc_malloc_generational( size_t size )
 {
   if( g_GC_stress || !IS_ALLOCATABLE_NERSARY(size) ){
     gc_start_generational();
