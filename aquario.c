@@ -16,6 +16,8 @@ Boolean g_GC_stress;
 static void* (*gc_malloc) (size_t size);
 static void (*gc_start) ();
 static void (*gc_write_barrier) (Cell* cellp, Cell newcell);
+static void (*gc_init_ptr) (Cell* cellp, Cell newcell);
+static void (*gc_memcpy) (char* dst, char* src, size_t size);
 #if defined( _DEBUG )
 static void (*gc_stack_check)(Cell cell);
 #endif //_DEBUG
@@ -68,8 +70,8 @@ Cell pairCell(Cell a, Cell d)
   pushArg(a);
   pushArg(d);
   Cell cons = newCell(T_PAIR, sizeof(struct cell));
-  cdr(cons) = popArg();
-  car(cons) = popArg();
+  gc_init_ptr( &cdr(cons), popArg() );
+  gc_init_ptr( &car(cons), popArg() );
   return cons;
 }
 
@@ -100,8 +102,13 @@ Cell lambdaCell(Cell param, Cell exp)
   pushArg(param);
   pushArg(exp);
   Cell c = newCell(T_LAMBDA, sizeof(struct cell));
+#if defined( _CUT )
   lambdaexp(c) = popArg();
   lambdaparam(c) = popArg();
+#else
+  gc_init_ptr( &lambdaexp(c), popArg() );
+  gc_init_ptr( &lambdaparam(c), popArg() );
+#endif //_CUT
   return c;
 }
 
@@ -120,7 +127,11 @@ Cell clone(Cell src)
   pushArg(src);
   Cell new = gc_malloc( size );
   src = popArg();
+#if defined( _CUT )
   memcpy( new, src, size );
+#else
+  gc_memcpy( (char*)new, (char*)src, size );
+#endif //_CUT
   return new;
 }
 
@@ -135,12 +146,7 @@ Cell cloneTree(Cell src)
     while(stack_top_origin != stack_top){
       tmp = &stack[ stack_top-1 ];
       if(isPair(car(*tmp))){
-#if defined( _CUT )
-	car(*tmp) = clone(car(*tmp));
-#else
 	gc_write_barrier( &car(*tmp), clone(car(*tmp)) );
-	//gc_write_barrier(*tmp, clone(car(*tmp)));
-#endif
       }
       if(isPair(cdr(*tmp))){
 	gc_write_barrier( &cdr(*tmp), clone(cdr(*tmp)) );
@@ -633,27 +639,27 @@ Cell readList(FILE* fp)
     Cell exp;
     c = fgetc(fp);
     switch(c){
-      case ')':
-        return list;
-      case '.':
-        exp = readElem(fp);
-        list = setAppendList(list, exp);
-        readToken(buf, sizeof(buf), fp);
-        if(strcmp(buf, ")")!=0){
-          setParseError("unknown token after '.'");
-          return NULL;
-        }
-        return list;
-      case EOF:
-        setEOFException("EOF");
-        return NULL;
-      default:
-        ungetc(c, fp);
-	pushArg(list);
-        exp = readElem(fp);
-	list = popArg();
-        list = setAppendCell(list, exp);
-        break;
+    case ')':
+      return list;
+    case '.':
+      exp = readElem(fp);
+      list = setAppendList(list, exp);
+      readToken(buf, sizeof(buf), fp);
+      if(strcmp(buf, ")")!=0){
+	setParseError("unknown token after '.'");
+	return NULL;
+      }
+      return list;
+    case EOF:
+      setEOFException("EOF");
+      return NULL;
+    default:
+      ungetc(c, fp);
+      pushArg(list);
+      exp = readElem(fp);
+      list = popArg();
+      list = setAppendCell(list, exp);
+      break;
     }
   }
   return list;
@@ -765,11 +771,7 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   }
   else{
     Cell entry = pairCell(nameCell, c);
-#if defined( _CUT )
     gc_write_barrier( env, pairCell(entry, *env) );
-#else
-    *env = pairCell(entry, *env);
-#endif
   }  
 }
 
@@ -886,11 +888,11 @@ void clearError()
 
 void init()
 {
-  NIL = noneCell();
-  T = noneCell();
-  F = noneCell();
-  UNDEF = noneCell();
-  EOFobj = noneCell();
+  gc_init_ptr( &NIL, noneCell() );
+  gc_init_ptr( &T, noneCell() );
+  gc_init_ptr( &F, noneCell() );
+  gc_init_ptr( &UNDEF, noneCell() );
+  gc_init_ptr( &EOFobj, noneCell() );
 
   setReturn(NIL);
 
@@ -964,11 +966,13 @@ void set_gc(char* gc_char)
   gc_malloc        = gc_info.gc_malloc;
   gc_start         = gc_info.gc_start;
   gc_write_barrier = gc_info.gc_write_barrier;
+  gc_init_ptr      = gc_info.gc_init_ptr;
+  gc_memcpy        = gc_info.gc_memcpy;
 #if defined( _DEBUG )
-  gc_stack_check = gc_info.gc_stack_check;
+  gc_stack_check   = gc_info.gc_stack_check;
 #endif //_DEBUG
 
-  g_GC_stress = FALSE;
+  g_GC_stress      = FALSE;
 }
 
 void op_unknown()
@@ -1525,7 +1529,7 @@ int main(int argc, char *argv[])
     set_gc(argv[ 2 ]);
     i += 2;
   }else{
-    set_gc("copying");
+    set_gc("reference_count");
   }
   init();
 

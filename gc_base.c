@@ -20,7 +20,7 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, "reference_count" ) == 0 ){
     reference_count_init(gc_init);
   }else{
-    copy_gc_init(gc_init);
+    reference_count_init(gc_init);
   }
 }
 
