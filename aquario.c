@@ -1,4 +1,4 @@
- #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -69,9 +69,17 @@ Cell pairCell(Cell a, Cell d)
 {
   pushArg(a);
   pushArg(d);
-  Cell cons = newCell(T_PAIR, sizeof(struct cell));
-  gc_init_ptr( &cdr(cons), popArg() );
-  gc_init_ptr( &car(cons), popArg() );
+  Cell cons     = newCell(T_PAIR, sizeof(struct cell));
+
+  //set cdr cell.
+  Cell cdr_cell = stack[ stack_top-1 ];
+  gc_init_ptr( &cdr(cons), cdr_cell );
+  popArg();
+
+  //set car cell.
+  Cell car_cell = stack[ stack_top-1 ];
+  gc_init_ptr( &car(cons), car_cell );
+  popArg();
   return cons;
 }
 
@@ -415,12 +423,15 @@ Cell setAppendCell(Cell ls, Cell c)
   while(!nullp(cdr(cdr))){
     cdr = cdr(cdr);
   }
+  pushArg(c);
   pushArg(ls);
   pushArg(cdr);
   Cell tmp = pairCell(c, NIL);
-  cdr = popArg();
+  cdr = stack[ stack_top-1 ];
   gc_write_barrier( &cdr(cdr), tmp );
+  popArg();
   ls = popArg();
+  popArg();
   return ls;
 }
 
@@ -657,8 +668,9 @@ Cell readList(FILE* fp)
       ungetc(c, fp);
       pushArg(list);
       exp = readElem(fp);
-      list = popArg();
+      list = stack[ stack_top-1 ];
       list = setAppendCell(list, exp);
+      popArg();
       break;
     }
   }
@@ -780,7 +792,12 @@ Cell getChain(char* name, int* key)
   *key = hash(name)%ENVSIZE;
   Cell chain = env[*key];
   if(env[*key]==NULL){
+#if defined( _CUT )    
     chain = env[*key] = NIL;
+#else
+    chain = NIL;
+    gc_write_barrier( &env[*key], NIL );
+#endif //_CUT
   }
   while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
     chain = cdr(chain);
@@ -794,48 +811,58 @@ void setVar(char* name, Cell c)
   pushArg(c);
   Cell nameCell = stringCell(name);
   Cell chain = getChain(name, &key);
-  c = popArg();
+  c = stack[ stack_top-1 ];
   registerVar(nameCell, chain, c, &env[key]);
+  popArg();
 }
 
 inline Cell popArg()
 {
   Cell c = stack[ --stack_top ];
+#if !defined( _CUT )
+  gc_write_barrier( &stack[ stack_top ], NULL );
+#endif //_CUT
+
 #if defined( _DEBUG )
-  gc_stack_check(c);  
+   gc_stack_check(c);  
 #endif //_DEBUG
-  return c;
-}
-inline void pushArg(Cell c)
-{
-  if( stack_top >= STACKSIZE ){
-    setParseError( "Stack Overflow" );
-    return;
-  }
-#if defined( _DEBUG )
-  gc_stack_check(c);
-#endif //_DEBUG
-  stack[ stack_top++ ] = c;
-}
+   return c;
+ }
+ inline void pushArg(Cell c)
+ {
+   if( stack_top >= STACKSIZE ){
+     setParseError( "Stack Overflow" );
+     return;
+   }
+ #if defined( _DEBUG )
+   gc_stack_check(c);
+ #endif //_DEBUG
 
-void dupArg()
-{
-  Cell c = popArg();
-  pushArg(c);
-  pushArg(c);
-}
+ #if !defined( _CUT )
+   gc_init_ptr( &stack[ stack_top++ ], c );
+ #else
+   stack[ stack_top++ ] = c;
+ #endif //_CUT
+ }
 
-void exchArg()
-{
-  Cell c1 = popArg();
-  Cell c2 = popArg();
-  pushArg(c1);
-  pushArg(c2);
-}
+ void dupArg()
+ {
+   Cell c = popArg();
+   pushArg(c);
+   pushArg(c);
+ }
 
-void clearArgs()
-{
-  stack_top = 0;
+ void exchArg()
+ {
+   Cell c1 = popArg();
+   Cell c2 = popArg();
+   pushArg(c1);
+   pushArg(c2);
+ }
+
+ void clearArgs()
+ {
+   stack_top = 0;
 }
 
 void callProc(char* name)
