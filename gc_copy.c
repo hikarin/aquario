@@ -111,8 +111,6 @@ void gc_init_ptr_copy(Cell* cellp, Cell newcell)
 void gc_memcpy_copy(char* dst, char* src, size_t size)
 {
   memcpy( dst, src, size );
-  FORWARDING(dst)      = (Cell)dst;
-  GET_OBJECT_SIZE(dst) = GET_OBJECT_SIZE(src);
 }
 
 #if defined( _DEBUG )

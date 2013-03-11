@@ -19,6 +19,7 @@ static inline void* gc_malloc_markcompact(size_t size);
 static void gc_write_barrier_markcompact(Cell* cellp, Cell newcell);
 static void gc_init_ptr_markcompact(Cell* cellp, Cell newcell);
 static void gc_memcpy_markcompact(char* dst, char* src, size_t size);
+
 static int get_obj_size( size_t size );
 #if defined( _DEBUG )
 static void markcompact_gc_stack_check(Cell cell);
@@ -205,6 +206,9 @@ void compact()
 
 void gc_start_markcompact()
 {
+#if defined( _DEBUG )
+  printf( "gc start..." );
+#endif //_DBEUG
   //initialization.
   mark_stack_top = 0;
 
@@ -225,7 +229,7 @@ void gc_write_barrier_markcompact(Cell* cellp, Cell newcell)
   *cellp = newcell;
 }
 
-//Init Pointer(do nothing).
+//Initialize Pointer.
 void gc_init_ptr_markcompact(Cell* cellp, Cell newcell)
 {
   *cellp = newcell;
