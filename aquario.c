@@ -655,9 +655,13 @@ Cell readList(FILE* fp)
       return NULL;
     default:
       ungetc(c, fp);
+#if defined( _CUT )
       pushArg(list);
+#endif //_CUT
       exp = readElem(fp);
+#if defined( _CUT )
       list = popArg();
+#endif //
       list = setAppendCell(list, exp);
       break;
     }
@@ -669,9 +673,13 @@ Cell readQuot(FILE* fp)
 {
   //  Cell quot = NIL;
   Cell quot = setAppendCell(NIL, symbolCell("quote"));
+#if defined( _CUT )
   pushArg(quot);
+#endif //
   Cell elem = readElem(fp);
+#if defined( _CUT )
   quot = popArg();
+#endif //
   quot = setAppendCell(quot, elem);
   return quot;
 }
@@ -707,13 +715,13 @@ Cell readElem(FILE* fp)
     elem = NULL;
   }
   else if(token[0]=='('){
-    elem = readList(fp);
+    elem = readList(fp);        // => [...]
   }
   else if(token[0]=='\''){
-    elem = readQuot(fp);
+    elem = readQuot(fp);        // => [...]
   }
   else{
-    elem = tokenToCell(token);
+    elem = tokenToCell(token);  // => [...]
   }
 
   if(elem==NULL){
@@ -1509,8 +1517,8 @@ int repl()
     callProc("read");
     ret = getReturn();
     if(ret==EOFobj) break;
-    pushArg(pairCell(ret, NIL));
-    dupArg();
+    pushArg(pairCell(ret, NIL));    // => [... (ret)]
+    dupArg();                       // => [... (ret) (ret)]
 
     callProc("eof?");
     ret = getReturn();
