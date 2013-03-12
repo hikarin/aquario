@@ -425,11 +425,8 @@ Cell setAppendCell(Cell ls, Cell c)
   }
   pushArg(c);
   pushArg(ls);
-  pushArg(cdr);
   Cell tmp = pairCell(c, NIL);
-  cdr = stack[ stack_top-1 ];
   gc_write_barrier( &cdr(cdr), tmp );
-  popArg();
   ls = popArg();
   popArg();
   return ls;
@@ -666,13 +663,7 @@ Cell readList(FILE* fp)
       return NULL;
     default:
       ungetc(c, fp);
-#if defined( _CUT )
-      pushArg(list);
-#endif //_CUT
       exp = readElem(fp);
-#if defined( _CUT )
-      list = popArg();
-#endif //
       list = setAppendCell(list, exp);
       break;
     }
@@ -682,16 +673,8 @@ Cell readList(FILE* fp)
 
 Cell readQuot(FILE* fp)
 {
-  //  Cell quot = NIL;
-  Cell quot = setAppendCell(NIL, symbolCell("quote"));
-#if defined( _CUT )
-  pushArg(quot);
-#endif //
   Cell elem = readElem(fp);
-#if defined( _CUT )
-  quot = popArg();
-#endif //
-  quot = setAppendCell(quot, elem);
+  Cell quot = setAppendCell(pairCell(symbolCell("quote"), NIL), elem);
   return quot;
 }
 

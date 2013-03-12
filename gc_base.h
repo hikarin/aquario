@@ -2,12 +2,12 @@
 
 typedef struct gc_header GC_Header;
 
-#if defined( _CUT )
-  #define HEAP_SIZE (300*1024)
+#if !defined( _CUT )
+  #define HEAP_SIZE (260*1024)
 #elif 1
   #define HEAP_SIZE (1*1024*1024)
 #else
-  #define HEAP_SIZE (200*1024*1024)
+  #define HEAP_SIZE (480*1024*1024)
 #endif //_CUT
 
 void trace_roots(void (*trace) (Cell* cellp));

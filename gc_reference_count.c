@@ -135,6 +135,9 @@ void reclaim_obj( Cell obj )
   trace_object( obj, decrement_count );
   Reference_Count_Header* header = (Reference_Count_Header*)obj - 1;
   Free_Chunk** chunkp = &freelist;
+#if defined( _DEBUG )
+  printf( " <reclaim_obj>: %p\n", obj );
+#endif //_DBEUG
   while( *chunkp ){
     if( ( (char*)(*chunkp) + (*chunkp)->chunk_size ) == (char*)header ){
       //Coalescing.
@@ -191,7 +194,8 @@ void check_reference_object(Cell* objp)
       if( REF_CNT( obj ) <= 0 ){
 	printf( "[WARNING!!!!!] count is NG: %p\n", obj);
       }else{
-	printf( "%p ", (Reference_Count_Header*)obj-1);
+	//	printf( "%p ", (Reference_Count_Header*)obj-1);
+	//	printf( "%p ", obj);
       }
       trace_object( obj, check_reference_object );
     }
