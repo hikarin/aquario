@@ -663,7 +663,9 @@ Cell readList(FILE* fp)
       return NULL;
     default:
       ungetc(c, fp);
+      pushArg(list);
       exp = readElem(fp);
+      list = popArg();
       list = setAppendCell(list, exp);
       break;
     }
