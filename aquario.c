@@ -776,7 +776,7 @@ Cell readElem(FILE* fp)
    else{
      Cell entry = pairCell(nameCell, c);
      gc_write_barrier( env, pairCell(entry, *env) );
-   }  
+   }
  }
 
  Cell getChain(char* name, int* key)
