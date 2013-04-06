@@ -6,11 +6,11 @@ Aquario is a GC-oriented Lisp interpreter.
 * Lisp-1
 * Multiple and Selectable Garbage Collectors
 * Support for Implementing GC Algorithms(ex. root scan, object traverse, and
-  some basic algorithms such as Cheney's Copying collector)
+  some simple Garbage Collector such as Cheney's Copying collector)
 
 == How to run Aquario
 
-  You can build Aquario
+  You can build Aquario with the following command:
 
     $ make
 
