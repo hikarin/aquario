@@ -21,3 +21,8 @@ Aquario is a GC-oriented Lisp interpreter.
   Or to run Aquario with Mark and Compact collector, put the following command:
 
     $ ./aquario -GC mark_compact
+
+== Future work
+
+* Bytecode Interpreter
+* More Garbage Collectors such as Yuasa's Snapshot collector
