@@ -39,6 +39,7 @@ static void check_obj(Cell obj);
 static void clear_reference(Cell* objp);
 static Cell check_stack[1000];
 static int check_stack_top = 0;
+static void check_freelist();
 #endif //_DEBUG
 
 static char* heap           = NULL;
@@ -79,131 +80,168 @@ void reference_count_init(GC_Init_Info* gc_info)
   zct_top = 0;
 }
 
- //Allocation.
- void* gc_malloc_reference_count( size_t size )
- {
-   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
-   char* chunk = get_free_chunk( allocate_size );
-   if( !chunk ){
-     scan_zct();
-     chunk = get_free_chunk( allocate_size );
+//Allocation.
+void* gc_malloc_reference_count( size_t size )
+{
+  int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
+  char* chunk = get_free_chunk( allocate_size );
+  if( !chunk ){
+    scan_zct();
+    chunk = get_free_chunk( allocate_size );
      if( !chunk ){
        printf("Heap Exhausted.\n ");
        exit(-1);
      }
-   }
-   Reference_Count_Header* new_header = (Reference_Count_Header*)chunk;
-   Cell ret = (Cell)(new_header+1);
-   GET_OBJECT_SIZE(ret) = allocate_size;
-   REF_CNT(ret)         = 0;
+  }
 #if defined( _DEBUG )
-   new_header->visit_flag = FALSE;
+  check_freelist();
 #endif //_DEBUG
-   return ret;
- }
-
- char* get_free_chunk( size_t size )
- {
-   //returns a chunk which size is larger than required size.
-   Free_Chunk** chunkp = &freelist;
-   while( *chunkp ){
-     if( (*chunkp)->chunk_size >= size ){
-       int old_size = (*chunkp)->chunk_size;
-       char* ret = (char*)*chunkp;
-       Free_Chunk* next = NULL;
-       if( old_size - size >= sizeof( Free_Chunk ) ){
-	 Free_Chunk* new_next = (*chunkp)->next;
-	 next                 = (Free_Chunk*)(ret + size);
-	 next->next           = new_next;
-	 next->chunk_size     = old_size - size;
-       }else{
-	 next             = ((Free_Chunk*)ret)->next;
-       }
-       if( (char*)chunkp < heap || heap + HEAP_SIZE < (char*)chunkp ){
-	 freelist = next;
-       }else{
-	 ((Free_Chunk*)(chunkp + 1) - 1)->next = next;
-       }
-       return ret;
-     }
-     chunkp = &((*chunkp)->next);
-   }
-   return NULL;
- }
-
- void reclaim_obj( Cell obj )
- {
-   size_t obj_size = GET_OBJECT_SIZE( obj );
-   REF_CNT(obj) = -1;
-   trace_object( obj, decrement_count );
-
+  Reference_Count_Header* new_header = (Reference_Count_Header*)chunk;
+  Cell ret = (Cell)(new_header+1);
+  GET_OBJECT_SIZE(ret) = allocate_size;
+  REF_CNT(ret)         = 0;
 #if defined( _DEBUG )
-   check_obj(obj);
-   printf( "reclaim\n" );
+  new_header->visit_flag = FALSE;
 #endif //_DEBUG
+  return ret;
+}
 
-   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
+char* get_free_chunk( size_t size )
+{
+  //returns a chunk which size is larger than required size.
 
-   if( !freelist ){
-     freelist = obj_top;
-     freelist->chunk_size = obj_size;
-     freelist->next       = NULL;
-   }else{
-     Free_Chunk* tmp = NULL;
-     for( tmp = freelist; tmp->next; tmp = tmp->next ){
-       if( (char*)tmp < (char*)obj_top && (char*)obj_top < (char*)tmp->next ){
-	 //Coalesce.
-	 if( (char*)tmp + tmp->chunk_size == (char*)obj_top ){
-	   if( (char*)obj_top + obj_size == (char*)tmp->next ){
-	     tmp->next        = tmp->next->next;
-	     tmp->chunk_size += (obj_size + tmp->next->chunk_size);
-	   }else{
-	     tmp->chunk_size += obj_size;
-	   }
-	 }else if( (char*)obj_top + obj_size == (char*)tmp->next ){
-	   //TODO.
-	   size_t new_size      = tmp->next->chunk_size + obj_size;
-	   Free_Chunk* new_next = tmp->next->next;
-	   obj_top->chunk_size  = new_size;
-	   obj_top->next        = new_next;
-	   tmp->next            = obj_top;
-	 }else{
-	   obj_top->next       = tmp->next;
-	   obj_top->chunk_size = obj_size;
-	   tmp->next           = obj_top;
-	 }
-	 return;
-       }
-     }
-     tmp->next           = obj_top;
-     obj_top->next       = NULL;
-     obj_top->chunk_size = obj_size;
-   }
 #if defined( _CUT )
-   ///////////
-   while( *chunkp ){
-     if( ( (char*)(*chunkp) + (*chunkp)->chunk_size ) == (char*)header ){
-       //Coalescing.
- #if defined( _DEBUG )
-       printf("Coalesce\n");
- #endif //_DEBUG
-       (*chunkp)->chunk_size += obj_size;
-       return;
-     }else if( (char*)*chunkp > (char*)header ){
-       Free_Chunk* next      = *chunkp;
-       *chunkp               = (Free_Chunk*)header;
-       (*chunkp)->next       = next;
-       (*chunkp)->chunk_size = obj_size;
-       printf("  [reclaimed] header: %p\n", header );
-       return;
-     }
-     chunkp = &((*chunkp)->next);
-   }
-   *chunkp = (Free_Chunk*)obj;
-   freelist->chunk_size = obj_size;
-   freelist->next       = NULL;
-#endif 
- }
+  Free_Chunk** chunkp = &freelist;
+  while( *chunkp ){
+    if( (*chunkp)->chunk_size >= size ){
+      int old_size = (*chunkp)->chunk_size;
+      char* ret = (char*)*chunkp;
+      Free_Chunk* next = NULL;
+      if( old_size - size >= sizeof( Free_Chunk ) ){
+	Free_Chunk* new_next = (*chunkp)->next;
+	next                 = (Free_Chunk*)(ret + size);
+	next->next           = new_next;
+	next->chunk_size     = old_size - size;
+      }else{
+	next                 = (*chunkp)->next;
+      }
+      if( (char*)chunkp < heap || heap + HEAP_SIZE < (char*)chunkp ){
+	freelist = next;
+      }else{
+	*chunkp = next;
+	//	((Free_Chunk*)(chunkp->next) - 1)->next = next;
+      }
+#if defined( _DEBUG )
+      if( ret < heap || heap + HEAP_SIZE < ret ){
+	printf( "ret OUT: %p\n", ret );
+      }
+      if( (char*)next < heap || heap + HEAP_SIZE < (char*)next ){
+	printf( "next OUT: %p\n", next );
+      }
+#endif //_DEBUG
+#if defined( _DEBUG )
+      check_freelist();
+#endif //_DEBUG
+      return ret;
+    }
+    chunkp = &((*chunkp)->next);
+  }
+#if defined( _DEBUG )
+  check_freelist();
+#endif //_DEBUG
+
+#else
+  if( freelist ){
+    if( !freelist->next ){
+      if( freelist->chunk_size >= size ){
+	char* ret = (char*)freelist;
+	if( freelist->chunk_size - size >= sizeof( Free_Chunk ) ){
+	  size_t old_size = freelist->chunk_size;
+	  freelist = (Free_Chunk*)((char*)freelist + size);
+	  freelist->chunk_size = old_size - size;
+	  freelist->next = NULL;
+	}else{
+	  freelist = NULL;
+	}
+	return ret;
+      }
+    }else{
+      Free_Chunk* tmp = freelist;
+      while( tmp->next ){
+	if( tmp->next->chunk_size >= size){
+	  char* ret = (char*)tmp->next;
+	  Free_Chunk* new_next = NULL;
+	  if( tmp->next->chunk_size - size >= sizeof( Free_Chunk ) ){
+	    size_t old_size = tmp->next->chunk_size;
+	    tmp->next->chunk_size -= size;	    
+	    new_next = (Free_Chunk*)((char*)tmp->next + size);
+	    new_next->chunk_size = old_size - size;
+	    new_next->next       = tmp->next->next;
+	  }else{
+	    new_next  = tmp->next->next;
+	  }
+	  tmp->next   = new_next;
+	  return ret;
+	}
+	tmp = tmp->next;
+      }
+    }
+  }
+#endif //_CUT
+  return NULL;
+}
+
+void reclaim_obj( Cell obj )
+{
+  size_t obj_size = GET_OBJECT_SIZE( obj );
+#if defined( _DEBUG )
+  check_obj(obj);
+#endif //_DEBUG
+  REF_CNT(obj) = -1;
+  trace_object( obj, decrement_count );
+  
+  Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
+  
+  if( !freelist ){
+    //No object in freelist.
+    freelist             = obj_top;
+    freelist->chunk_size = obj_size;
+    freelist->next       = NULL;
+  }else{
+    Free_Chunk* tmp = NULL;
+    for( tmp = freelist; tmp->next; tmp = tmp->next ){
+      if( (char*)tmp < (char*)obj_top && (char*)obj_top < (char*)tmp->next ){
+	//Coalesce.
+	if( (char*)tmp + tmp->chunk_size == (char*)obj_top ){
+	  if( (char*)obj_top + obj_size == (char*)tmp->next ){
+	    //Coalesce with previous and next Free_Chunk.
+	    tmp->next        = tmp->next->next;
+	    tmp->chunk_size += (obj_size + tmp->next->chunk_size);
+	  }else{
+	    //Coalesce with previous Free_Chunk.
+	    tmp->chunk_size += obj_size;
+	  }
+	}else if( (char*)obj_top + obj_size == (char*)tmp->next ){
+	  //Coalesce with next Free_Chunk.
+	  size_t new_size      = tmp->next->chunk_size + obj_size;
+	  Free_Chunk* new_next = tmp->next->next;
+	  obj_top->chunk_size  = new_size;
+	  obj_top->next        = new_next;
+	  tmp->next            = obj_top;
+	}else{
+	  //Just put obj into freelist.
+	  obj_top->chunk_size  = obj_size;
+	  obj_top->next        = tmp->next;
+	  tmp->next            = obj_top;
+	}
+	return;
+      }
+    }
+    tmp->next           = obj_top;
+    obj_top->next       = NULL;
+    obj_top->chunk_size = obj_size;
+  }
+}
 
 #if defined( _DEBUG )
 void reference_count_stack_check(Cell cell)
@@ -213,23 +251,44 @@ void reference_count_stack_check(Cell cell)
   }
 }
 
+void check_freelist()
+{
+  Free_Chunk* tmp = freelist;
+  while( tmp ){
+    if( tmp->next && !( tmp < tmp->next && heap < (char*)tmp && (char*)tmp < heap + HEAP_SIZE ) ){
+      printf( "OH MY GOD: freelist corupted\n" );
+      return;
+    }
+    tmp = tmp->next;
+  }
+}
+
 void check_obj(Cell obj)
 {
   check_stack_top = 0;
   trace_roots(check_reference);
   Cell tmp = NULL;
   while( check_stack_top > 0 ){
-    tmp = check_stack[--check_stack_top-1];
+    tmp = check_stack[check_stack_top-1];
     if( tmp == obj ){
       printf( "----------\n");
+    }else{
+      //      printf( "checking, " );
     }
+    check_stack_top--;
+    trace_object(tmp, check_reference);
   }
 
   check_stack_top = 0;
   trace_roots(clear_reference);
   while( check_stack_top > 0 ){
-    tmp = check_stack[--check_stack_top-1];
+    tmp = check_stack[check_stack_top-1];
+    Reference_Count_Header* header = (Reference_Count_Header*)obj - 1;
+    header->visit_flag = FALSE;
+    check_stack_top--;
+    trace_object(tmp, clear_reference);
   }
+  //  printf( "done\n");
 }
 
 void check_reference(Cell* objp)
@@ -253,7 +312,7 @@ void clear_reference(Cell* objp)
     return;
   }
   Reference_Count_Header* header = (Reference_Count_Header*)obj - 1;
-  if( !header->visit_flag ){
+  if( header->visit_flag == FALSE ){
     return;
   }
   header->visit_flag = FALSE;
