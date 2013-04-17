@@ -16,6 +16,9 @@ typedef struct copy_gc_header{
 static void gc_start_copy();
 static inline void* gc_malloc_copy(size_t size);
 static void gc_write_barrier_copy(Cell* cellp, Cell newcell);
+static void gc_init_ptr_copy(Cell* cellp, Cell newcell);
+static void gc_memcpy_copy(char* dst, char* src, size_t size );
+
 static int get_obj_size( size_t size );
 
 static void* copy_object(Cell obj);
@@ -24,9 +27,6 @@ static void copy_and_update(Cell* objp);
 static void copy_gc_stack_check(Cell cell);
 #endif //_DEBUG
 
-#if defined( _CUT )
-#define HEAP_SIZE (80 * 1024 * 1024)
-#endif //_CUT
 #define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
 #define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
 
@@ -76,6 +76,8 @@ void copy_gc_init(GC_Init_Info* gc_info){
   gc_info->gc_malloc        = gc_malloc_copy;
   gc_info->gc_start         = gc_start_copy;
   gc_info->gc_write_barrier = gc_write_barrier_copy;
+  gc_info->gc_init_ptr      = gc_init_ptr_copy;
+  gc_info->gc_memcpy        = gc_memcpy_copy;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = copy_gc_stack_check;
 #endif //_DEBUG
@@ -97,6 +99,18 @@ void* gc_malloc_copy( size_t size ){
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
   return ret;
+}
+
+//Initialize Pointer.
+void gc_init_ptr_copy(Cell* cellp, Cell newcell)
+{
+  *cellp = newcell;
+}
+
+//memcpy.
+void gc_memcpy_copy(char* dst, char* src, size_t size)
+{
+  memcpy( dst, src, size );
 }
 
 #if defined( _DEBUG )
