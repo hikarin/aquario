@@ -39,6 +39,7 @@ static char* tenured_space   = NULL;
 static char* tenured_top     = NULL;
 static char* tenured_new_top = NULL;
 
+#if defined( _CUT )
 //remembered set.
 #define REMEMBERED_SET_SIZE 300
 static Cell remembered_set[ REMEMBERED_SET_SIZE ];
@@ -46,6 +47,7 @@ static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
 static void remove_remembered_set();
 static void write_barrier(Cell* objp, Cell newcell);
+#endif //_CUT
 
 #define NERSARY_SIZE (HEAP_SIZE/32)
 #define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
