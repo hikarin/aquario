@@ -109,48 +109,6 @@ void* gc_malloc_reference_count( size_t size )
 char* get_free_chunk( size_t size )
 {
   //returns a chunk which size is larger than required size.
-
-#if defined( _CUT )
-  Free_Chunk** chunkp = &freelist;
-  while( *chunkp ){
-    if( (*chunkp)->chunk_size >= size ){
-      int old_size = (*chunkp)->chunk_size;
-      char* ret = (char*)*chunkp;
-      Free_Chunk* next = NULL;
-      if( old_size - size >= sizeof( Free_Chunk ) ){
-	Free_Chunk* new_next = (*chunkp)->next;
-	next                 = (Free_Chunk*)(ret + size);
-	next->next           = new_next;
-	next->chunk_size     = old_size - size;
-      }else{
-	next                 = (*chunkp)->next;
-      }
-      if( (char*)chunkp < heap || heap + HEAP_SIZE < (char*)chunkp ){
-	freelist = next;
-      }else{
-	*chunkp = next;
-	//	((Free_Chunk*)(chunkp->next) - 1)->next = next;
-      }
-#if defined( _DEBUG )
-      if( ret < heap || heap + HEAP_SIZE < ret ){
-	printf( "ret OUT: %p\n", ret );
-      }
-      if( (char*)next < heap || heap + HEAP_SIZE < (char*)next ){
-	printf( "next OUT: %p\n", next );
-      }
-#endif //_DEBUG
-#if defined( _DEBUG )
-      check_freelist();
-#endif //_DEBUG
-      return ret;
-    }
-    chunkp = &((*chunkp)->next);
-  }
-#if defined( _DEBUG )
-  check_freelist();
-#endif //_DEBUG
-
-#else
   if( freelist ){
     if( !freelist->next ){
       if( freelist->chunk_size >= size ){
@@ -160,8 +118,14 @@ char* get_free_chunk( size_t size )
 	  freelist = (Free_Chunk*)((char*)freelist + size);
 	  freelist->chunk_size = old_size - size;
 	  freelist->next = NULL;
+#if defined( _DEBUG )
+	  //	  printf( "1\n");
+#endif //_DEBUG
 	}else{
 	  freelist = NULL;
+#if defined( _DEBUG )
+	  //	  printf( "2\n");
+#endif //_DEBUG
 	}
 	return ret;
       }
@@ -178,8 +142,14 @@ char* get_free_chunk( size_t size )
 	    new_next = (Free_Chunk*)((char*)next + size);
 	    new_next->chunk_size = old_size - size;
 	    new_next->next       = next->next;
+#if defined( _DEBUG )
+	    //	    printf( "3\n");
+#endif //_DEBUG
 	  }else{
 	    new_next  = tmp->next->next;
+#if defined( _DEBUG )
+	    //	    printf( "4\n");
+#endif //_DEBUG
 	  }
 	  tmp->next   = new_next;
 	  return ret;
@@ -188,7 +158,9 @@ char* get_free_chunk( size_t size )
       }
     }
   }
-#endif //_CUT
+#if defined( _DEBUG )
+  //  printf("5\n");
+#endif //_DEBUG
   return NULL;
 }
 
@@ -208,6 +180,16 @@ void reclaim_obj( Cell obj )
     freelist             = obj_top;
     freelist->chunk_size = obj_size;
     freelist->next       = NULL;
+  }else if( obj_top < freelist ){
+    Free_Chunk* chunk = obj_top;
+    chunk->next       = freelist;
+    if( (char*)obj_top + obj_size == (char*)freelist ){
+      //Coalesce.
+      chunk->chunk_size = obj_size + freelist->chunk_size;
+    }else{
+      chunk->chunk_size = obj_size;
+    }
+    freelist = chunk;
   }else{
     Free_Chunk* tmp = NULL;
     for( tmp = freelist; tmp->next; tmp = tmp->next ){
@@ -274,7 +256,7 @@ void check_obj(Cell obj)
     if( tmp == obj ){
       printf( "----------\n");
     }else{
-      //      printf( "checking, " );
+
     }
     check_stack_top--;
     trace_object(tmp, check_reference);
