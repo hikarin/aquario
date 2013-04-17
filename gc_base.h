@@ -2,9 +2,9 @@
 
 typedef struct gc_header GC_Header;
 
-#if !defined( _CUT )
+#if defined( _CUT )
   #define HEAP_SIZE (260*1024)
-#elif 1
+#elif 0
   #define HEAP_SIZE (1*1024*1024)
 #else
   #define HEAP_SIZE (480*1024*1024)

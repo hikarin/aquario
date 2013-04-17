@@ -816,7 +816,10 @@ Cell readElem(FILE* fp)
      printf( "OMG....stack underflow\n" );
    }
 #endif //
+
+#if defined( _CUT )
    gc_write_barrier( &stack[ stack_top ], NULL );
+#endif //_CUT
 
  #if defined( _DEBUG )
     gc_stack_check(c);  
@@ -833,7 +836,11 @@ Cell readElem(FILE* fp)
     gc_stack_check(c);
   #endif //_DEBUG
 
+#if defined( _CUT )
     gc_init_ptr( &stack[ stack_top++ ], c );
+#else
+    stack[stack_top++] = c;
+#endif //_CUT
   }
 
   void dupArg()

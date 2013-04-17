@@ -172,11 +172,12 @@ char* get_free_chunk( size_t size )
 	  char* ret = (char*)tmp->next;
 	  Free_Chunk* new_next = NULL;
 	  if( tmp->next->chunk_size - size >= sizeof( Free_Chunk ) ){
-	    size_t old_size = tmp->next->chunk_size;
-	    tmp->next->chunk_size -= size;	    
-	    new_next = (Free_Chunk*)((char*)tmp->next + size);
+	    Free_Chunk* next = tmp->next;
+	    size_t old_size = next->chunk_size;
+	    next->chunk_size -= size;	    
+	    new_next = (Free_Chunk*)((char*)next + size);
 	    new_next->chunk_size = old_size - size;
-	    new_next->next       = tmp->next->next;
+	    new_next->next       = next->next;
 	  }else{
 	    new_next  = tmp->next->next;
 	  }
