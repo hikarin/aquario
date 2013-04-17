@@ -9,9 +9,6 @@
 typedef struct reference_count_header{
   int obj_size;
   int ref_cnt;
-#if defined( _DEBUG )
-  Boolean visit_flag;
-#endif //_DEBUG
 }Reference_Count_Header;
 
 struct free_chunk;
@@ -34,12 +31,6 @@ static void decrement_count(Cell* objp);
 
 #if defined( _DEBUG )
 static void reference_count_stack_check( Cell cell );
-static void check_reference(Cell* objp);
-static void check_obj(Cell obj);
-static void clear_reference(Cell* objp);
-static Cell check_stack[1000];
-static int check_stack_top = 0;
-static void check_freelist();
 #endif //_DEBUG
 
 static char* heap           = NULL;
@@ -93,16 +84,10 @@ void* gc_malloc_reference_count( size_t size )
        exit(-1);
      }
   }
-#if defined( _DEBUG )
-  check_freelist();
-#endif //_DEBUG
   Reference_Count_Header* new_header = (Reference_Count_Header*)chunk;
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
   REF_CNT(ret)         = 0;
-#if defined( _DEBUG )
-  new_header->visit_flag = FALSE;
-#endif //_DEBUG
   return ret;
 }
 
@@ -118,14 +103,8 @@ char* get_free_chunk( size_t size )
 	  freelist = (Free_Chunk*)((char*)freelist + size);
 	  freelist->chunk_size = old_size - size;
 	  freelist->next = NULL;
-#if defined( _DEBUG )
-	  //	  printf( "1\n");
-#endif //_DEBUG
 	}else{
 	  freelist = NULL;
-#if defined( _DEBUG )
-	  //	  printf( "2\n");
-#endif //_DEBUG
 	}
 	return ret;
       }
@@ -142,14 +121,8 @@ char* get_free_chunk( size_t size )
 	    new_next = (Free_Chunk*)((char*)next + size);
 	    new_next->chunk_size = old_size - size;
 	    new_next->next       = next->next;
-#if defined( _DEBUG )
-	    //	    printf( "3\n");
-#endif //_DEBUG
 	  }else{
 	    new_next  = tmp->next->next;
-#if defined( _DEBUG )
-	    //	    printf( "4\n");
-#endif //_DEBUG
 	  }
 	  tmp->next   = new_next;
 	  return ret;
@@ -158,18 +131,12 @@ char* get_free_chunk( size_t size )
       }
     }
   }
-#if defined( _DEBUG )
-  //  printf("5\n");
-#endif //_DEBUG
   return NULL;
 }
 
 void reclaim_obj( Cell obj )
 {
   size_t obj_size = GET_OBJECT_SIZE( obj );
-#if defined( _DEBUG )
-  check_obj(obj);
-#endif //_DEBUG
   REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
   
@@ -233,74 +200,6 @@ void reference_count_stack_check(Cell cell)
     printf("[WARNING] cell %p points out of heap\n", cell);
   }
 }
-
-void check_freelist()
-{
-  Free_Chunk* tmp = freelist;
-  while( tmp ){
-    if( tmp->next && !( tmp < tmp->next && heap < (char*)tmp && (char*)tmp < heap + HEAP_SIZE ) ){
-      printf( "OH MY GOD: freelist corupted\n" );
-      return;
-    }
-    tmp = tmp->next;
-  }
-}
-
-void check_obj(Cell obj)
-{
-  check_stack_top = 0;
-  trace_roots(check_reference);
-  Cell tmp = NULL;
-  while( check_stack_top > 0 ){
-    tmp = check_stack[check_stack_top-1];
-    if( tmp == obj ){
-      printf( "----------\n");
-    }else{
-
-    }
-    check_stack_top--;
-    trace_object(tmp, check_reference);
-  }
-
-  check_stack_top = 0;
-  trace_roots(clear_reference);
-  while( check_stack_top > 0 ){
-    tmp = check_stack[check_stack_top-1];
-    Reference_Count_Header* header = (Reference_Count_Header*)obj - 1;
-    header->visit_flag = FALSE;
-    check_stack_top--;
-    trace_object(tmp, clear_reference);
-  }
-  //  printf( "done\n");
-}
-
-void check_reference(Cell* objp)
-{
-  Cell obj = *objp;
-  if( !obj ){
-    return;
-  }
-  Reference_Count_Header* header = (Reference_Count_Header*)obj - 1;
-  if( header->visit_flag ){
-    return;
-  }
-  header->visit_flag = TRUE;
-  check_stack[check_stack_top++] = obj;
-}
-
-void clear_reference(Cell* objp)
-{
-  Cell obj = *objp;
-  if( !obj ){
-    return;
-  }
-  Reference_Count_Header* header = (Reference_Count_Header*)obj - 1;
-  if( header->visit_flag == FALSE ){
-    return;
-  }
-  header->visit_flag = FALSE;
-  check_stack[check_stack_top++] = obj;
-}
 #endif //_DEBUG
 
 int get_obj_size( size_t size ){
@@ -309,9 +208,7 @@ int get_obj_size( size_t size ){
 
 //Start Garbage Collection.
 void gc_start_reference_count(){
-#if defined( _DEBUG )
-  printf("gc() does nothing.\n");
-#endif //_DEBUG
+  //TODO.
 }
 
 void increment_count(Cell* objp)
