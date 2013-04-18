@@ -1,14 +1,8 @@
 #include "types.h"
 
-typedef struct gc_header GC_Header;
-
-#if defined( _CUT )
-  #define HEAP_SIZE (260*1024)
-#elif 0
-  #define HEAP_SIZE (1*1024*1024)
-#else
-  #define HEAP_SIZE (480*1024*1024)
-#endif //_CUT
+//#define HEAP_SIZE (260*1024)
+//#define HEAP_SIZE (1*1024*1024)
+#define HEAP_SIZE (480*1024*1024)
 
 void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );

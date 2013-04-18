@@ -2,7 +2,7 @@
 #
 CFLAGS = -Wall
 CC = gcc
-CSOURCES = aquario.c gc_base.c gc_copy.c gc_markcompact.c gc_generational.c gc_reference_count.c
+CSOURCES = aquario.c gc_base.c gc_copy.c gc_markcompact.c gc_reference_count.c
 
 TARGET = aquario
 SOURCES = $(CSOURCES)
@@ -15,7 +15,7 @@ all: $(CSOURCES)
 clean:
 	rm -f core *.o $(TARGET)
 
-aquario: istsp.o gc_base.o gc_copy.o gc_markcompact.o gc_generational.o gc_reference_count.o Makefile
+aquario: istsp.o gc_base.o gc_copy.o gc_markcompact.o gc_reference_count.o Makefile
 	$(CC) $< -o $@ $(DLDFLAGS)
 
 test: $(CSOURCES)
