@@ -211,6 +211,7 @@ void gc_start_reference_count(){
   //TODO.
 }
 
+//For compatibility to trace_object(), this function receives a pointer to Cell.
 void increment_count(Cell* objp)
 {
   Cell obj = *objp;

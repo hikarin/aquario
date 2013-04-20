@@ -16,9 +16,6 @@ typedef struct markcompact_gc_header{
 
 static void gc_start_markcompact();
 static inline void* gc_malloc_markcompact(size_t size);
-static void gc_write_barrier_markcompact(Cell* cellp, Cell newcell);
-static void gc_init_ptr_markcompact(Cell* cellp, Cell newcell);
-static void gc_memcpy_markcompact(char* dst, char* src, size_t size);
 
 static int get_obj_size( size_t size );
 #if defined( _DEBUG )
@@ -82,9 +79,9 @@ void markcompact_gc_init(GC_Init_Info* gc_info){
 
   gc_info->gc_malloc        = gc_malloc_markcompact;
   gc_info->gc_start         = gc_start_markcompact;
-  gc_info->gc_write_barrier = gc_write_barrier_markcompact;
-  gc_info->gc_init_ptr      = gc_init_ptr_markcompact;
-  gc_info->gc_memcpy        = gc_memcpy_markcompact;
+  gc_info->gc_write_barrier = NULL;
+  gc_info->gc_init_ptr      = NULL;
+  gc_info->gc_memcpy        = NULL;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = markcompact_gc_stack_check;
 #endif //_DEBUG
@@ -221,22 +218,4 @@ void gc_start_markcompact()
 #if defined( _DEBUG )
   printf("gc end\n");
 #endif //_DEBUG
-}
-
-//Write Barrier(do nothing.)
-void gc_write_barrier_markcompact(Cell* cellp, Cell newcell)
-{
-  *cellp = newcell;
-}
-
-//Initialize Pointer.
-void gc_init_ptr_markcompact(Cell* cellp, Cell newcell)
-{
-  *cellp = newcell;
-}
-
-//memcpy.
-void gc_memcpy_markcompact(char* dst, char* src, size_t size)
-{
-  memcpy(dst, src, size);
 }

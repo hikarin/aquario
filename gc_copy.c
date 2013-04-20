@@ -15,9 +15,6 @@ typedef struct copy_gc_header{
 
 static void gc_start_copy();
 static inline void* gc_malloc_copy(size_t size);
-static void gc_write_barrier_copy(Cell* cellp, Cell newcell);
-static void gc_init_ptr_copy(Cell* cellp, Cell newcell);
-static void gc_memcpy_copy(char* dst, char* src, size_t size );
 
 static int get_obj_size( size_t size );
 
@@ -75,9 +72,9 @@ void copy_gc_init(GC_Init_Info* gc_info){
   
   gc_info->gc_malloc        = gc_malloc_copy;
   gc_info->gc_start         = gc_start_copy;
-  gc_info->gc_write_barrier = gc_write_barrier_copy;
-  gc_info->gc_init_ptr      = gc_init_ptr_copy;
-  gc_info->gc_memcpy        = gc_memcpy_copy;
+  gc_info->gc_write_barrier = NULL;
+  gc_info->gc_init_ptr      = NULL;
+  gc_info->gc_memcpy        = NULL;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = copy_gc_stack_check;
 #endif //_DEBUG
@@ -99,18 +96,6 @@ void* gc_malloc_copy( size_t size ){
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
   return ret;
-}
-
-//Initialize Pointer.
-void gc_init_ptr_copy(Cell* cellp, Cell newcell)
-{
-  *cellp = newcell;
-}
-
-//memcpy.
-void gc_memcpy_copy(char* dst, char* src, size_t size)
-{
-  memcpy( dst, src, size );
 }
 
 #if defined( _DEBUG )
@@ -153,10 +138,4 @@ void gc_start_copy(){
 #if defined( _DEBUG )
   printf("GC end\n");
 #endif //_DEBUG
-}
-
-//Write Barrier(do nothing.)
-void gc_write_barrier_copy(Cell* cellp, Cell newcell)
-{
-  *cellp = newcell;
 }
