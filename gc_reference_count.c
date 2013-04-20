@@ -208,7 +208,7 @@ int get_obj_size( size_t size ){
 
 //Start Garbage Collection.
 void gc_start_reference_count(){
-  //TODO.
+  scan_zct();
 }
 
 void increment_count(Cell* objp)
