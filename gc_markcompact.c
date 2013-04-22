@@ -19,6 +19,7 @@ static inline void* gc_malloc_markcompact(size_t size);
 static void gc_write_barrier_markcompact(Cell* cellp, Cell newcell);
 static void gc_init_ptr_markcompact(Cell* cellp, Cell newcell);
 static void gc_memcpy_markcompact(char* dst, char* src, size_t size);
+static void gc_term_markcompact();
 
 static int get_obj_size( size_t size );
 #if defined( _DEBUG )
@@ -75,8 +76,8 @@ void move_object(Cell obj)
 }
 
 //Initialization.
-void markcompact_gc_init(GC_Init_Info* gc_info){
-  printf( "mark compact gc init\n");
+void markcompact_gc_init(GC_Init_Info* gc_info)
+{
   heap = (char*)malloc(HEAP_SIZE);
   top = heap;
 
@@ -85,6 +86,7 @@ void markcompact_gc_init(GC_Init_Info* gc_info){
   gc_info->gc_write_barrier = gc_write_barrier_markcompact;
   gc_info->gc_init_ptr      = gc_init_ptr_markcompact;
   gc_info->gc_memcpy        = gc_memcpy_markcompact;
+  gc_info->gc_term          = gc_term_markcompact;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = markcompact_gc_stack_check;
 #endif //_DEBUG
@@ -239,4 +241,10 @@ void gc_init_ptr_markcompact(Cell* cellp, Cell newcell)
 void gc_memcpy_markcompact(char* dst, char* src, size_t size)
 {
   memcpy(dst, src, size);
+}
+
+//term.
+void gc_term_markcompact()
+{
+  free( heap );
 }

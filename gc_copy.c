@@ -18,6 +18,7 @@ static inline void* gc_malloc_copy(size_t size);
 static void gc_write_barrier_copy(Cell* cellp, Cell newcell);
 static void gc_init_ptr_copy(Cell* cellp, Cell newcell);
 static void gc_memcpy_copy(char* dst, char* src, size_t size );
+static void gc_term_copy();
 
 static int get_obj_size( size_t size );
 
@@ -68,7 +69,6 @@ void copy_and_update(Cell* objp)
 
 //Initialization.
 void copy_gc_init(GC_Init_Info* gc_info){
-  printf( "copy gc init\n");
   from_space = (char*)malloc(HEAP_SIZE/2);
   to_space = (char*)malloc(HEAP_SIZE/2);
   top = from_space;
@@ -78,6 +78,7 @@ void copy_gc_init(GC_Init_Info* gc_info){
   gc_info->gc_write_barrier = gc_write_barrier_copy;
   gc_info->gc_init_ptr      = gc_init_ptr_copy;
   gc_info->gc_memcpy        = gc_memcpy_copy;
+  gc_info->gc_term          = gc_term_copy;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = copy_gc_stack_check;
 #endif //_DEBUG
@@ -111,6 +112,13 @@ void gc_init_ptr_copy(Cell* cellp, Cell newcell)
 void gc_memcpy_copy(char* dst, char* src, size_t size)
 {
   memcpy( dst, src, size );
+}
+
+//term.
+void gc_term_copy()
+{
+  free( from_space );
+  free( to_space );
 }
 
 #if defined( _DEBUG )

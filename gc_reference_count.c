@@ -28,6 +28,7 @@ static char* get_free_chunk( size_t size );
 static void reclaim_obj( Cell obj );
 static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
+static void gc_term_reference_count();
 
 #if defined( _DEBUG )
 static void reference_count_stack_check( Cell cell );
@@ -51,9 +52,7 @@ static int zct_top          = 0;
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--)
 
 //Initialization.
-void reference_count_init(GC_Init_Info* gc_info)
-{
-  printf( "reference count init\n");
+void reference_count_init(GC_Init_Info* gc_info){
   heap     = (char*)malloc(HEAP_SIZE);
   freelist = (Free_Chunk*)heap;
   freelist->chunk_size = HEAP_SIZE;
@@ -64,6 +63,7 @@ void reference_count_init(GC_Init_Info* gc_info)
   gc_info->gc_write_barrier = gc_write_barrier_reference_count;
   gc_info->gc_init_ptr      = gc_init_ptr_reference_count;
   gc_info->gc_memcpy        = gc_memcpy_reference_count;
+  gc_info->gc_term          = gc_term_reference_count;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = reference_count_stack_check;
 #endif //_DEBUG
@@ -72,8 +72,7 @@ void reference_count_init(GC_Init_Info* gc_info)
 }
 
 //Allocation.
-void* gc_malloc_reference_count( size_t size )
-{
+void* gc_malloc_reference_count( size_t size ){
   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
   char* chunk = get_free_chunk( allocate_size );
   if( !chunk ){
@@ -91,8 +90,7 @@ void* gc_malloc_reference_count( size_t size )
   return ret;
 }
 
-char* get_free_chunk( size_t size )
-{
+char* get_free_chunk( size_t size ){
   //returns a chunk which size is larger than required size.
   if( freelist ){
     if( !freelist->next ){
@@ -134,8 +132,7 @@ char* get_free_chunk( size_t size )
   return NULL;
 }
 
-void reclaim_obj( Cell obj )
-{
+void reclaim_obj( Cell obj ){
   size_t obj_size = GET_OBJECT_SIZE( obj );
   REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
@@ -194,8 +191,7 @@ void reclaim_obj( Cell obj )
 }
 
 #if defined( _DEBUG )
-void reference_count_stack_check(Cell cell)
-{
+void reference_count_stack_check(Cell cell){
   if( !(heap <= (char*)cell && (char*)cell < heap + HEAP_SIZE ) ){
     printf("[WARNING] cell %p points out of heap\n", cell);
   }
@@ -211,16 +207,14 @@ void gc_start_reference_count(){
   //TODO.
 }
 
-void increment_count(Cell* objp)
-{
+void increment_count(Cell* objp){
   Cell obj = *objp;
   if( obj ){
     INC_REF_CNT( obj );
   }
 }
 
-void decrement_count(Cell* objp)
-{
+void decrement_count(Cell* objp){
   Cell obj = *objp;
   if( obj ){
     DEC_REF_CNT( obj );
@@ -231,16 +225,14 @@ void decrement_count(Cell* objp)
 }
 
 //Write Barrier.
-void gc_write_barrier_reference_count(Cell* cellp, Cell newcell)
-{
+void gc_write_barrier_reference_count(Cell* cellp, Cell newcell){
   increment_count( &newcell );
   decrement_count( cellp );
   *cellp = newcell;
 }
 
 //Init Pointer.
-void gc_init_ptr_reference_count(Cell* cellp, Cell newcell)
-{
+void gc_init_ptr_reference_count(Cell* cellp, Cell newcell){
   if( newcell ){
     INC_REF_CNT(newcell);
   }
@@ -248,11 +240,15 @@ void gc_init_ptr_reference_count(Cell* cellp, Cell newcell)
 }
 
 //memcpy.
-void gc_memcpy_reference_count(char* dst, char* src, size_t size)
-{
+void gc_memcpy_reference_count(char* dst, char* src, size_t size){
   memcpy(dst, src, size);
 
   trace_object( (Cell)dst, increment_count );
+}
+
+//term.
+void gc_term_reference_count(){
+  free(heap);
 }
 
 void add_zct(Cell obj)
