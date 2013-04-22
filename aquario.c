@@ -18,6 +18,7 @@ static void (*gc_start) ();
 static void (*gc_write_barrier) (Cell* cellp, Cell newcell);
 static void (*gc_init_ptr) (Cell* cellp, Cell newcell);
 static void (*gc_memcpy) (char* dst, char* src, size_t size);
+static void (*gc_term) ();
 #if defined( _DEBUG )
 static void (*gc_stack_check)(Cell cell);
 #endif //_DEBUG
@@ -998,15 +999,15 @@ Cell readElem(FILE* fp)
  void set_gc(char* gc_char)
  {
    GC_Init_Info gc_info;
-   printf("%s\n", gc_char);
    gc_init( gc_char, &gc_info );
-   printf("%s\n", gc_char);
+   printf("Garbage Collector: %s\n", gc_char);
 
    gc_malloc        = gc_info.gc_malloc;
    gc_start         = gc_info.gc_start;
    gc_write_barrier = gc_info.gc_write_barrier;
    gc_init_ptr      = gc_info.gc_init_ptr;
    gc_memcpy        = gc_info.gc_memcpy;
+   gc_term          = gc_info.gc_term;
  #if defined( _DEBUG )
    gc_stack_check   = gc_info.gc_stack_check;
  #endif //_DEBUG
@@ -1578,5 +1579,6 @@ int main(int argc, char *argv[])
   }else{
     load_file( argv[ i ] );
   }
+  gc_term();
   return 0;
 }

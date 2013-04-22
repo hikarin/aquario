@@ -16,6 +16,7 @@ typedef struct markcompact_gc_header{
 
 static void gc_start_markcompact();
 static inline void* gc_malloc_markcompact(size_t size);
+static void gc_term_markcompact();
 
 static int get_obj_size( size_t size );
 #if defined( _DEBUG )
@@ -72,8 +73,8 @@ void move_object(Cell obj)
 }
 
 //Initialization.
-void markcompact_gc_init(GC_Init_Info* gc_info){
-  printf( "mark compact gc init\n");
+void markcompact_gc_init(GC_Init_Info* gc_info)
+{
   heap = (char*)malloc(HEAP_SIZE);
   top = heap;
 
@@ -82,8 +83,9 @@ void markcompact_gc_init(GC_Init_Info* gc_info){
   gc_info->gc_write_barrier = NULL;
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
+  gc_info->gc_term          = gc_term_markcompact;
 #if defined( _DEBUG )
-  gc_info->gc_stack_check = markcompact_gc_stack_check;
+  gc_info->gc_stack_check   = markcompact_gc_stack_check;
 #endif //_DEBUG
 }
 
@@ -218,4 +220,10 @@ void gc_start_markcompact()
 #if defined( _DEBUG )
   printf("gc end\n");
 #endif //_DEBUG
+}
+
+//term.
+void gc_term_markcompact()
+{
+  free( heap );
 }

@@ -28,6 +28,7 @@ static char* get_free_chunk( size_t size );
 static void reclaim_obj( Cell obj );
 static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
+static void gc_term_reference_count();
 
 #if defined( _DEBUG )
 static void reference_count_stack_check( Cell cell );
@@ -53,7 +54,6 @@ static int zct_top          = 0;
 //Initialization.
 void reference_count_init(GC_Init_Info* gc_info)
 {
-  printf( "reference count init\n");
   heap     = (char*)malloc(HEAP_SIZE);
   freelist = (Free_Chunk*)heap;
   freelist->chunk_size = HEAP_SIZE;
@@ -64,6 +64,7 @@ void reference_count_init(GC_Init_Info* gc_info)
   gc_info->gc_write_barrier = gc_write_barrier_reference_count;
   gc_info->gc_init_ptr      = gc_init_ptr_reference_count;
   gc_info->gc_memcpy        = gc_memcpy_reference_count;
+  gc_info->gc_term          = gc_term_reference_count;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = reference_count_stack_check;
 #endif //_DEBUG
@@ -202,12 +203,14 @@ void reference_count_stack_check(Cell cell)
 }
 #endif //_DEBUG
 
-int get_obj_size( size_t size ){
+int get_obj_size( size_t size )
+{
   return sizeof( Reference_Count_Header ) + size;
 }
 
 //Start Garbage Collection.
-void gc_start_reference_count(){
+void gc_start_reference_count()
+{
   scan_zct();
 }
 
@@ -254,6 +257,12 @@ void gc_memcpy_reference_count(char* dst, char* src, size_t size)
   memcpy(dst, src, size);
 
   trace_object( (Cell)dst, increment_count );
+}
+
+//term.
+void gc_term_reference_count()
+{
+  free(heap);
 }
 
 void add_zct(Cell obj)

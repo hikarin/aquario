@@ -15,6 +15,7 @@ typedef struct copy_gc_header{
 
 static void gc_start_copy();
 static inline void* gc_malloc_copy(size_t size);
+static void gc_term_copy();
 
 static int get_obj_size( size_t size );
 
@@ -64,8 +65,8 @@ void copy_and_update(Cell* objp)
 }
 
 //Initialization.
-void copy_gc_init(GC_Init_Info* gc_info){
-  printf( "copy gc init\n");
+void copy_gc_init(GC_Init_Info* gc_info)
+{
   from_space = (char*)malloc(HEAP_SIZE/2);
   to_space = (char*)malloc(HEAP_SIZE/2);
   top = from_space;
@@ -75,13 +76,15 @@ void copy_gc_init(GC_Init_Info* gc_info){
   gc_info->gc_write_barrier = NULL;
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
+  gc_info->gc_term          = gc_term_copy;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = copy_gc_stack_check;
 #endif //_DEBUG
 }
 
 //Allocation.
-void* gc_malloc_copy( size_t size ){
+void* gc_malloc_copy( size_t size )
+{
   if( g_GC_stress || !IS_ALLOCATABLE(size) ){
     gc_start_copy();
     if( !IS_ALLOCATABLE( size ) ){
@@ -99,7 +102,8 @@ void* gc_malloc_copy( size_t size ){
 }
 
 #if defined( _DEBUG )
-void copy_gc_stack_check(Cell cell){
+void copy_gc_stack_check(Cell cell)
+{
   if( !(from_space <= (char*)cell && (char*)cell < from_space + HEAP_SIZE/2 ) && cell ){
     printf("[WARNING] cell %p points out of heap\n", cell);
   }
@@ -110,7 +114,8 @@ int get_obj_size( size_t size ){
 }
 
 //Start Garbage Collection.
-void gc_start_copy(){
+void gc_start_copy()
+{
 #if defined( _DEBUG )
   printf("GC start\n");
 #endif //_DEBUG
@@ -138,4 +143,11 @@ void gc_start_copy(){
 #if defined( _DEBUG )
   printf("GC end\n");
 #endif //_DEBUG
+}
+
+//term.
+void gc_term_copy()
+{
+  free( from_space );
+  free( to_space );
 }
