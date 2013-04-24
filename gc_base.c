@@ -7,6 +7,7 @@
 #include "gc_copy.h"
 #include "gc_markcompact.h"
 #include "gc_reference_count.h"
+#include "gc_generational.h"
 
 static void gc_write_barrier_default(Cell* cellp, Cell cell);     //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer;
@@ -26,6 +27,9 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, "reference_count" ) == 0 ){
     reference_count_init(gc_init);
     printf("Garbage Collector: reference_count\n");
+  }else if( strcmp( gc_char, "generational" ) == 0 ){
+    generational_gc_init(gc_init);
+    printf("Garbage Collector: generational\n");
   }else{
     reference_count_init(gc_init);
     printf("Garbage Collector: reference_count\n");
