@@ -1000,7 +1000,6 @@ Cell readElem(FILE* fp)
  {
    GC_Init_Info gc_info;
    gc_init( gc_char, &gc_info );
-   printf("Garbage Collector: %s\n", gc_char);
 
    gc_malloc        = gc_info.gc_malloc;
    gc_start         = gc_info.gc_start;
