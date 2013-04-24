@@ -111,13 +111,8 @@ Cell lambdaCell(Cell param, Cell exp)
   pushArg(param);
   pushArg(exp);
   Cell c = newCell(T_LAMBDA, sizeof(struct cell));
-#if defined( _CUT )
-  lambdaexp(c) = popArg();
-  lambdaparam(c) = popArg();
-#else
   gc_init_ptr( &lambdaexp(c), popArg() );
   gc_init_ptr( &lambdaparam(c), popArg() );
-#endif //_CUT
   return c;
 }
 
@@ -136,11 +131,7 @@ Cell clone(Cell src)
   pushArg(src);
   Cell new = gc_malloc( size );
   src = popArg();
-#if defined( _CUT )
-  memcpy( new, src, size );
-#else
   gc_memcpy( (char*)new, (char*)src, size );
-#endif //_CUT
   return new;
 }
 
@@ -785,12 +776,8 @@ Cell readElem(FILE* fp)
    *key = hash(name)%ENVSIZE;
    Cell chain = env[*key];
    if(env[*key]==NULL){
- #if defined( _CUT )    
-     chain = env[*key] = NIL;
- #else
      chain = NIL;
      gc_write_barrier( &env[*key], NIL );
- #endif //_CUT
    }
    while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
      chain = cdr(chain);
@@ -818,10 +805,6 @@ Cell readElem(FILE* fp)
    }
 #endif //
 
-#if defined( _CUT )
-   gc_write_barrier( &stack[ stack_top ], NULL );
-#endif //_CUT
-
  #if defined( _DEBUG )
     gc_stack_check(c);  
  #endif //_DEBUG
@@ -837,23 +820,13 @@ Cell readElem(FILE* fp)
     gc_stack_check(c);
   #endif //_DEBUG
 
-#if defined( _CUT )
-    gc_init_ptr( &stack[ stack_top++ ], c );
-#else
     stack[stack_top++] = c;
-#endif //_CUT
   }
 
   void dupArg()
   {
- #if defined( _CUT )
-    Cell c = popArg();
-    pushArg(c);
-    pushArg(c);
- #else
     Cell c = stack[ stack_top-1 ];
     pushArg(c);
- #endif //_CUT
   }
 
   void exchArg()
@@ -892,11 +865,7 @@ Cell readElem(FILE* fp)
    gc_stack_check(c);
  #endif //_DEBUG
 
-#if defined( _CUT )
-   retReg = c;
-#else
    gc_write_barrier(&retReg, c);
-#endif //
  }
 
  void setParseError(char* str)
@@ -930,11 +899,7 @@ Cell readElem(FILE* fp)
    gc_init_ptr( &UNDEF, noneCell() );
    gc_init_ptr( &EOFobj, noneCell() );
 
-#if defined( _CUT )
-   setReturn(NIL);
-#else
    gc_init_ptr( &retReg, NIL );
-#endif //_CUT
 
    memset(env, 0, ENVSIZE);
 

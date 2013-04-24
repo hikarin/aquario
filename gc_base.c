@@ -30,15 +30,16 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     reference_count_init(gc_init);
     printf("Garbage Collector: reference_count\n");
   }
-
-  //Set optional functions.
   if(!gc_init->gc_write_barrier){
+    //option.
     gc_init->gc_write_barrier = gc_write_barrier_default;
   }
   if(!gc_init->gc_init_ptr){
+    //option.
     gc_init->gc_init_ptr = gc_init_ptr_default;
   }
   if(!gc_init->gc_memcpy){
+    //option.
     gc_init->gc_memcpy = gc_memcpy_default;
   }
 #if defined( _DEBUG )
