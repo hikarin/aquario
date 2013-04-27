@@ -65,11 +65,11 @@ void copy_and_update(Cell* objp)
 }
 
 //Initialization.
-void copy_gc_init(GC_Init_Info* gc_info)
+void gc_init_copy(GC_Init_Info* gc_info)
 {
   from_space = (char*)malloc(HEAP_SIZE/2);
-  to_space = (char*)malloc(HEAP_SIZE/2);
-  top = from_space;
+  to_space   = (char*)malloc(HEAP_SIZE/2);
+  top        = from_space;
   
   gc_info->gc_malloc        = gc_malloc_copy;
   gc_info->gc_start         = gc_start_copy;
@@ -78,7 +78,7 @@ void copy_gc_init(GC_Init_Info* gc_info)
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_copy;
 #if defined( _DEBUG )
-  gc_info->gc_stack_check = copy_gc_stack_check;
+  gc_info->gc_stack_check   = copy_gc_stack_check;
 #endif //_DEBUG
 }
 

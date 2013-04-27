@@ -52,7 +52,7 @@ static int zct_top          = 0;
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--)
 
 //Initialization.
-void reference_count_init(GC_Init_Info* gc_info)
+void gc_init_reference_count(GC_Init_Info* gc_info)
 {
   heap     = (char*)malloc(HEAP_SIZE);
   freelist = (Free_Chunk*)heap;

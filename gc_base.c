@@ -18,16 +18,16 @@ static void gc_stack_check_default(Cell obj);
 void gc_init(const char* gc_char, GC_Init_Info* gc_init)
 {
   if( strcmp( gc_char, "copying" ) == 0 ){
-    copy_gc_init(gc_init);
+    gc_init_copy(gc_init);
     printf("Garbage Collector: copying\n");
   }else if( strcmp( gc_char, "mark_compact" ) == 0 ){
-    markcompact_gc_init(gc_init);
+    gc_init_markcompact(gc_init);
     printf("Garbage Collector: mark_compact\n");
   }else if( strcmp( gc_char, "reference_count" ) == 0 ){
-    reference_count_init(gc_init);
+    gc_init_reference_count(gc_init);
     printf("Garbage Collector: reference_count\n");
   }else{
-    reference_count_init(gc_init);
+    gc_init_reference_count(gc_init);
     printf("Garbage Collector: reference_count\n");
   }
   if(!gc_init->gc_write_barrier){
