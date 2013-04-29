@@ -15,7 +15,7 @@ Boolean g_GC_stress;
 
 static void* (*gc_malloc) (size_t size);
 static void (*gc_start) ();
-static void (*gc_write_barrier) (Cell* cellp, Cell newcell);
+static void (*gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
 static void (*gc_init_ptr) (Cell* cellp, Cell newcell);
 static void (*gc_memcpy) (char* dst, char* src, size_t size);
 static void (*gc_term) ();
@@ -146,10 +146,10 @@ Cell cloneTree(Cell src)
     while(stack_top_origin != stack_top){
       tmp = &stack[ stack_top-1 ];
       if(isPair(car(*tmp))){
-	gc_write_barrier( &car(*tmp), clone(car(*tmp)) );
+	gc_write_barrier( *tmp, &car(*tmp), clone(car(*tmp)) );
       }
       if(isPair(cdr(*tmp))){
-	gc_write_barrier( &cdr(*tmp), clone(cdr(*tmp)) );
+	gc_write_barrier( *tmp, &cdr(*tmp), clone(cdr(*tmp)) );
       }
       Cell newCell = popArg();
       if(isPair(car(newCell))){
@@ -184,26 +184,26 @@ Cell cloneSymbolTree(Cell src)
 	pushArg(tmp);
 	Cell newCell = clone(car(tmp));
 	tmp = popArg();
-	gc_write_barrier(&car(tmp), newCell);
+	gc_write_barrier(tmp, &car(tmp), newCell);
 	pushArg(newCell);
       }else if(isSymbol(car(tmp))){
 	pushArg(tmp);
 	Cell newCell = clone(car(tmp));
 	tmp = popArg();
-	gc_write_barrier( &car(tmp), newCell );
+	gc_write_barrier( tmp, &car(tmp), newCell );
       }
       //clone cdr.
       if(isPair(cdr(tmp))){
 	pushArg(tmp);
 	Cell newCell = clone(cdr(tmp));
 	tmp = popArg();
-	gc_write_barrier( &cdr(tmp), newCell );
+	gc_write_barrier( tmp, &cdr(tmp), newCell );
 	pushArg(newCell);
       }else if(isSymbol(cdr(tmp))){
 	pushArg(tmp);
 	Cell newCell = clone(cdr(tmp));
 	tmp = popArg();
-	gc_write_barrier( &cdr(tmp), newCell);
+	gc_write_barrier( tmp, &cdr(tmp), newCell);
       }
     }
     return popArg();
@@ -292,8 +292,8 @@ Cell evalExp(Cell exp)
 	      tmps = pairCell(symbolCell("begin"), tmps);
 	      exp = popArg();                             //=> [....exps]
 	      type(exp) = type(tmps);
-	      gc_write_barrier( &car(exp), car(tmps) );
-	      gc_write_barrier( &cdr(exp), cdr(tmps) );
+	      gc_write_barrier( exp, &car(exp), car(tmps) );
+	      gc_write_barrier( exp, &cdr(exp), cdr(tmps) );
 	      evalExp(exp);
 	    }
 	  }
@@ -325,7 +325,7 @@ void letParam(Cell exp, Cell dummyParams, Cell realParams)
     else if(isSymbol(carCell)){
       Cell find = findParam(carCell, dummyParams, realParams);
       if(find!=UNDEF){
-	gc_write_barrier( &car(exp), find );
+	gc_write_barrier( exp, &car(exp), find );
       }
     }
     Cell cdrCell = cdr(exp);
@@ -335,7 +335,7 @@ void letParam(Cell exp, Cell dummyParams, Cell realParams)
     else if(isSymbol(cdrCell)){
       Cell find = findParam(cdrCell, dummyParams, realParams);
       if(find!=UNDEF){
-        gc_write_barrier( &cdr(exp), find );
+        gc_write_barrier( exp, &cdr(exp), find );
       }
     }
   }
@@ -418,7 +418,7 @@ Cell setAppendCell(Cell ls, Cell c)
   pushArg(c);
   pushArg(ls);
   Cell tmp = pairCell(c, NIL);
-  gc_write_barrier( &cdr(cdr), tmp );
+  gc_write_barrier( cdr, &cdr(cdr), tmp );
   ls = popArg();
   popArg();
   return ls;
@@ -433,7 +433,7 @@ Cell setAppendList(Cell ls, Cell append)
   while(!nullp(cdr(cdr))){
     cdr = cdr(cdr);
   }
-  gc_write_barrier( &cdr(cdr), append );
+  gc_write_barrier( cdr, &cdr(cdr), append );
   return ls;
 }
 
@@ -454,7 +454,7 @@ Cell applyList(Cell ls)
   pushArg(c);
   Cell top = pairCell(NIL, NIL);
   c = popArg();
-  gc_write_barrier( &car(top), c );
+  gc_write_barrier( top, &car(top), c );
   ls = popArg();
   pushArg(top);
   Cell last = top;
@@ -468,10 +468,10 @@ Cell applyList(Cell ls)
     pushArg(tmpCar);
     tmp2 = pairCell(NIL, NIL);
     tmpCar = popArg();
-    gc_write_barrier( &car(tmp2), tmpCar );
+    gc_write_barrier( tmp2, &car(tmp2), tmpCar );
     tmp = popArg();
     last = popArg();
-    gc_write_barrier( &cdr(last), tmp2 );
+    gc_write_barrier( last, &cdr(last), tmp2 );
     last = tmp2;
   }
   top = popArg();
@@ -763,11 +763,11 @@ Cell readElem(FILE* fp)
      pushArg(chain);
      Cell pair = pairCell(nameCell, c);
      chain = popArg();
-     gc_write_barrier( &car(chain), pair );
+     gc_write_barrier( chain, &car(chain), pair );
    }
    else{
      Cell entry = pairCell(nameCell, c);
-     gc_write_barrier( env, pairCell(entry, *env) );
+     *env = pairCell(entry, *env);
    }
  }
 
@@ -777,7 +777,7 @@ Cell readElem(FILE* fp)
    Cell chain = env[*key];
    if(env[*key]==NULL){
      chain = NIL;
-     gc_write_barrier( &env[*key], NIL );
+     env[*key] = NIL;
    }
    while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
      chain = cdr(chain);
@@ -865,7 +865,7 @@ Cell readElem(FILE* fp)
    gc_stack_check(c);
  #endif //_DEBUG
 
-   gc_write_barrier(&retReg, c);
+   retReg = c;
  }
 
  void setParseError(char* str)
@@ -1534,7 +1534,7 @@ int main(int argc, char *argv[])
     set_gc(argv[ 2 ]);
     i += 2;
   }else{
-    set_gc("reference_count");
+    set_gc("");
   }
   init();
 

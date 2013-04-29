@@ -8,7 +8,7 @@
 #include "gc_markcompact.h"
 #include "gc_reference_count.h"
 
-static void gc_write_barrier_default(Cell* cellp, Cell cell);     //write barrier;
+static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);     //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size); //memcpy;
 #if defined( _DEBUG )
@@ -27,8 +27,8 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     gc_init_reference_count(gc_init);
     printf("Garbage Collector: reference_count\n");
   }else{
-    gc_init_reference_count(gc_init);
-    printf("Garbage Collector: reference_count\n");
+    gc_init_copy(gc_init);
+    printf("Garbage Collector: copying\n");
   }
   if(!gc_init->gc_write_barrier){
     //option.
@@ -107,7 +107,7 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
   }
 }
 
-void gc_write_barrier_default(Cell* cellp, Cell cell)
+void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell)
 {
   *cellp = cell;
 }
