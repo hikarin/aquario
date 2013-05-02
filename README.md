@@ -30,6 +30,7 @@ Aquario is a GC-oriented Lisp interpreter.
 
 == Future work
 
-* Bytecode Interpreter
-* Read Barrier
+* More supports for GC such as Read Barrier
 * More Garbage Collectors such as Yuasa's Snapshot collector
+* Visualization
+* Profiler
