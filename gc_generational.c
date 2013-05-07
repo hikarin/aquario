@@ -47,7 +47,7 @@ static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
 static void remove_remembered_set();
-static void write_barrier(Cell* objp, Cell newcell);
+static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define NERSARY_SIZE (HEAP_SIZE/32)
 #define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
@@ -99,9 +99,10 @@ void generational_gc_init(GC_Init_Info* gc_info)
   tenured_top     = tenured_space;
   tenured_new_top = tenured_space;
   
-  gc_info->gc_malloc = gc_malloc_generational;
-  gc_info->gc_start  = gc_start_generational;
-  gc_info->gc_term   = gc_term_generational;
+  gc_info->gc_malloc        = gc_malloc_generational;
+  gc_info->gc_start         = gc_start_generational;
+  gc_info->gc_term          = gc_term_generational;
+  gc_info->gc_write_barrier = gc_write_barrier_generational;
 #if defined( _DEBUG )
   gc_info->gc_stack_check = generational_gc_stack_check;
 #endif //_DEBUG
@@ -171,9 +172,6 @@ void minor_gc()
   //copy all objects that are reachable from roots.
   trace_roots(copy_and_update);
 
-  char* tenured_scanned = tenured_space;
-  char* nersary_scanned = to_space;
-
   //scan remembered set.
   
 
@@ -189,12 +187,21 @@ void minor_gc()
 
 void add_remembered_set(Cell obj)
 {
-  
+  if( remembered_set_top < REMEMBERED_SET_SIZE ){
+    remembered_set[remembered_set_top++] = obj;
+  }
 }
 
 void remove_remembered_set()
 {
 
+}
+
+void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
+{
+  add_remembered_set(obj);
+  remove_remembered_set();
+  *cellp = newcell;
 }
 
 void copy_and_update(Cell* objp)
