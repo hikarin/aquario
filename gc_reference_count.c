@@ -20,7 +20,7 @@ typedef struct free_chunk{
 
 static void gc_start_reference_count();
 static inline void* gc_malloc_reference_count(size_t size);
-static void gc_write_barrier_reference_count(Cell* cellp, Cell newcell);
+static void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell);
 static void gc_init_ptr_reference_count(Cell* cellp, Cell newcell);
 static void gc_memcpy_reference_count(char* dst, char* src, size_t size);
 static int get_obj_size( size_t size );
@@ -52,7 +52,7 @@ static int zct_top          = 0;
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--)
 
 //Initialization.
-void reference_count_init(GC_Init_Info* gc_info)
+void gc_init_reference_count(GC_Init_Info* gc_info)
 {
   heap     = (char*)malloc(HEAP_SIZE);
   freelist = (Free_Chunk*)heap;
@@ -235,7 +235,7 @@ void decrement_count(Cell* objp)
 }
 
 //Write Barrier.
-void gc_write_barrier_reference_count(Cell* cellp, Cell newcell)
+void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 {
   increment_count( &newcell );
   decrement_count( cellp );

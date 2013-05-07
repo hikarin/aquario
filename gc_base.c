@@ -9,7 +9,7 @@
 #include "gc_reference_count.h"
 #include "gc_generational.h"
 
-static void gc_write_barrier_default(Cell* cellp, Cell cell);     //write barrier;
+static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);     //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size); //memcpy;
 #if defined( _DEBUG )
@@ -19,30 +19,31 @@ static void gc_stack_check_default(Cell obj);
 void gc_init(const char* gc_char, GC_Init_Info* gc_init)
 {
   if( strcmp( gc_char, "copying" ) == 0 ){
-    copy_gc_init(gc_init);
+    gc_init_copy(gc_init);
     printf("Garbage Collector: copying\n");
   }else if( strcmp( gc_char, "mark_compact" ) == 0 ){
-    markcompact_gc_init(gc_init);
+    gc_init_markcompact(gc_init);
     printf("Garbage Collector: mark_compact\n");
   }else if( strcmp( gc_char, "reference_count" ) == 0 ){
-    reference_count_init(gc_init);
+    gc_init_reference_count(gc_init);
     printf("Garbage Collector: reference_count\n");
   }else if( strcmp( gc_char, "generational" ) == 0 ){
     generational_gc_init(gc_init);
     printf("Garbage Collector: generational\n");
   }else{
-    reference_count_init(gc_init);
-    printf("Garbage Collector: reference_count\n");
+    gc_init_copy(gc_init);
+    printf("Garbage Collector: copying\n");
   }
-
-  //Set optional functions.
   if(!gc_init->gc_write_barrier){
+    //option.
     gc_init->gc_write_barrier = gc_write_barrier_default;
   }
   if(!gc_init->gc_init_ptr){
+    //option.
     gc_init->gc_init_ptr = gc_init_ptr_default;
   }
   if(!gc_init->gc_memcpy){
+    //option.
     gc_init->gc_memcpy = gc_memcpy_default;
   }
 #if defined( _DEBUG )
@@ -110,7 +111,7 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
   }
 }
 
-void gc_write_barrier_default(Cell* cellp, Cell cell)
+void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell)
 {
   *cellp = cell;
 }

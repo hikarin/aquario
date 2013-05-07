@@ -73,7 +73,7 @@ void move_object(Cell obj)
 }
 
 //Initialization.
-void markcompact_gc_init(GC_Init_Info* gc_info)
+void gc_init_markcompact(GC_Init_Info* gc_info)
 {
   heap = (char*)malloc(HEAP_SIZE);
   top = heap;
