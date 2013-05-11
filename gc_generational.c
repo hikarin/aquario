@@ -13,9 +13,7 @@ typedef struct generational_gc_header{
   int mark_bit;
   Cell forwarding;
   int obj_age;
-#if defined( _DEBUG )
   Boolean visited_flag;
-#endif //_DEBUG
 }Generational_GC_Header;
 
 static void gc_start_generational();
@@ -49,6 +47,7 @@ static char* tenured_new_top = NULL;
 static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
+static void add_parent_remembered_set(Cell* objp);
 static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define NERSARY_SIZE (HEAP_SIZE/32)
@@ -105,8 +104,10 @@ void generational_gc_init(GC_Init_Info* gc_info)
   gc_info->gc_start         = gc_start_generational;
   gc_info->gc_term          = gc_term_generational;
   gc_info->gc_write_barrier = gc_write_barrier_generational;
+  gc_info->gc_init_ptr      = NULL;
+  gc_info->gc_memcpy        = NULL;
 #if defined( _DEBUG )
-  gc_info->gc_stack_check = generational_gc_stack_check;
+  gc_info->gc_stack_check   = generational_gc_stack_check;
 #endif //_DEBUG
 }
 
@@ -127,9 +128,7 @@ void* gc_malloc_generational( size_t size )
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
   AGE(ret) = 0;
-#if defined( _DEBUG )
   new_header->visited_flag = FALSE;
-#endif //_DEBUG
   return ret;
 }
 
@@ -142,6 +141,7 @@ void gc_term_generational()
 
 #if defined( _DEBUG )
 void generational_gc_stack_check(Cell cell){
+  return;
   if( !( (from_space <= (char*)cell && (char*)cell < from_space + NERSARY_SIZE) ||
 	 (tenured_space <= (char*)cell && (char*)cell < tenured_space + TENURED_SIZE ) ) ){
     printf("[WARNING] cell %p points out of heap\n", cell);
@@ -228,10 +228,10 @@ void* copy_object(Cell obj)
   Generational_GC_Header* new_header = NULL;
   if( IS_OLD( obj ) ){
     //Promotion.
-    new_header = (Generational_GC_Header*)tenured_top;
+    new_header = (Generational_GC_Header* )tenured_top;
     tenured_top += size;
   }else{
-    new_header =( Generational_GC_Header*)nersary_top;
+    new_header =( Generational_GC_Header* )nersary_top;
     nersary_top += size;
   }
   Generational_GC_Header* old_header = ((Generational_GC_Header*)obj)-1;
@@ -302,11 +302,7 @@ void update_pointer()
   char* scanned = NULL;
   Cell cell = NULL;
   int obj_size = 0;
-#if defined( _CUT )
-  scanned = from_space;
-#else
   scanned = to_space;
-#endif //_CUT
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
