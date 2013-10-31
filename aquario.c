@@ -650,6 +650,10 @@ Cell readList(FILE* fp)
 	return NULL;
       }
       return list;
+    case ' ':
+    case '\n':
+    case '\t':
+      continue;
     case EOF:
       setEOFException("EOF");
       return NULL;
