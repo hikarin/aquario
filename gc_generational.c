@@ -36,9 +36,9 @@ static int minor_gc_count = 0;
 #endif //_DEBUG
 
 //nersary space.
-static char* from_space  = NULL;
-static char* to_space    = NULL;
-static char* nersary_top = NULL;
+static char* from_space    = NULL;
+static char* to_space      = NULL;
+static char* nersary_top   = NULL;
 
 //tenured space.
 static char* tenured_space   = NULL;
@@ -54,7 +54,7 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define NERSARY_SIZE (HEAP_SIZE/32)
 #define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
-#define TENURING_THRESHOLD 4
+#define TENURING_THRESHOLD 10
 
 #define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
@@ -77,6 +77,9 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top;
 static Cell mark_stack[MARK_STACK_SIZE];
+
+static Boolean has_young_child(Cell obj);
+static void reset_mark_bit();
 
 static void mark_object(Cell* objp);
 static void move_object(Cell obj);
@@ -112,6 +115,38 @@ void generational_gc_init(GC_Init_Info* gc_info)
 #if defined( _DEBUG )
   gc_info->gc_stack_check   = generational_gc_stack_check;
 #endif //_DEBUG
+}
+
+
+Boolean has_young = FALSE;
+
+static void set_young_flag(Cell* pObj)
+{
+  Cell obj = *pObj;
+  if( IS_NERSARY(obj) ){
+    has_young = TRUE;
+  }
+}
+
+void reset_mark_bit()
+{
+  char* scan = from_space;
+  int obj_size = 0;
+  while( nersary_top < from_space ){
+    Cell obj = (Cell)( scan + sizeof(Generational_GC_Header) );
+    obj_size = GET_OBJECT_SIZE(obj);
+    if( IS_MARKED(obj) ){
+      CLEAR_MARK(obj);
+    }
+    scan += obj_size;
+  }
+}
+
+Boolean has_young_child(Cell obj)
+{
+  has_young = FALSE;
+  trace_object(obj, set_young_flag);
+  return has_young;
 }
 
 //Allocation.
@@ -186,6 +221,7 @@ void gc_start_generational()
 {
   if( !IS_ALLOCATABLE_TENURED() ){
     minor_gc();
+    printf("------- major GC start --------\n");
     major_gc();
     if( !IS_ALLOCATABLE_TENURED() ){
       printf("Heap Exhausted!\n");
@@ -268,7 +304,11 @@ void* copy_object(Cell obj)
   if( IS_OLD( obj ) ){
     //Promotion.
     new_header = (Generational_GC_Header* )tenured_top;
-    add_remembered_set((Cell)(tenured_top+sizeof(Generational_GC_Header)));
+    if( has_young_child((Cell)new_header) ){
+      add_remembered_set((Cell)new_header);
+    }else{
+      //      printf("no young child");
+    }
     tenured_top += size;
   }else{
     new_header =( Generational_GC_Header* )nersary_top;
@@ -354,8 +394,12 @@ void update_pointer()
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
+    IS_VISITED(cell) = FALSE;
     if( IS_MARKED(cell) ){
       trace_object(cell, update);
+      if( has_young_child(cell) ){
+	add_remembered_set(cell);
+      }
     }
     scanned += obj_size;
   }
@@ -373,7 +417,6 @@ void slide()
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       CLEAR_MARK(cell);
-      IS_VISITED(cell) = FALSE;
       move_object(cell);
     }
     scanned += obj_size;
@@ -412,12 +455,11 @@ void compact()
 
 void major_gc()
 {
-#if defined( _DEBUG )
   printf("\tmajor GC start ... ");
-#endif //_DEBUG
 
   //initialization.
   mark_stack_top = 0;
+  remembered_set_top = 0;
 
   //mark phase.
   mark();
@@ -425,9 +467,6 @@ void major_gc()
   //compaction phase.
   compact();
 
-#if defined( _DEBUG )
-  printf("major GC end(%d)\n", major_gc_count++);
-#endif //defined( _DEBUG )
-
-  remembered_set_top = 0;
+  //reset mark bit in nersary space.
+  reset_mark_bit();
 }
