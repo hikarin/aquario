@@ -46,7 +46,7 @@ static char* tenured_top     = NULL;
 static char* tenured_new_top = NULL;
 
 //remembered set.
-#define REMEMBERED_SET_SIZE 0x200
+#define REMEMBERED_SET_SIZE 0x30
 static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
@@ -268,7 +268,11 @@ void add_remembered_set(Cell obj)
   if( !IS_VISITED(obj) ){
     if( remembered_set_top >= REMEMBERED_SET_SIZE ){
       printf("remembered set full\n");
+      pushArg(obj);
       major_gc();
+      obj = popArg();
+
+      //TODO: check whether remembered set has vacancy
     }
     remembered_set[remembered_set_top++] = obj;
     IS_VISITED(obj) = TRUE;
@@ -382,13 +386,18 @@ void update_pointer()
   char* scanned = NULL;
   Cell cell = NULL;
   int obj_size = 0;
-  scanned = to_space;
+  scanned = from_space;
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
+    printf("%d ", obj_size);
     trace_object(cell, update);
+    if( IS_MARKED(cell) ){
+      CLEAR_MARK(cell);
+    }
     scanned += obj_size;
   }
+  printf("\n");
 
   scanned = tenured_space;
   while( scanned < tenured_top ){
@@ -422,15 +431,6 @@ void slide()
     scanned += obj_size;
   }
   tenured_top = tenured_new_top;
-
-  //scan nersary space.
-  scanned = to_space;
-  while( scanned < nersary_top ){
-    cell = (Cell)((Generational_GC_Header*)scanned+1);
-    obj_size = GET_OBJECT_SIZE(cell);
-    CLEAR_MARK(cell);
-    scanned += obj_size;
-  }
 }
 
 //Start Garbage Collection.
@@ -466,7 +466,4 @@ void major_gc()
 
   //compaction phase.
   compact();
-
-  //reset mark bit in nersary space.
-  reset_mark_bit();
 }
