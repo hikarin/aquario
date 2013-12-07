@@ -12,9 +12,9 @@ Aquario is a GC-oriented Lisp interpreter.
 == Target persons
 
   Aquario is for someone who
-    * wants to learn how Garbage Collector is implemented
-    * wants to implement Garbage Collector
-    * loves Garbage Collection
+  * wants to learn how Garbage Collector is implemented
+  * wants to implement Garbage Collector
+  * loves Garbage Collection
 
 == How to run Aquario
 
