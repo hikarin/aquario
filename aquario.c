@@ -263,6 +263,7 @@ Cell evalExp(Cell exp)
 	      pushArg(params);
 	      pushArg(exps);
 	      args = cloneTree(args);
+	      args = applyList(args);
 	      exps = popArg();
 	      pushArg(args);
 	      exps = cloneSymbolTree(exps);
@@ -283,6 +284,7 @@ Cell evalExp(Cell exp)
 	      pushArg(params);
 	      pushArg(tmps);                              //=> [....exps exp params tmps]
 	      args = cloneTree(args);
+	      args = applyList(args);
 	      tmps = popArg();                            //=> [....exps exp params]
 	      pushArg(args);                              //=> [....exps exp params args]
 	      tmps = cloneSymbolTree(tmps);

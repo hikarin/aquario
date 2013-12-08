@@ -4,7 +4,7 @@
   (lambda (exp1 exp2)
     (begin
      (set! total (+ total 1))
-     (if (equal? (eval exp1)  (eval exp2))
+     (if (equal? exp1 exp2)
          (display ".")
        (begin (display "F")
               (set! test-result (cons (list total exp1 exp2 ) test-result)))))))
