@@ -27,12 +27,9 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, "reference_count" ) == 0 ){
     gc_init_reference_count(gc_init);
     printf("Garbage Collector: reference_count\n");
-  }else if( strcmp( gc_char, "generational" ) == 0 ){
-    generational_gc_init(gc_init);
-    printf("Garbage Collector: generational\n");
   }else{
-    gc_init_copy(gc_init);
-    printf("Garbage Collector: copying\n");
+    gc_init_generational(gc_init);
+    printf("Garbage Collector: Generational\n");
   }
   if(!gc_init->gc_write_barrier){
     //option.
