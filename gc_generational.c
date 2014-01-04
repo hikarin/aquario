@@ -30,6 +30,7 @@ static void copy_and_update(Cell* objp);
 #if defined( _DEBUG )
 static void generational_gc_stack_check(Cell cell);
 static void check_minor_gc();
+static void check_major_gc();
 static int major_gc_count = 0;
 static int minor_gc_count = 0;
 
@@ -242,8 +243,10 @@ void check_all_young_obj()
 	checking_obj = obj;
 	check_all_tenured_obj();
 	exit(-1);
+#if defined( _CUT )
       }else{
 	printf("OK? ");
+#endif
       }
     }
     scan += obj_size;
@@ -284,7 +287,7 @@ void check_minor_gc_object(Cell* cellp)
 
 void check_minor_gc()
 {
-  printf("check start....[%ld]", nersary_top - from_space);
+  printf("minor gc check start....[%ld]", nersary_top - from_space);
   char* scan = from_space;
   int obj_size = 0;
   while( scan < nersary_top ){
@@ -301,6 +304,31 @@ void check_minor_gc()
   printf("end(nersary: %ld, tenured: %ld/%d\n", scan - from_space, tenured_top - tenured_space, TENURED_SIZE );
 }
 
+void check_major_gc_object(Cell* cellp)
+{
+  Cell cell = *cellp;
+  if( cell && type(cell) >= 10 ){
+    printf( "OMG!!: %ld ", (char*)cell - tenured_space);
+  }
+}
+
+void check_major_gc()
+{
+  printf("major gc check start....[%ld]", tenured_top - tenured_space);
+  char* scan = tenured_space;
+  int obj_size = 0;
+  while( scan < tenured_top ){
+    Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
+    if( FORWARDING( obj ) != obj ){
+      printf("FORWARDED!\n");
+    }
+    trace_object(obj, check_major_gc_object);
+    obj_size = GET_OBJECT_SIZE(obj);
+    scan += obj_size;
+  }
+
+  printf("end(nersary: %ld, tenured: %ld/%d\n", scan - from_space, tenured_top - tenured_space, TENURED_SIZE );
+}
 
 #endif //_DEBUG
 
@@ -460,8 +488,11 @@ void mark_object(Cell* objp)
 void move_object(Cell obj)
 {
   long size = GET_OBJECT_SIZE(obj);
-  Generational_GC_Header* new_header = ((Generational_GC_Header*)(FORWARDING(obj)))-1;
+  Generational_GC_Header* new_header = ((Generational_GC_Header*)FORWARDING(obj))-1;
   Generational_GC_Header* old_header = ((Generational_GC_Header*)obj)-1;
+#if defined( _DEBUG )
+  printf( "%ld, %ld (%p => %p)\n", (char*)new_header - (char*)tenured_space, (char*)old_header - (char*)new_header, old_header, new_header );
+#endif
   memcpy(new_header, old_header, size);
   Cell new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
 
@@ -488,6 +519,11 @@ void calc_new_address()
       FORWARDING(cell) = (Cell)((Generational_GC_Header*)tenured_new_top+1);
       tenured_new_top += obj_size;
     }
+#if defined( _DEBUG )
+    if( type(cell) >= 10 ){
+      printf("[calc] OMG: %ld -- ", scanned - tenured_top );
+    }
+#endif
     scanned += obj_size;
   }
 }
@@ -503,13 +539,19 @@ void update_pointer()
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
+#if defined( _CUT )
     trace_object(cell, update);
     if( IS_MARKED(cell) ){
       CLEAR_MARK(cell);
     }
+#else
+    if( IS_MARKED( cell ) ){
+      trace_object(cell, update);
+    }
+#endif
     scanned += obj_size;
   }
-
+#if defined( _CUT )
   scanned = tenured_space;
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
@@ -523,6 +565,7 @@ void update_pointer()
     }
     scanned += obj_size;
   }
+#endif
 }
 
 void slide()
@@ -538,14 +581,29 @@ void slide()
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       CLEAR_MARK(cell);
+      IS_VISITED(cell) = FALSE;
+      Cell new_obj = FORWARDING(cell);
+#if defined( _DEBUG )
+      if( type( cell ) >= 10 ){
+	printf( "slide: OMG!!\n");
+      }
+#endif
       move_object(cell);
+#if defined( _DEBUG )
+      if( type( cell ) >= 10 ){
+	printf( "slide: OMG!!!!! %ld, %p\n", (char*)cell-(char*)scanned, scanned );
+      }
+#endif
+      if( has_young_child( new_obj ) ){
+	add_remembered_set( new_obj );
+      }
       tenured_new_top += obj_size;
     }
     scanned += obj_size;
   }
   tenured_top = tenured_new_top;
 #if defined( _DEBUG )
-  printf("tenured objects: %d\n", (int)(tenured_top - tenured_space));
+  printf("\ntenured objects: %d\n", (int)(tenured_top - tenured_space));
 #endif 
 }
 
@@ -584,6 +642,8 @@ void major_gc()
   compact();
 
 #if defined( _DEBUG )
+  check_major_gc();
   printf("\tmajor GC end....%d\n", major_gc_count);
+  printf("\t\tremembered object: %d\n", remembered_set_top );
 #endif //defined( _DEBUG )
 }
