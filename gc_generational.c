@@ -80,8 +80,6 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 static int mark_stack_top;
 static Cell mark_stack[MARK_STACK_SIZE];
 
-static Boolean has_young_child(Cell obj);
-
 static void mark_object(Cell* objp);
 static void move_object(Cell obj);
 static void update(Cell* objp);
@@ -119,22 +117,6 @@ void gc_init_generational(GC_Init_Info* gc_info)
 
 
 static Boolean has_young = FALSE;
-
-static void set_young_flag(Cell* pObj)
-{
-  Cell obj = *pObj;
-  //  if( IS_NERSARY(obj) ){
-  if( !IS_TENURED(obj) ){
-    has_young = TRUE;
-  }
-}
-
-Boolean has_young_child(Cell obj)
-{
-  has_young = FALSE;
-  trace_object(obj, set_young_flag);
-  return has_young;
-}
 
 //Allocation.
 void* gc_malloc_generational( size_t size )
@@ -266,7 +248,6 @@ void check_all_young_obj()
 
 void generational_gc_stack_check(Cell cell)
 {
-  return;
   if( !( (from_space <= (char*)cell && (char*)cell < from_space + NERSARY_SIZE) ||
 	 (tenured_space <= (char*)cell && (char*)cell < tenured_space + TENURED_SIZE ) ) ){
     printf("[WARNING] cell %p points out of heap(age: %d)\n", cell, AGE(cell));
@@ -448,9 +429,11 @@ void* copy_object(Cell obj)
   if( IS_OLD( obj ) ){
     //Promotion.
     new_header = (Generational_GC_Header*)tenured_top;
+#if defined( _CUT )
     if( has_young_child(obj)){
       is_added = TRUE;
     }
+#endif
     tenured_top += size;
 #if defined( _DEBUG )
     //printf("promotion: %ld\n", (char*)obj-from_space);
@@ -499,10 +482,15 @@ void move_object(Cell obj)
   FORWARDING(new_cell) = new_cell;
 }
 
+
+static Boolean has_young_child = FALSE;
 void update(Cell* cellp)
 {
   if( *cellp ){
     *cellp = FORWARDING(*cellp);
+    if( !IS_TENURED( *cellp ) ){
+      has_young_child = TRUE;
+    }
   }
 }
 
@@ -539,16 +527,9 @@ void update_pointer()
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
-#if defined( _CUT )
-    trace_object(cell, update);
-    if( IS_MARKED(cell) ){
-      CLEAR_MARK(cell);
-    }
-#else
     if( IS_MARKED( cell ) ){
       trace_object(cell, update);
     }
-#endif
     scanned += obj_size;
   }
 #if defined( _CUT )
@@ -558,8 +539,14 @@ void update_pointer()
     obj_size = GET_OBJECT_SIZE(cell);
     IS_VISITED(cell) = FALSE;
     if( IS_MARKED(cell) ){
+      has_young_child = FALSE;
       trace_object(cell, update);
+#if defined( _CUT )
       if( has_young_child(cell) ){
+	add_remembered_set(cell);
+      }
+#endif
+      if( has_young_child ){
 	add_remembered_set(cell);
       }
     }
@@ -594,9 +581,11 @@ void slide()
 	printf( "slide: OMG!!!!! %ld, %p\n", (char*)cell-(char*)scanned, scanned );
       }
 #endif
+#if defined( _CUT )
       if( has_young_child( new_obj ) ){
 	add_remembered_set( new_obj );
       }
+#endif
       tenured_new_top += obj_size;
     }
     scanned += obj_size;
