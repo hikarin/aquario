@@ -239,6 +239,7 @@ void add_remembered_set(Cell obj)
   if( !IS_VISITED(obj) ){
     if( remembered_set_top >= REMEMBERED_SET_SIZE ){
       //TODO: check whether remembered set has vacancy
+      printf("remembered set full.\n");
       exit(-1);
     }
     remembered_set[remembered_set_top++] = obj;
