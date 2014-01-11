@@ -29,13 +29,6 @@ static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 #if defined( _DEBUG )
 static void generational_gc_stack_check(Cell cell);
-static void check_minor_gc();
-static void check_major_gc();
-static int major_gc_count = 0;
-static int minor_gc_count = 0;
-
-void check_all_young_obj();
-static char* old_nersary_top = NULL;
 #endif //_DEBUG
 
 //nersary space.
