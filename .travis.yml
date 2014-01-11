@@ -2,4 +2,4 @@ language: C
 compiler:
   - clang
   - gcc
-script: "./run-tests.sh"
+script: "./run-test.sh"
