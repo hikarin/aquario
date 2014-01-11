@@ -84,7 +84,8 @@ static Boolean has_young_child = FALSE;
 
 static void mark_object(Cell* objp);
 static void move_object(Cell obj);
-static void update(Cell* objp);
+static void update_tenured(Cell* objp);
+static void update_nersary(Cell* objp);
 static void calc_new_address();
 static void update_pointer();
 static void slide();
@@ -350,7 +351,9 @@ void minor_gc()
   printf( "remembered object: %d\n", remembered_set_top );
 #endif //defined( _DEBUG )
 
-  while( prev_nersary_top < nersary_top || prev_rems_top < remembered_set_top ){
+  while( prev_nersary_top < nersary_top
+	 || prev_rems_top < remembered_set_top
+	 || prev_tenured_top < tenured_top ){
     //scan remembered set.
     int rem_index;
     for(rem_index = prev_rems_top; rem_index < remembered_set_top; rem_index++){
@@ -377,6 +380,9 @@ void minor_gc()
       has_young_child = FALSE;
       trace_object(obj, copy_and_update);
       if( has_young_child ){
+#if defined( _DEBUG )
+	printf("add!\n");
+#endif
 	add_remembered_set( obj );
       }
       scan += obj_size;
@@ -474,6 +480,9 @@ void mark_object(Cell* objp)
       printf("[GC] mark stack overflow.\n");
       exit(-1);
     }
+#if defined( _DEBUG)
+    printf("[mark] %ld\n", (char*)obj - tenured_space);
+#endif
     mark_stack[mark_stack_top++] = obj;
   }
 }
@@ -483,29 +492,30 @@ void move_object(Cell obj)
   long size = GET_OBJECT_SIZE(obj);
   Generational_GC_Header* new_header = (Generational_GC_Header*)FORWARDING(obj) - 1;
   Generational_GC_Header* old_header = (Generational_GC_Header*)obj - 1;
-#if defined( _DEBUG )
-  printf( "diff: %d, %d\n", (int)((char*)FORWARDING(obj) - (char*)new_header), (int)((char*)obj - (char*)old_header));
-#endif
 
-#if defined( _DEBUG )
-  printf( "sizeof(Header): %ld ", sizeof(Generational_GC_Header) );
-  printf( "%ld, %ld (%p => %p)\n", (char*)new_header - (char*)tenured_space, (char*)old_header - (char*)new_header, old_header, new_header );
-#endif
   memcpy(new_header, old_header, size);
-  //  Cell new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
-  Cell new_cell = (Cell)((char*)new_header + sizeof(Generational_GC_Header));
+  Cell new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
 
   FORWARDING(new_cell) = new_cell;
 }
 
-
-void update(Cell* cellp)
+void update_tenured(Cell* cellp)
 {
   if( *cellp ){
     *cellp = FORWARDING(*cellp);
     if( !IS_TENURED( *cellp ) ){
       has_young_child = TRUE;
     }
+#if defined( _DEBUG )
+    printf("update(): %p\n", *cellp);
+#endif
+  }
+}
+
+void update_nersary(Cell* cellp)
+{
+  if( *cellp ){
+    *cellp = FORWARDING(*cellp);
   }
 }
 
@@ -520,37 +530,42 @@ void calc_new_address()
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       FORWARDING(cell) = (Cell)((Generational_GC_Header*)tenured_new_top+1);
-#if defined( _DEBUG )
-      printf("new_addr: %ld\n", (char*)FORWARDING(cell) - tenured_space);
-#endif
       tenured_new_top += obj_size;
     }
-#if defined( _DEBUG )
-    if( type(cell) >= 10 ){
-      printf("[calc] OMG: %ld -- ", scanned - tenured_top );
-    }
-#endif
     scanned += obj_size;
   }
 }
 
 void update_pointer()
 {
-  trace_roots(update);
+  trace_roots(update_nersary);
 
   char* scanned = NULL;
   Cell cell = NULL;
   int obj_size = 0;
+  scanned = tenured_space;
+  while( scanned < tenured_top ){
+    cell = (Cell)((Generational_GC_Header*)scanned+1);
+    obj_size = GET_OBJECT_SIZE(cell);
+    if( IS_MARKED( cell ) ){
+      has_young_child = FALSE;
+      trace_object(cell, update_tenured);
+      if( has_young_child ){
+#if defined( _DEBUG )
+	printf("addddd\n");
+#endif
+	add_remembered_set(cell);
+      }
+    }
+    scanned += obj_size;
+  }
+
   scanned = from_space;
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED( cell ) ){
-      has_young_child = FALSE;
-      trace_object(cell, update);
-      if( has_young_child ){
-	add_remembered_set(cell);
-      }
+      trace_object(cell, update_nersary);
     }
     scanned += obj_size;
   }
@@ -570,25 +585,23 @@ void slide()
     if( IS_MARKED(cell) ){
       CLEAR_MARK(cell);
       IS_VISITED(cell) = FALSE;
-#if defined( _DEBUG )
-      if( type( cell ) >= 10 ){
-	printf( "slide: OMG!!\n");
-      }
-#endif
       move_object(cell);
-#if defined( _DEBUG )
-      if( type( cell ) >= 10 ){
-	printf( "slide: OMG!!!!! %ld, %p\n", (char*)cell-(char*)scanned, scanned );
-      }
-#endif
       tenured_new_top += obj_size;
     }
     scanned += obj_size;
   }
   tenured_top = tenured_new_top;
-#if defined( _DEBUG )
-  printf("\ntenured objects: %d\n", (int)(tenured_top - tenured_space));
-#endif 
+
+  //clear mark bit in young objects.
+  scanned = from_space;
+  while( scanned < nersary_top ){
+    cell = (Cell)((Generational_GC_Header*)scanned+1);
+    obj_size = GET_OBJECT_SIZE(cell);
+    if( IS_MARKED(cell) ){
+      CLEAR_MARK(cell);
+    }
+    scanned += obj_size;
+  }
 }
 
 //Start Garbage Collection.
@@ -613,18 +626,6 @@ void compact()
 
 void major_gc()
 {
-#if defined( _DEBUG )
-  printf("\tmajor GC start ... ");
-  char* scan = tenured_space;
-  while( scan < tenured_top ){
-    Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
-    int obj_size = GET_OBJECT_SIZE(obj);
-    if( scan - tenured_space < 6000 ){
-      printf("before major GC: %ld\n", (char*)obj - tenured_space);
-    }
-    scan += obj_size;
-  }
-#endif
   //initialization.
   mark_stack_top = 0;
   remembered_set_top = 0;
