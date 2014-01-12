@@ -125,12 +125,10 @@ void* gc_malloc_generational( size_t size )
   Generational_GC_Header* new_header = (Generational_GC_Header*)nersary_top;
   Cell ret = (Cell)(new_header+1);
   int allocate_size = ( size + sizeof(Generational_GC_Header) + 3 ) / 4 * 4;
+  memset(new_header, 0, allocate_size);
   nersary_top += allocate_size;
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
-  AGE(ret) = 0;
-  CLEAR_MARK(ret);
-  new_header->visited_flag = FALSE;
   return ret;
 }
 
@@ -242,7 +240,7 @@ void add_remembered_set(Cell obj)
 
 void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
 {
-  if( IS_TENURED(obj) && IS_NERSARY(newcell) && !IS_VISITED(obj) ){
+  if( IS_TENURED(obj) && IS_NERSARY(newcell) ){
     add_remembered_set(obj);
   }
   *cellp = newcell;

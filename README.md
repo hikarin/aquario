@@ -26,7 +26,7 @@ Aquario is a GC-oriented Lisp interpreter.
 
     $ ./aquario -GC copying
 
-  So far, Aquario receives "copying", "mark_compact" and "reference_count" with -GC option.
+  So far, Aquario receives "copying", "mark_compact", "reference_count" and "generational" with -GC option.
 
 ## Future work
 

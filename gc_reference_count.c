@@ -32,6 +32,7 @@ static void gc_term_reference_count();
 
 #if defined( _DEBUG )
 static void reference_count_stack_check( Cell cell );
+static void reference_check();
 #endif //_DEBUG
 
 static char* heap           = NULL;
@@ -81,7 +82,7 @@ void* gc_malloc_reference_count( size_t size )
     scan_zct();
     chunk = get_free_chunk( allocate_size );
      if( !chunk ){
-       printf("Heap Exhausted.\n ");
+       printf("Heap Exhausted.\n");
        exit(-1);
      }
   }
@@ -201,6 +202,22 @@ void reference_count_stack_check(Cell cell)
     printf("[WARNING] cell %p points out of heap\n", cell);
   }
 }
+
+void reference_check()
+{
+  char* scan = heap;
+  char* free_list_scan = freelist;
+  Cell obj = (Cell)((Reference_Count_Header*)scan + 1);
+  while( TRUE ){
+    if( scan < free_list_scan ){
+      
+    }else if(scan > free_list_scan){
+      
+    }else{
+      
+    }
+  }
+}
 #endif //_DEBUG
 
 int get_obj_size( size_t size )
@@ -240,6 +257,9 @@ void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
   increment_count( &newcell );
   decrement_count( cellp );
   *cellp = newcell;
+#if defined( _DEBUG )
+  reference_check();
+#endif
 }
 
 //Init Pointer.
