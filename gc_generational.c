@@ -58,7 +58,10 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj) || (to_space <= (char*)(obj) && (char*)(obj) < to_space+NERSARY_SIZE))
-#define IS_VISITED(obj) (((Generational_GC_Header*)(obj)-1)->visited_flag)
+
+#define IS_VISITED(obj)   (((Generational_GC_Header*)(obj)-1)->visited_flag)
+#define SET_VISIT(obj)    (((Generational_GC_Header*)(obj)-1)->visited_flag = TRUE)
+#define CLEAR_VISIT(obj)  (((Generational_GC_Header*)(obj)-1)->visited_flag = FALSE)
 
 #define AGE(obj) (((Generational_GC_Header*)(obj)-1)->obj_age)
 #define IS_OLD(obj) (AGE(obj) >= TENURING_THRESHOLD)
@@ -234,7 +237,7 @@ void add_remembered_set(Cell obj)
       exit(-1);
     }
     remembered_set[remembered_set_top++] = obj;
-    IS_VISITED(obj) = TRUE;
+    SET_VISIT(obj);
   }
 }
 
@@ -390,7 +393,7 @@ void slide()
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       CLEAR_MARK(cell);
-      IS_VISITED(cell) = FALSE;
+      CLEAR_VISIT(cell);
       move_object(cell);
       tenured_new_top += obj_size;
     }
