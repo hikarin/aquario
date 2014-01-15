@@ -11,12 +11,34 @@
 
 //TODO: try to make it smaller.
 typedef struct generational_gc_header{
+#if defined( _CUT )
   int obj_size;
   int mark_bit;
   Cell forwarding;
   int obj_age;
   Boolean visited_flag;
+#else
+  int obj_size;
+  int meta_data;
+  Cell forwarding;
+#endif
 }Generational_GC_Header;
+
+#define MASK_OBJ_AGE    (0x0000000F)
+#define MASK_MARK_BIT   (1<<4)
+#define MASK_VISIT_BIT  (1<<5)
+
+#define IS_MARKED(obj) (((Generational_GC_Header*)(obj)-1)->meta_data & MASK_MARK_BIT)
+#define SET_MARK(obj) (((Generational_GC_Header*)(obj)-1)->meta_data |= MASK_MARK_BIT)
+#define CLEAR_MARK(obj) (((Generational_GC_Header*)(obj)-1)->meta_data =~ MASK_MARK_BIT)
+
+#define IS_VISITED(obj)   (((Generational_GC_Header*)(obj)-1)->meta_data & MASK_VISIT_BIT)
+#define SET_VISIT(obj)    (((Generational_GC_Header*)(obj)-1)->meta_data |= MASK_VISIT_BIT)
+#define CLEAR_VISIT(obj)  (((Generational_GC_Header*)(obj)-1)->meta_data =~ MASK_VISIT_BIT) 
+
+#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->meta_data & MASK_OBJ_AGE)
+#define IS_OLD(obj) (AGE(obj) >= TENURING_THRESHOLD)
+#define INC_AGE(obj) (((Generational_GC_Header*)(obj)-1)->meta_data++)
 
 static void gc_start_generational();
 static void minor_gc();
@@ -47,7 +69,7 @@ static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
 static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
-#define NERSARY_SIZE (HEAP_SIZE/16)
+#define NERSARY_SIZE (HEAP_SIZE/3)
 #define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
 #define TENURING_THRESHOLD 30
 
@@ -59,18 +81,7 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj) || (to_space <= (char*)(obj) && (char*)(obj) < to_space+NERSARY_SIZE))
 
-#define IS_VISITED(obj)   (((Generational_GC_Header*)(obj)-1)->visited_flag)
-#define SET_VISIT(obj)    (((Generational_GC_Header*)(obj)-1)->visited_flag = TRUE)
-#define CLEAR_VISIT(obj)  (((Generational_GC_Header*)(obj)-1)->visited_flag = FALSE)
-
-#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->obj_age)
-#define IS_OLD(obj) (AGE(obj) >= TENURING_THRESHOLD)
-
 #define IS_ALLOCATABLE_TENURED() (tenured_top + NERSARY_SIZE < tenured_space + TENURED_SIZE )
-
-#define IS_MARKED(obj) (((Generational_GC_Header*)(obj)-1)->mark_bit)
-#define SET_MARK(obj) (((Generational_GC_Header*)(obj)-1)->mark_bit=TRUE)
-#define CLEAR_MARK(obj) (((Generational_GC_Header*)(obj)-1)->mark_bit=FALSE)
 
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top;
@@ -270,7 +281,11 @@ void* copy_object(Cell obj)
   }
   size = GET_OBJECT_SIZE(obj);
   Generational_GC_Header* new_header = NULL;
+#if defined( _CUT )
   AGE(obj)++;
+#else
+  INC_AGE(obj);
+#endif
   if( IS_OLD( obj ) ){
     //Promotion.
     new_header = (Generational_GC_Header*)tenured_top;
@@ -392,8 +407,12 @@ void slide()
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
+#if defined( _CUT )
       CLEAR_MARK(cell);
       CLEAR_VISIT(cell);
+#else
+      (((Generational_GC_Header*)cell)-1)->meta_data = 0;
+#endif
       move_object(cell);
       tenured_new_top += obj_size;
     }
@@ -444,4 +463,8 @@ void major_gc()
 
   //compaction phase.
   compact();
+
+#if defined( _DEBUG )
+  printf("major GC end\n");
+#endif
 }
