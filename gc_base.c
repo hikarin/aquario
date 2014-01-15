@@ -24,6 +24,9 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, "mark_compact" ) == 0 ){
     gc_init_markcompact(gc_init);
     printf("Garbage Collector: mark_compact\n");
+  }else if( strcmp( gc_char, "generational") == 0 ){
+    gc_init_generational(gc_init);
+    printf("Garbage Collector: generational\n");
   }else{
     gc_init_reference_count(gc_init);
     printf("Garbage Collector: reference_count\n");
