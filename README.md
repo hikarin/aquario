@@ -1,6 +1,6 @@
 # What's Aquario
 
-Aquario is a GC-oriented Lisp interpreter. 
+Aquario is a GC-oriented Lisp interpreter. [![Build Status](https://travis-ci.org/hikarin/aquario.png?branch=master)](https://travis-ci.org/hikarin/aquario)
 
 ## Features of Aquario
 * Lisp-1
