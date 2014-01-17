@@ -9,36 +9,27 @@
 #include "aquario.h"
 #endif //_DEBUG
 
-//TODO: try to make it smaller.
 typedef struct generational_gc_header{
-#if defined( _CUT )
   int obj_size;
-  int mark_bit;
+  int flags;
   Cell forwarding;
-  int obj_age;
-  Boolean visited_flag;
-#else
-  int obj_size;
-  int meta_data;
-  Cell forwarding;
-#endif
 }Generational_GC_Header;
 
 #define MASK_OBJ_AGE    (0x0000000F)
 #define MASK_MARK_BIT   (1<<4)
 #define MASK_VISIT_BIT  (1<<5)
 
-#define IS_MARKED(obj) (((Generational_GC_Header*)(obj)-1)->meta_data & MASK_MARK_BIT)
-#define SET_MARK(obj) (((Generational_GC_Header*)(obj)-1)->meta_data |= MASK_MARK_BIT)
-#define CLEAR_MARK(obj) (((Generational_GC_Header*)(obj)-1)->meta_data =~ MASK_MARK_BIT)
+#define IS_MARKED(obj) (((Generational_GC_Header*)(obj)-1)->flags & MASK_MARK_BIT)
+#define SET_MARK(obj) (((Generational_GC_Header*)(obj)-1)->flags |= MASK_MARK_BIT)
+#define CLEAR_MARK(obj) (((Generational_GC_Header*)(obj)-1)->flags =~ MASK_MARK_BIT)
 
-#define IS_VISITED(obj)   (((Generational_GC_Header*)(obj)-1)->meta_data & MASK_VISIT_BIT)
-#define SET_VISIT(obj)    (((Generational_GC_Header*)(obj)-1)->meta_data |= MASK_VISIT_BIT)
-#define CLEAR_VISIT(obj)  (((Generational_GC_Header*)(obj)-1)->meta_data =~ MASK_VISIT_BIT) 
+#define IS_VISITED(obj)   (((Generational_GC_Header*)(obj)-1)->flags & MASK_VISIT_BIT)
+#define SET_VISIT(obj)    (((Generational_GC_Header*)(obj)-1)->flags |= MASK_VISIT_BIT)
+#define CLEAR_VISIT(obj)  (((Generational_GC_Header*)(obj)-1)->flags =~ MASK_VISIT_BIT) 
 
-#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->meta_data & MASK_OBJ_AGE)
+#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->flags & MASK_OBJ_AGE)
 #define IS_OLD(obj) (AGE(obj) >= TENURING_THRESHOLD)
-#define INC_AGE(obj) (((Generational_GC_Header*)(obj)-1)->meta_data++)
+#define INC_AGE(obj) (((Generational_GC_Header*)(obj)-1)->flags++)
 
 static void gc_start_generational();
 static void minor_gc();
@@ -49,6 +40,7 @@ static void gc_term_generational();
 
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
+static void copy_and_update_add_rems(Cell* objp);
 #if defined( _DEBUG )
 static void generational_gc_stack_check(Cell cell);
 #endif //_DEBUG
@@ -213,7 +205,7 @@ void minor_gc()
     while( scan < (char*)nersary_top ){
       Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
       int obj_size = GET_OBJECT_SIZE(obj);
-      trace_object(obj, copy_and_update);
+      trace_object(obj, copy_and_update_add_rems);
       scan += obj_size;
     }
     prev_nersary_top = nersary_top;
@@ -224,7 +216,7 @@ void minor_gc()
       Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
       int obj_size = GET_OBJECT_SIZE(obj);
       has_young_child = FALSE;
-      trace_object(obj, copy_and_update);
+      trace_object(obj, copy_and_update_add_rems);
       if( has_young_child ){
 	add_remembered_set( obj );
       }
@@ -263,6 +255,11 @@ void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
 void copy_and_update(Cell* objp)
 {
   *objp = copy_object(*objp);
+}
+
+void copy_and_update_add_rems(Cell* objp)
+{
+  *objp = copy_object(*objp);
   if( !IS_TENURED( *objp ) ){
     has_young_child = TRUE;
   }
@@ -281,11 +278,7 @@ void* copy_object(Cell obj)
   }
   size = GET_OBJECT_SIZE(obj);
   Generational_GC_Header* new_header = NULL;
-#if defined( _CUT )
-  AGE(obj)++;
-#else
   INC_AGE(obj);
-#endif
   if( IS_OLD( obj ) ){
     //Promotion.
     new_header = (Generational_GC_Header*)tenured_top;
@@ -407,12 +400,7 @@ void slide()
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
-#if defined( _CUT )
-      CLEAR_MARK(cell);
-      CLEAR_VISIT(cell);
-#else
-      (((Generational_GC_Header*)cell)-1)->meta_data = 0;
-#endif
+      (((Generational_GC_Header*)cell)-1)->flags = 0;
       move_object(cell);
       tenured_new_top += obj_size;
     }
