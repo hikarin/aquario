@@ -38,6 +38,7 @@ static void reference_count_stack_check( Cell cell );
 static void reference_check();
 static void mark_obj(Cell* objp);
 static void clear_obj(Cell* objp);
+static int get_total_chunk_size();
 
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top = 0;
@@ -54,6 +55,7 @@ static void scan_zct();
 static void root_inc_cnt(Cell* objp);
 static void root_dec_cnt(Cell* objp);
 static int zct_top          = 0;
+static Boolean is_root_inc  = FALSE;
 
 #define GET_OBJECT_SIZE(obj) (((Reference_Count_Header*)(obj)-1)->obj_size)
 
@@ -106,8 +108,8 @@ void* gc_malloc_reference_count( size_t size )
   GET_OBJECT_SIZE(ret) = allocate_size;
   REF_CNT(ret)         = 0;
 #if defined( _DEBUG )
-  CLEAR_MARK(ret);
-  reference_check();
+  //  CLEAR_MARK(ret);
+  //  reference_check();
 #endif
   return ret;
 }
@@ -157,12 +159,11 @@ char* get_free_chunk( size_t size )
 
 void reclaim_obj( Cell obj )
 {
-  size_t obj_size = GET_OBJECT_SIZE( obj );
   REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
   
   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
-  
+  size_t obj_size = GET_OBJECT_SIZE( obj );  
   if( !freelist ){
     //No object in freelist.
     freelist             = obj_top;
@@ -265,13 +266,27 @@ void mark_obj(Cell* objp)
 
 void mark()
 {
+  int marked_size = 0;
   mark_stack_top = 0;
   trace_roots(mark_obj);
 
   while( mark_stack_top > 0 ){
     Cell obj = mark_stack[--mark_stack_top];
+    marked_size += GET_OBJECT_SIZE(obj);
     trace_object(obj, mark_obj);
   }
+  //  printf("marked: %d ", marked_size);
+}
+
+int get_total_chunk_size()
+{
+  int chunk_size = 0;
+  Free_Chunk* free_chunk = freelist;
+  while( free_chunk ){
+    chunk_size += free_chunk->chunk_size;
+    free_chunk = free_chunk->next;
+  }
+  return chunk_size;
 }
 
 void reference_check()
@@ -280,23 +295,29 @@ void reference_check()
 
   char* scan = heap;
   char* free_list_scan = (char*)freelist;
+  int chunk_size = 0;
+  int leaked_size = 0;
   while( scan < heap + HEAP_SIZE ){
     if( scan == free_list_scan ){
       //scan is chunk.
       Free_Chunk* chunk = (Free_Chunk*)scan;
       
       scan += chunk->chunk_size;
+      chunk_size += chunk->chunk_size;
       free_list_scan = (char*)chunk->next;
     }else{
-      Cell obj = (Cell)((Reference_Count_Header*)heap + 1);
+      Cell obj = (Cell)((Reference_Count_Header*)scan + 1);
       if( !IS_MARKED(obj) ){
-	printf("%d ", type(obj) );
+	printf("  !MARKED: %d(%p)", type(obj), obj );
+	//	exit(-1);
+	leaked_size += GET_OBJECT_SIZE(obj);
       }
       int obj_size = GET_OBJECT_SIZE(obj);
       scan += obj_size;
       //      printf("%d ", obj_size);
     }
   }
+  printf("leaked size: %d(%d)\n", leaked_size, get_total_chunk_size());
   clear();
 }
 #endif //_DEBUG
@@ -326,8 +347,15 @@ void decrement_count(Cell* objp)
   Cell obj = *objp;
   if( obj ){
     DEC_REF_CNT( obj );
-    if( REF_CNT( obj ) == 0 ){
-      add_zct(obj);
+    if( REF_CNT( obj ) <= 0 ){
+      if( !is_root_inc ){
+	add_zct(obj);
+      }else{
+#if defined( _DEBUG )
+	//	printf("reclaim\n");
+#endif
+	reclaim_obj(obj);
+      }
     }
   }
 }
@@ -335,6 +363,9 @@ void decrement_count(Cell* objp)
 //Write Barrier.
 void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 {
+#if defined( _DEBUG )
+  //  printf("wb: %d: %d(%d)=> %d(%d)\n", type(obj), type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
+#endif
   increment_count( &newcell );
   decrement_count( cellp );
   *cellp = newcell;
@@ -381,20 +412,44 @@ void add_zct(Cell obj)
 void scan_zct()
 {
   Cell obj;
+#if defined( _DEBUG )
+  int reclaimed = 0;
+  //  int prev_chunk_size = get_total_chunk_size();
+  printf("scan_zct(): ");
+#endif
+  int new_zct_top = 0;
   trace_roots(root_inc_cnt);
-  for(; zct_top>0; zct_top--){
-    obj = zct[zct_top-1];
+  is_root_inc = TRUE;
+  int n = 0;
+  for(; n<zct_top; n++){
+    obj = zct[n];
+#if defined( _DEBUG )
+    //    printf("%d ", type(obj) );
+#endif
     if(REF_CNT(obj) <= 0){
-      //      printf("scan: %d, type; %d\n", zct_top, type(obj) );
+#if defined( _DEBUG )
+      reclaimed += GET_OBJECT_SIZE(obj);
+      //      printf("%d ", type(obj));
+#endif
       reclaim_obj(obj);
+    }else{
+      zct[new_zct_top++] = obj;
+#if defined( _DEBUG )
+      //      printf("new_zct_top; %d\n", new_zct_top);
+#endif
     }
   }
+  zct_top = new_zct_top;
+  is_root_inc = FALSE;
   trace_roots(root_dec_cnt);
 #if defined( _DEBUG )
-  memset(zct, 0, sizeof(zct));
+  int after_chunk_size = get_total_chunk_size();
+  //  printf("[scan_zct()] reclaimed_obj: %d, chunk_increase: %d\n", reclaimed, after_chunk_size - prev_chunk_size);
+  printf(" end\n");
 #endif //_DEBUG
 }
 
+//counter increment without recursion.
 void root_inc_cnt(Cell* objp)
 {
   Cell obj = *objp;
@@ -403,6 +458,7 @@ void root_inc_cnt(Cell* objp)
   }
 }
 
+//counter decrement without recursion.
 void root_dec_cnt(Cell* objp)
 {
   Cell obj = *objp;
