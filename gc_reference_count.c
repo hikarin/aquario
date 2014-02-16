@@ -445,7 +445,7 @@ void scan_zct()
 #if defined( _DEBUG )
   int after_chunk_size = get_total_chunk_size();
   //  printf("[scan_zct()] reclaimed_obj: %d, chunk_increase: %d\n", reclaimed, after_chunk_size - prev_chunk_size);
-  printf(" end\n");
+  printf(" end: %d\n", after_chunk_size);
 #endif //_DEBUG
 }
 
