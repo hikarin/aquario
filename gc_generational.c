@@ -9,30 +9,32 @@
 #include "aquario.h"
 #endif //_DEBUG
 
-//#define _CUT
-
 typedef struct generational_gc_header{
   int obj_size;
   int flags;
   Cell forwarding;
 }Generational_GC_Header;
 
-#define MASK_OBJ_AGE     (0x0000000F)
-#define MASK_MARK_BIT    (1<<4)
-#define MASK_VISIT_BIT   (1<<5)
-#define MASK_TENURED_BIT (1<<6)
+#define MASK_OBJ_AGE        (0x000000FF)
+#define MASK_MARK_BIT       (1<<8)
+#define MASK_REMEMBERED_BIT (1<<9)
+#define MASK_TENURED_BIT    (1<<10)
 
-#define IS_MARKED(obj) (((Generational_GC_Header*)(obj)-1)->flags & MASK_MARK_BIT)
-#define SET_MARK(obj) (((Generational_GC_Header*)(obj)-1)->flags |= MASK_MARK_BIT)
-#define CLEAR_MARK(obj) (((Generational_GC_Header*)(obj)-1)->flags =~ MASK_MARK_BIT)
+#define OBJ_HEADER(obj) ((Generational_GC_Header*)(obj)-1)
+#define OBJ_FLAGS(obj) ((OBJ_HEADER(obj))->flags)
 
-#define IS_VISITED(obj)   (((Generational_GC_Header*)(obj)-1)->flags & MASK_VISIT_BIT)
-#define SET_VISIT(obj)    (((Generational_GC_Header*)(obj)-1)->flags |= MASK_VISIT_BIT)
-#define CLEAR_VISIT(obj)  (((Generational_GC_Header*)(obj)-1)->flags =~ MASK_VISIT_BIT) 
+#define IS_MARKED(obj) (OBJ_FLAGS(obj) & MASK_MARK_BIT)
+#define SET_MARK(obj) (OBJ_FLAGS(obj) |= MASK_MARK_BIT)
+#define CLEAR_MARK(obj) (OBJ_FLAGS(obj) =~ MASK_MARK_BIT)
 
-#define AGE(obj) (((Generational_GC_Header*)(obj)-1)->flags & MASK_OBJ_AGE)
-#define IS_OLD(obj) (AGE(obj) >= TENURING_THRESHOLD)
-#define INC_AGE(obj) (((Generational_GC_Header*)(obj)-1)->flags++)
+#define IS_REMEMBERED(obj)   (OBJ_FLAGS(obj) & MASK_REMEMBERED_BIT)
+#define SET_REMEMBERED(obj)    (OBJ_FLAGS(obj) |= MASK_REMEMBERED_BIT)
+#define CLEAR_REMEMBERED(obj)  (OBJ_FLAGS(obj) =~ MASK_REMEMBERED_BIT)
+
+#define AGE(obj)     (OBJ_FLAGS(obj) & MASK_OBJ_AGE)
+#define IS_OLD(obj)  (AGE(obj) >= TENURING_THRESHOLD)
+//#define INC_AGE(obj) (OBJ_FLAGS(obj) = (OBJ_FLAGS(obj) & MASK_EXCLUDE_AGE) | (AGE(obj)+1))
+#define INC_AGE(obj) (OBJ_FLAGS(obj)++)
 
 static void gc_start_generational();
 static void minor_gc();
@@ -64,31 +66,25 @@ static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
 static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
-#define NERSARY_SIZE (HEAP_SIZE/3)
+#define NERSARY_SIZE (HEAP_SIZE/10)
 #define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
 #define TENURING_THRESHOLD 30
 
 #define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
 
-#if defined( _CUT )
-#define IS_TENURED(obj) (tenured_space <= (char*)(obj) && (char*)(obj) < tenured_space + TENURED_SIZE )
-#define IS_NERSARY(obj) ( (from_space <= (char*)(obj) && (char*)(obj) < from_space + NERSARY_SIZE ) || (to_space <= (char*)(obj) && (char*)(obj) < to_space + NERSARY_SIZE ) )
-#else
-
 #define IS_TENURED_OLD(obj) (tenured_space <= (char*)(obj) && (char*)(obj) < tenured_space + TENURED_SIZE )
 #define IS_NERSARY_OLD(obj) ( (from_space <= (char*)(obj) && (char*)(obj) < from_space + NERSARY_SIZE ) || (to_space <= (char*)(obj) && (char*)(obj) < to_space + NERSARY_SIZE ) )
 
-//#define IS_TENURED(obj)    (((Generational_GC_Header*)(obj)-1)->flags & MASK_TENURED_BIT)
-#define IS_TENURED(obj)    IS_TENURED_OLD(obj)
-#define SET_TENURED(obj)   (((Generational_GC_Header*)(obj)-1)->flags |= MASK_TENURED_BIT)
-#define CLEAR_TENURED(obj) (((Generational_GC_Header*)(obj)-1)->flags =~ MASK_TENURED_BIT)
-#define IS_NERSARY(obj)    (!(((Generational_GC_Header*)(obj)-1)->flags & MASK_TENURED_BIT))
-//#define IS_NERSARY(obj)    IS_NERSARY_OLD(obj)
-#endif
+#define IS_TENURED(obj)    (OBJ_FLAGS(obj) & MASK_TENURED_BIT)
+#define SET_TENURED(obj)   (OBJ_FLAGS(obj) |= MASK_TENURED_BIT)
+#define CLEAR_TENURED(obj) (OBJ_FLAGS(obj) =~ MASK_TENURED_BIT)
+#define IS_NERSARY(obj)    (!IS_TENURED(obj))
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
+
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj) || (to_space <= (char*)(obj) && (char*)(obj) < to_space+NERSARY_SIZE))
+//#define IS_COPIED(obj) (FORWARDING(obj) != (obj))
 
 #define IS_ALLOCATABLE_TENURED() (tenured_top + NERSARY_SIZE < tenured_space + TENURED_SIZE )
 
@@ -165,18 +161,7 @@ void gc_term_generational()
 #if defined( _DEBUG )
 void generational_gc_stack_check(Cell cell)
 {
-  if( !( (from_space <= (char*)cell && (char*)cell < from_space + NERSARY_SIZE) ||
-	 (tenured_space <= (char*)cell && (char*)cell < tenured_space + TENURED_SIZE ) ) ){
-#if defined( _CUT )
-        printf("[WARNING] cell %p points out of heap(age: %d)\n", cell, AGE(cell));
-        printf("\tfrom_space: %p - %p\n"
-	   "\tto_space: %p - %p\n"
-	   "tenured_space: %p - %p\n",
-	   from_space, from_space + NERSARY_SIZE,
-	   to_space, to_space + NERSARY_SIZE,
-	   tenured_space, tenured_space + TENURED_SIZE );
-#endif
-  }
+  //Do Nothing.
 }
 #endif //_DEBUG
 
@@ -233,6 +218,11 @@ void minor_gc()
     scan = prev_tenured_top;
     while( scan < (char*)tenured_top ){
       Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
+#if defined( _DEBUG )
+      if( !IS_TENURED(obj) ){
+	printf("OMG: not TENURED\n");
+      }
+#endif
       int obj_size = GET_OBJECT_SIZE(obj);
       has_young_child = FALSE;
       trace_object(obj, copy_and_update_add_rems);
@@ -252,29 +242,20 @@ void minor_gc()
 
 void add_remembered_set(Cell obj)
 {
-  if( !IS_VISITED(obj) ){
+  if( !IS_REMEMBERED(obj) ){
     if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-      //TODO: check whether remembered set has vacancy
       printf("remembered set full.\n");
       exit(-1);
     }
     remembered_set[remembered_set_top++] = obj;
-    SET_VISIT(obj);
+    SET_REMEMBERED(obj);
   }
 }
 
 void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
 {
-#if defined( _CUT )
   if( IS_TENURED(obj) && IS_NERSARY(newcell) ){
-#else
-    //  if( IS_TENURED(obj) && IS_NERSARY_OLD(newcell) ){
-    if( IS_TENURED(obj) && IS_NERSARY(newcell) ){
-#endif
-    add_remembered_set(obj);
-#if defined( _DEBUG )
-    printf("added\n");
-#endif
+      add_remembered_set(obj);
   }
   *cellp = newcell;
 }
@@ -305,11 +286,22 @@ void* copy_object(Cell obj)
   }
   size = GET_OBJECT_SIZE(obj);
   Generational_GC_Header* new_header = NULL;
+#if defined( _DEBUG )
+  printf("FLAGS: %d(%d) => ", OBJ_FLAGS(obj), AGE(obj));
+  if( AGE(obj)  >= TENURING_THRESHOLD ){
+    printf("why?? ");
+  }
+#endif
   INC_AGE(obj);
-  if( IS_OLD( obj ) ){
+#if defined( _DEBUG )
+  printf("FLAGS: %d(%d)\n", OBJ_FLAGS(obj), AGE(obj));
+#endif
+
+  if( IS_OLD(obj) ){
     //Promotion.
     new_header = (Generational_GC_Header*)tenured_top;
     tenured_top += size;
+    SET_TENURED(obj);
   }else{
     new_header = (Generational_GC_Header*)nersary_top;
     nersary_top += size;
@@ -320,9 +312,6 @@ void* copy_object(Cell obj)
   new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
   FORWARDING(obj) = new_cell;
   FORWARDING(new_cell) = new_cell;
-#if !defined( _CUT )
-  SET_TENURED(new_cell);
-#endif
   return new_cell;
 }
 
@@ -432,6 +421,7 @@ void slide()
     if( IS_MARKED(cell) ){
       (((Generational_GC_Header*)cell)-1)->flags = 0;
       move_object(cell);
+      //      SET_TENURED(cell);
       tenured_new_top += obj_size;
     }
     scanned += obj_size;
