@@ -9,15 +9,18 @@
 #include "aquario.h"
 #endif //_DEBUG
 
+//#define _CUT
+
 typedef struct generational_gc_header{
   int obj_size;
   int flags;
   Cell forwarding;
 }Generational_GC_Header;
 
-#define MASK_OBJ_AGE    (0x0000000F)
-#define MASK_MARK_BIT   (1<<4)
-#define MASK_VISIT_BIT  (1<<5)
+#define MASK_OBJ_AGE     (0x0000000F)
+#define MASK_MARK_BIT    (1<<4)
+#define MASK_VISIT_BIT   (1<<5)
+#define MASK_TENURED_BIT (1<<6)
 
 #define IS_MARKED(obj) (((Generational_GC_Header*)(obj)-1)->flags & MASK_MARK_BIT)
 #define SET_MARK(obj) (((Generational_GC_Header*)(obj)-1)->flags |= MASK_MARK_BIT)
@@ -67,8 +70,22 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
+
+#if defined( _CUT )
 #define IS_TENURED(obj) (tenured_space <= (char*)(obj) && (char*)(obj) < tenured_space + TENURED_SIZE )
 #define IS_NERSARY(obj) ( (from_space <= (char*)(obj) && (char*)(obj) < from_space + NERSARY_SIZE ) || (to_space <= (char*)(obj) && (char*)(obj) < to_space + NERSARY_SIZE ) )
+#else
+
+#define IS_TENURED_OLD(obj) (tenured_space <= (char*)(obj) && (char*)(obj) < tenured_space + TENURED_SIZE )
+#define IS_NERSARY_OLD(obj) ( (from_space <= (char*)(obj) && (char*)(obj) < from_space + NERSARY_SIZE ) || (to_space <= (char*)(obj) && (char*)(obj) < to_space + NERSARY_SIZE ) )
+
+//#define IS_TENURED(obj)    (((Generational_GC_Header*)(obj)-1)->flags & MASK_TENURED_BIT)
+#define IS_TENURED(obj)    IS_TENURED_OLD(obj)
+#define SET_TENURED(obj)   (((Generational_GC_Header*)(obj)-1)->flags |= MASK_TENURED_BIT)
+#define CLEAR_TENURED(obj) (((Generational_GC_Header*)(obj)-1)->flags =~ MASK_TENURED_BIT)
+#define IS_NERSARY(obj)    (!(((Generational_GC_Header*)(obj)-1)->flags & MASK_TENURED_BIT))
+//#define IS_NERSARY(obj)    IS_NERSARY_OLD(obj)
+#endif
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj) || (to_space <= (char*)(obj) && (char*)(obj) < to_space+NERSARY_SIZE))
@@ -150,13 +167,15 @@ void generational_gc_stack_check(Cell cell)
 {
   if( !( (from_space <= (char*)cell && (char*)cell < from_space + NERSARY_SIZE) ||
 	 (tenured_space <= (char*)cell && (char*)cell < tenured_space + TENURED_SIZE ) ) ){
-    printf("[WARNING] cell %p points out of heap(age: %d)\n", cell, AGE(cell));
-    printf("\tfrom_space: %p - %p\n"
+#if defined( _CUT )
+        printf("[WARNING] cell %p points out of heap(age: %d)\n", cell, AGE(cell));
+        printf("\tfrom_space: %p - %p\n"
 	   "\tto_space: %p - %p\n"
 	   "tenured_space: %p - %p\n",
 	   from_space, from_space + NERSARY_SIZE,
 	   to_space, to_space + NERSARY_SIZE,
 	   tenured_space, tenured_space + TENURED_SIZE );
+#endif
   }
 }
 #endif //_DEBUG
@@ -246,8 +265,16 @@ void add_remembered_set(Cell obj)
 
 void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
 {
+#if defined( _CUT )
   if( IS_TENURED(obj) && IS_NERSARY(newcell) ){
+#else
+    //  if( IS_TENURED(obj) && IS_NERSARY_OLD(newcell) ){
+    if( IS_TENURED(obj) && IS_NERSARY(newcell) ){
+#endif
     add_remembered_set(obj);
+#if defined( _DEBUG )
+    printf("added\n");
+#endif
   }
   *cellp = newcell;
 }
@@ -293,6 +320,9 @@ void* copy_object(Cell obj)
   new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
   FORWARDING(obj) = new_cell;
   FORWARDING(new_cell) = new_cell;
+#if !defined( _CUT )
+  SET_TENURED(new_cell);
+#endif
   return new_cell;
 }
 
