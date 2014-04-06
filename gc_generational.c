@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include "aquario.h"
 
+//#define _CUT
+
 #if defined( _DEBUG )
 #include "aquario.h"
 #endif //_DEBUG
@@ -15,6 +17,10 @@ typedef struct generational_gc_header{
   Cell forwarding;
 }Generational_GC_Header;
 
+#define NERSARY_SIZE (HEAP_SIZE/10)
+#define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
+#define TENURING_THRESHOLD 30
+
 #define MASK_OBJ_AGE        (0x000000FF)
 #define MASK_MARK_BIT       (1<<8)
 #define MASK_REMEMBERED_BIT (1<<9)
@@ -23,9 +29,25 @@ typedef struct generational_gc_header{
 #define OBJ_HEADER(obj) ((Generational_GC_Header*)(obj)-1)
 #define OBJ_FLAGS(obj) ((OBJ_HEADER(obj))->flags)
 
+#if defined( _CUT )
 #define IS_MARKED(obj) (OBJ_FLAGS(obj) & MASK_MARK_BIT)
 #define SET_MARK(obj) (OBJ_FLAGS(obj) |= MASK_MARK_BIT)
 #define CLEAR_MARK(obj) (OBJ_FLAGS(obj) =~ MASK_MARK_BIT)
+#else //defined( _CUT )
+//mark table: a bit per WORD
+static int nersary_mark_tbl[NERSARY_SIZE/64+1];
+static int tenured_mark_tbl[TENURED_SIZE/64+1];
+
+#define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)obj-tenured_top)/64 )] & (1 << (((char*)obj-tenured_top)%64) ))
+#define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)obj-from_space)/64 )] & (1 << (((char*)obj-from_space)%64) ) )
+#define IS_MARKED(obj) (IS_OLD(obj) ? IS_MARKED_TENURED(obj) : IS_MARKED_NERSARY(obj))
+
+#define SET_MARK(obj) if(IS_OLD(obj)){					\
+    tenured_mark_tbl[( ((char*)obj-tenured_top)/64 )] |= (1 << (((char*)obj-tenured_top)%64) ); \
+  }else{								\
+  nersary_mark_tbl[( ((char*)obj-from_space)/64 )] |= (1 << (((char*)obj-from_space)%64) ); \
+  }
+#endif //defined( _CUT )
 
 #define IS_REMEMBERED(obj)   (OBJ_FLAGS(obj) & MASK_REMEMBERED_BIT)
 #define SET_REMEMBERED(obj)    (OBJ_FLAGS(obj) |= MASK_REMEMBERED_BIT)
@@ -65,10 +87,6 @@ static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
 static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
-
-#define NERSARY_SIZE (HEAP_SIZE/10)
-#define TENURED_SIZE (HEAP_SIZE-NERSARY_SIZE*2)
-#define TENURING_THRESHOLD 30
 
 #define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
@@ -128,6 +146,12 @@ void gc_init_generational(GC_Init_Info* gc_info)
 #if defined( _DEBUG )
   gc_info->gc_stack_check   = generational_gc_stack_check;
 #endif //_DEBUG
+
+#if defined( _CUT )
+#else
+  memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
+  memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
+#endif
 }
 
 
@@ -320,7 +344,11 @@ void mark_object(Cell* objp)
 {
   Cell obj = *objp;
   if( obj && !IS_MARKED(obj) ){
+#if defined( _CUT )
     SET_MARK(obj);
+#else
+    SET_MARK(obj)
+#endif
     if(mark_stack_top >= MARK_STACK_SIZE){
       printf("[GC] mark stack overflow.\n");
       exit(-1);
@@ -367,7 +395,7 @@ void calc_new_address()
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
-    if( IS_MARKED(cell) ){
+    if( IS_MARKED_TENURED(cell) ){
       FORWARDING(cell) = (Cell)((Generational_GC_Header*)tenured_new_top+1);
       tenured_new_top += obj_size;
     }
@@ -386,7 +414,7 @@ void update_pointer()
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
-    if( IS_MARKED( cell ) ){
+    if( IS_MARKED_TENURED( cell ) ){
       has_young_child = FALSE;
       trace_object(cell, update_tenured);
       if( has_young_child ){
@@ -400,7 +428,7 @@ void update_pointer()
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
-    if( IS_MARKED( cell ) ){
+    if( IS_MARKED_NERSARY( cell ) ){
       trace_object(cell, update_nersary);
     }
     scanned += obj_size;
@@ -418,7 +446,7 @@ void slide()
   while( scanned < tenured_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
-    if( IS_MARKED(cell) ){
+    if( IS_MARKED_TENURED(cell) ){
       (((Generational_GC_Header*)cell)-1)->flags = 0;
       move_object(cell);
       //      SET_TENURED(cell);
@@ -429,6 +457,7 @@ void slide()
   tenured_top = tenured_new_top;
 
   //clear mark bit in young objects.
+#if defined( _CUT )
   scanned = from_space;
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
@@ -438,6 +467,10 @@ void slide()
     }
     scanned += obj_size;
   }
+#else
+  memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
+  memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
+#endif
 }
 
 //Start Garbage Collection.
