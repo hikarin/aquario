@@ -108,6 +108,49 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
   }
 }
 
+Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
+  if( cell ){
+    switch(type(cell)){
+    case T_NONE:
+      break;
+    case T_CHAR:
+      break;
+    case T_STRING:
+      break;
+    case T_INTEGER:
+      break;
+    case T_PAIR:
+      if(trace(&(car(cell)))){
+	return TRUE;
+      }
+      if(trace(&(cdr(cell)))){
+	return TRUE;
+      }
+      break;
+    case T_PROC:
+      break;
+    case T_SYNTAX:
+      break;
+    case T_SYMBOL:
+      break;
+    case T_LAMBDA:
+      if(trace(&(lambdaparam(cell)))){
+	return TRUE;
+      }
+      if(trace(&(lambdaexp(cell)))){
+	return TRUE;
+      }
+      break;
+    default:
+      printf("Object Corrupted.\n");
+      printf("%d\n", type(cell));
+      exit(-1);
+    }
+  }
+
+  return FALSE;
+}
+
 void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell)
 {
   *cellp = cell;

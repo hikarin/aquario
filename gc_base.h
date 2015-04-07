@@ -6,6 +6,7 @@
 
 void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );
+Boolean trace_object_bool( Cell cell, Boolean (*trace) (Cell* cellp) );
 
 #if defined( _DEBUG )
 void print_env();
