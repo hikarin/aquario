@@ -20,9 +20,8 @@ typedef struct generational_gc_header{
 #define TENURING_THRESHOLD  (6)
 
 #define MASK_OBJ_AGE        (0x000000FF)
-#define MASK_MARK_BIT       (1<<8)
-#define MASK_REMEMBERED_BIT (1<<9)
-#define MASK_TENURED_BIT    (1<<10)
+#define MASK_REMEMBERED_BIT (1<<8)
+#define MASK_TENURED_BIT    (1<<9)
 
 #define OBJ_HEADER(obj) ((Generational_GC_Header*)(obj)-1)
 #define OBJ_FLAGS(obj) ((OBJ_HEADER(obj))->flags)
@@ -31,12 +30,12 @@ typedef struct generational_gc_header{
 static int nersary_mark_tbl[NERSARY_SIZE/64+1];
 static int tenured_mark_tbl[TENURED_SIZE/64+1];
 
-#define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)obj-tenured_top)/64 )] & (1 << (((char*)obj-tenured_top)%64) ))
+#define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)obj-tenured_space)/64 )] & (1 << (((char*)obj-tenured_space)%64) ))
 #define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)obj-from_space)/64 )] & (1 << (((char*)obj-from_space)%64) ) )
 #define IS_MARKED(obj) (IS_OLD(obj) ? IS_MARKED_TENURED(obj) : IS_MARKED_NERSARY(obj))
 
 #define SET_MARK(obj) if(IS_OLD(obj)){					\
-    tenured_mark_tbl[( ((char*)obj-tenured_top)/64 )] |= (1 << (((char*)obj-tenured_top)%64) ); \
+    tenured_mark_tbl[( ((char*)obj-tenured_space)/64 )] |= (1 << (((char*)obj-tenured_space)%64) ); \
   }else{								\
   nersary_mark_tbl[( ((char*)obj-from_space)/64 )] |= (1 << (((char*)obj-from_space)%64) ); \
   }
@@ -47,7 +46,6 @@ static int tenured_mark_tbl[TENURED_SIZE/64+1];
 
 #define AGE(obj)     (OBJ_FLAGS(obj) & MASK_OBJ_AGE)
 #define IS_OLD(obj)  (AGE(obj) >= TENURING_THRESHOLD)
-//#define INC_AGE(obj) (OBJ_FLAGS(obj) = (OBJ_FLAGS(obj) & MASK_EXCLUDE_AGE) | (AGE(obj)+1))
 #define INC_AGE(obj) (OBJ_FLAGS(obj)++)
 
 static void gc_start_generational();
@@ -74,7 +72,7 @@ static char* tenured_space   = NULL;
 static char* tenured_top     = NULL;
 
 //remembered set.
-#define REMEMBERED_SET_SIZE 1000
+#define REMEMBERED_SET_SIZE 2000
 static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
@@ -99,8 +97,7 @@ static Cell mark_stack[MARK_STACK_SIZE];
 
 static void mark_object(Cell* objp);
 static void move_object(Cell obj);
-static void update_tenured(Cell* objp);
-static void update_nersary(Cell* objp);
+static void update_forwarding(Cell* objp);
 static void calc_new_address();
 static void update_pointer();
 static void slide();
@@ -173,10 +170,10 @@ void generational_gc_stack_check(Cell cell)
 //Start Garbage Collection.
 void gc_start_generational()
 {
+  minor_gc();
+
   if( IS_ALLOCATABLE_TENURED() ){
-    minor_gc();
   }else{
-    minor_gc();
     printf("------- major GC start --------\n");
     major_gc();
     if( !IS_ALLOCATABLE_TENURED() ){
@@ -296,6 +293,9 @@ void* copy_object(Cell obj)
     new_header = (Generational_GC_Header*)tenured_top;
     tenured_top += size;
     SET_TENURED(obj);
+#if defined( _DEBUG )
+    //    printf("promoted: %p(top; %p)\n", obj, tenured_space);
+#endif
   }else{
     new_header = (Generational_GC_Header*)nersary_top;
     nersary_top += size;
@@ -331,25 +331,14 @@ void move_object(Cell obj)
 
   memcpy(new_header, old_header, size);
   Cell new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
+  SET_TENURED(obj);
 
   FORWARDING(new_cell) = new_cell;
 }
 
-void update_tenured(Cell* cellp)
+void update_forwarding(Cell* cellp)
 {
-  if( *cellp ){
-    *cellp = FORWARDING(*cellp);
-#if defined( _CUT )
-    if( !IS_TENURED( *cellp ) ){
-      has_young_child = TRUE;
-    }
-#endif
-  }
-}
-
-void update_nersary(Cell* cellp)
-{
-  if( *cellp ){
+  if(*cellp){
     *cellp = FORWARDING(*cellp);
   }
 }
@@ -373,7 +362,7 @@ void calc_new_address()
 
 void update_pointer()
 {
-  trace_roots(update_nersary);
+  trace_roots(update_forwarding);
 
   char* scanned = NULL;
   Cell cell = NULL;
@@ -383,13 +372,13 @@ void update_pointer()
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED_TENURED( cell ) ){
-      trace_object(cell, update_tenured);
-      if( trace_object_bool(cell, is_nersary_obj) && !IS_REMEMBERED(cell) ){
+      trace_object(cell, update_forwarding);
+      if( trace_object_bool(cell, is_nersary_obj) ){
 	if( remembered_set_top >= REMEMBERED_SET_SIZE ){
 	  printf("remembered set full.\n");
 	  exit(-1);
 	}
-	add_remembered_set(cell);
+	add_remembered_set(FORWARDING(cell));
       }
     }
     scanned += obj_size;
@@ -399,9 +388,7 @@ void update_pointer()
   while( scanned < nersary_top ){
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
-    if( IS_MARKED_NERSARY( cell ) ){
-      trace_object(cell, update_nersary);
-    }
+    trace_object(cell, update_forwarding);
     scanned += obj_size;
   }
 }
@@ -418,9 +405,7 @@ void slide()
     cell = (Cell)((Generational_GC_Header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED_TENURED(cell) ){
-      (((Generational_GC_Header*)cell)-1)->flags = 0;
       move_object(cell);
-      //      SET_TENURED(cell);
       tenured_new_top += obj_size;
     }
     scanned += obj_size;
@@ -455,7 +440,8 @@ void compact()
 void major_gc()
 {
 #if defined( _DEBUG )
-  printf("major GC start ... ");
+  printf("major GC start ...");
+  printf("remembered_set_top: %d  ", remembered_set_top);
 #endif
   //initialization.
   mark_stack_top = 0;
@@ -463,11 +449,15 @@ void major_gc()
 
   //mark phase.
   mark();
+#if defined( _DEBUG )
+  printf("[mark done] ");
+#endif
 
   //compaction phase.
   compact();
-
 #if defined( _DEBUG )
+  printf("[compact done] ");
+  printf("remembered_set_top: %d  ", remembered_set_top);
   printf("major GC end\n");
 #endif
 }
