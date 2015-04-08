@@ -72,7 +72,7 @@ static char* tenured_space   = NULL;
 static char* tenured_top     = NULL;
 
 //remembered set.
-#define REMEMBERED_SET_SIZE 2000
+#define REMEMBERED_SET_SIZE 3000
 static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
@@ -186,6 +186,9 @@ void gc_start_generational()
 /**** for Minor GC ****/
 void minor_gc()
 {
+#if defined( _DEBUG )
+  static int minor_gc_cnt = 0;
+#endif
   nersary_top = to_space;
   char* prev_nersary_top = nersary_top;
   char* prev_tenured_top = tenured_top;
@@ -239,6 +242,9 @@ void minor_gc()
   void* tmp = from_space;
   from_space = to_space;
   to_space = tmp;
+#if defined( _DEBUG )
+  printf("minor_gc: %d\n", minor_gc_cnt++);
+#endif
 }
 
 void add_remembered_set(Cell obj)
@@ -334,6 +340,9 @@ void move_object(Cell obj)
   SET_TENURED(obj);
 
   FORWARDING(new_cell) = new_cell;
+  if(IS_REMEMBERED(new_cell)){
+    add_remembered_set(new_cell);
+  }
 }
 
 void update_forwarding(Cell* cellp)
@@ -378,7 +387,8 @@ void update_pointer()
 	  printf("remembered set full.\n");
 	  exit(-1);
 	}
-	add_remembered_set(FORWARDING(cell));
+	//	add_remembered_set(FORWARDING(cell));
+	SET_REMEMBERED(cell);
       }
     }
     scanned += obj_size;
