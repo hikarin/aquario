@@ -15,9 +15,9 @@ typedef struct generational_gc_header{
   Cell forwarding;
 }Generational_GC_Header;
 
-#define NERSARY_SIZE (HEAP_SIZE/8)
+#define NERSARY_SIZE (HEAP_SIZE/5)
 #define TENURED_SIZE (HEAP_SIZE-(NERSARY_SIZE*2))
-#define TENURING_THRESHOLD  (6)
+#define TENURING_THRESHOLD  (15)
 
 #define MASK_OBJ_AGE        (0x000000FF)
 #define MASK_REMEMBERED_BIT (1<<8)
@@ -40,7 +40,7 @@ static int tenured_mark_tbl[TENURED_SIZE/64+1];
   nersary_mark_tbl[( ((char*)obj-from_space)/64 )] |= (1 << (((char*)obj-from_space)%64) ); \
   }
 
-#define IS_REMEMBERED(obj)   (OBJ_FLAGS(obj) & MASK_REMEMBERED_BIT)
+#define IS_REMEMBERED(obj)     (OBJ_FLAGS(obj) & MASK_REMEMBERED_BIT)
 #define SET_REMEMBERED(obj)    (OBJ_FLAGS(obj) |= MASK_REMEMBERED_BIT)
 #define CLEAR_REMEMBERED(obj)  (OBJ_FLAGS(obj) =~ MASK_REMEMBERED_BIT)
 
@@ -172,9 +172,7 @@ void gc_start_generational()
 {
   minor_gc();
 
-  if( IS_ALLOCATABLE_TENURED() ){
-  }else{
-    printf("------- major GC start --------\n");
+  if( !IS_ALLOCATABLE_TENURED() ){
     major_gc();
     if( !IS_ALLOCATABLE_TENURED() ){
       printf("Heap Exhausted!\n");
@@ -186,9 +184,6 @@ void gc_start_generational()
 /**** for Minor GC ****/
 void minor_gc()
 {
-#if defined( _DEBUG )
-  static int minor_gc_cnt = 0;
-#endif
   nersary_top = to_space;
   char* prev_nersary_top = nersary_top;
   char* prev_tenured_top = tenured_top;
@@ -242,9 +237,6 @@ void minor_gc()
   void* tmp = from_space;
   from_space = to_space;
   to_space = tmp;
-#if defined( _DEBUG )
-  printf("minor_gc: %d\n", minor_gc_cnt++);
-#endif
 }
 
 void add_remembered_set(Cell obj)
@@ -299,9 +291,6 @@ void* copy_object(Cell obj)
     new_header = (Generational_GC_Header*)tenured_top;
     tenured_top += size;
     SET_TENURED(obj);
-#if defined( _DEBUG )
-    //    printf("promoted: %p(top; %p)\n", obj, tenured_space);
-#endif
   }else{
     new_header = (Generational_GC_Header*)nersary_top;
     nersary_top += size;
@@ -387,7 +376,6 @@ void update_pointer()
 	  printf("remembered set full.\n");
 	  exit(-1);
 	}
-	//	add_remembered_set(FORWARDING(cell));
 	SET_REMEMBERED(cell);
       }
     }
