@@ -71,7 +71,9 @@ void trace_roots(void (*trace) (Cell* cellp)){
   //trace env.
   int i;
   for( i=0; i<ENVSIZE; i++ ){
-    trace( &env[i] );
+    if( env[i] ){
+      trace( &env[i] );
+    }
   }
 }
 
