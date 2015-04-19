@@ -15,7 +15,7 @@ typedef struct generational_gc_header{
   Cell forwarding;
 }Generational_GC_Header;
 
-#define NERSARY_SIZE (HEAP_SIZE/8)
+#define NERSARY_SIZE (HEAP_SIZE/10)
 #define TENURED_SIZE (HEAP_SIZE-(NERSARY_SIZE*2))
 #define TENURING_THRESHOLD  (50)
 
@@ -24,7 +24,19 @@ typedef struct generational_gc_header{
 #define MASK_TENURED_BIT    (1<<9)
 
 #define OBJ_HEADER(obj) ((Generational_GC_Header*)(obj)-1)
+
+#define IS_TENURED(obj)    (OBJ_FLAGS(obj) & MASK_TENURED_BIT)
+#define SET_TENURED(obj)   (OBJ_FLAGS(obj) |= MASK_TENURED_BIT)
+#define IS_NERSARY(obj)    (!IS_TENURED(obj))
+
 #define OBJ_FLAGS(obj) ((OBJ_HEADER(obj))->flags)
+
+#define IS_REMEMBERED(obj)     (OBJ_FLAGS(obj) & MASK_REMEMBERED_BIT)
+#define SET_REMEMBERED(obj)    (OBJ_FLAGS(obj) |= MASK_REMEMBERED_BIT)
+
+#define AGE(obj)     (OBJ_FLAGS(obj) & MASK_OBJ_AGE)
+#define IS_OLD(obj)  (AGE(obj) >= TENURING_THRESHOLD)
+#define INC_AGE(obj) (OBJ_FLAGS(obj)++)
 
 //mark table: a bit per WORD
 static int nersary_mark_tbl[NERSARY_SIZE/64+1];
@@ -37,14 +49,6 @@ static int tenured_mark_tbl[TENURED_SIZE/64+1];
 #define SET_MARK_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/64 )] |= (1 << (((char*)(obj)-tenured_space)%64) ))
 #define SET_MARK_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/64 )] |= (1 << (((char*)(obj)-from_space)%64) ))
 #define SET_MARK(obj)  (IS_TENURED(obj) ? SET_MARK_TENURED(obj) : SET_MARK_NERSARY(obj))
-
-#define IS_REMEMBERED(obj)     (OBJ_FLAGS(obj) & MASK_REMEMBERED_BIT)
-#define SET_REMEMBERED(obj)    (OBJ_FLAGS(obj) |= MASK_REMEMBERED_BIT)
-#define CLEAR_REMEMBERED(obj)  (OBJ_FLAGS(obj) =~ MASK_REMEMBERED_BIT)
-
-#define AGE(obj)     (OBJ_FLAGS(obj) & MASK_OBJ_AGE)
-#define IS_OLD(obj)  (AGE(obj) >= TENURING_THRESHOLD)
-#define INC_AGE(obj) (OBJ_FLAGS(obj)++)
 
 static void gc_start_generational();
 static void minor_gc();
@@ -78,11 +82,6 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
-
-#define IS_TENURED(obj)    (OBJ_FLAGS(obj) & MASK_TENURED_BIT)
-#define SET_TENURED(obj)   (OBJ_FLAGS(obj) |= MASK_TENURED_BIT)
-#define CLEAR_TENURED(obj) (OBJ_FLAGS(obj) =~ MASK_TENURED_BIT)
-#define IS_NERSARY(obj)    (!IS_TENURED(obj))
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 
@@ -143,7 +142,7 @@ void* gc_malloc_generational( size_t size )
   Generational_GC_Header* new_header = (Generational_GC_Header*)nersary_top;
   Cell ret = (Cell)(new_header+1);
   int allocate_size = ( size + sizeof(Generational_GC_Header) + 3 ) / 4 * 4;
-  memset(new_header, 0, allocate_size);
+  OBJ_FLAGS(ret) = 0;
   nersary_top += allocate_size;
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
