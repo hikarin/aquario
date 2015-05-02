@@ -37,6 +37,20 @@ Cell newCell(Type t, size_t size);
 #define isProc(p)       ((p)->_type==T_PROC)
 #define isSyntax(p)     ((p)->_type==T_SYNTAX)
 #define isLambda(p)     ((p)->_type==T_LAMBDA)
+
+#define PUSH_ARGS2(c1, c2)                \
+  pushArg(c1);                            \
+  pushArg(c2);
+
+#define PUSH_ARGS3(c1, c2, c3)            \
+  pushArg(c1);                            \
+  pushArg(c2);                            \
+  pushArg(c3);
+
+#define PUSH_ARG4(c1, c2, c3, c4)         \
+  PUSH_ARGS2(c1, c2)                      \
+  PUSH_ARGS2(c3, c4)
+
 void setString(Cell c, char* str);
 
 Cell clone(Cell c);

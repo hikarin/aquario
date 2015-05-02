@@ -68,8 +68,7 @@ Cell intCell(int val)
 
 Cell pairCell(Cell a, Cell d)
 {
-  pushArg(a);
-  pushArg(d);
+  PUSH_ARGS2(a, d);
   Cell cons     = newCell(T_PAIR, sizeof(struct cell));
 
   //set cdr cell.
@@ -108,8 +107,7 @@ Cell symbolCell(char* symbol)
 
 Cell lambdaCell(Cell param, Cell exp)
 {
-  pushArg(param);
-  pushArg(exp);
+  PUSH_ARGS2(param, exp);
   Cell c = newCell(T_LAMBDA, sizeof(struct cell));
   gc_init_ptr( &lambdaexp(c), popArg() );
   gc_init_ptr( &lambdaparam(c), popArg() );
@@ -230,8 +228,7 @@ Cell evalExp(Cell exp)
 	setReturn( getVar(symbolname(exp)) );
       }
     }else if( type(exp) == T_PAIR ){
-      pushArg(exp);                                       //=> [.... exp]
-      pushArg(exps);                                      //=> [.... exp exps]
+      PUSH_ARGS2(exp, exps)
       Cell proc = evalExp(car(exp));
       exps = popArg();                                    //=> [.... exp]
       exp = popArg();                                     //=> [....]
@@ -260,8 +257,7 @@ Cell evalExp(Cell exp)
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      pushArg(params);
-	      pushArg(exps);
+	      PUSH_ARGS2(params, exps)
 	      args = cloneTree(args);
 	      args = applyList(args);
 	      exps = popArg();
@@ -280,9 +276,7 @@ Cell evalExp(Cell exp)
 	      setReturn(UNDEF);
 	    }else{
 	      Cell tmps = lambdaexp(proc);
-	      pushArg(exp);
-	      pushArg(params);
-	      pushArg(tmps);                              //=> [....exps exp params tmps]
+	      PUSH_ARGS3(exp, params, tmps)
 	      args = cloneTree(args);
 	      args = applyList(args);
 	      tmps = popArg();                            //=> [....exps exp params]
@@ -417,8 +411,7 @@ Cell setAppendCell(Cell ls, Cell c)
   while(!nullp(cdr(cdr))){
     cdr = cdr(cdr);
   }
-  pushArg(c);
-  pushArg(ls);
+  PUSH_ARGS2(c, ls)
   Cell tmp = pairCell(c, NIL);
   gc_write_barrier( cdr, &cdr(cdr), tmp );
   ls = popArg();
@@ -464,8 +457,7 @@ Cell applyList(Cell ls)
   Cell tmp2 = NIL;
 
   for(;!nullp(tmp); tmp=cdr(tmp) ){
-    pushArg(last);
-    pushArg(tmp);
+    PUSH_ARGS2(last, tmp)
     Cell tmpCar = evalExp(car(tmp));
     pushArg(tmpCar);
     tmp2 = pairCell(NIL, NIL);
@@ -839,8 +831,7 @@ void exchArg()
 {
   Cell c1 = popArg();
   Cell c2 = popArg();
-  pushArg(c1);
-  pushArg(c2);
+  PUSH_ARGS2(c1, c2)
 }
 
 void clearArgs()
