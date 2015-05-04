@@ -13,7 +13,7 @@ static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);     //wr
 static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size); //memcpy;
 #if defined( _DEBUG )
-static void gc_stack_check_default(Cell obj);
+static void gc_stack_check_default(Cell* obj);
 #endif //_DEBUG
 
 void gc_init(const char* gc_char, GC_Init_Info* gc_init)
@@ -28,8 +28,9 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     gc_init_generational(gc_init);
     printf("Garbage Collector: generational\n");
   }else{
-    gc_init_generational(gc_init);
-    printf("Garbage Collector: generational\n");
+    //    gc_init_generational(gc_init);
+    //    printf("Garbage Collector: generational\n");
+    gc_init_copy(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.
@@ -54,7 +55,7 @@ void trace_roots(void (*trace) (Cell* cellp)){
   //trace machine stack.
   int scan = stack_top;
   while( scan > 0 ){
-    Cell* cellp = &stack[ --scan ];
+    Cell* cellp = stack[ --scan ];
     trace( cellp );
   }
 
@@ -169,7 +170,7 @@ void gc_memcpy_default(char* dst, char* src, size_t size)
 }
 
 #if defined( _DEBUG )
-void gc_stack_check_default(Cell cell)
+void gc_stack_check_default(Cell* cell)
 {
   //Do nothing.
 }

@@ -20,7 +20,7 @@ static void gc_term_markcompact();
 
 static int get_obj_size( size_t size );
 #if defined( _DEBUG )
-static void markcompact_gc_stack_check(Cell cell);
+static void markcompact_gc_stack_check(Cell* cell);
 #endif //_DEBUG
 
 #define IS_ALLOCATABLE( size ) (top + sizeof( MarkCompact_GC_Header ) + (size) < heap + HEAP_SIZE )
@@ -110,7 +110,7 @@ void* gc_malloc_markcompact( size_t size )
 }
 
 #if defined( _DEBUG )
-void markcompact_gc_stack_check(Cell cell)
+void markcompact_gc_stack_check(Cell* cell)
 {
   if( !(heap <= (char*)cell && (char*)cell < heap + HEAP_SIZE ) && cell ){
     printf("[WARNING] cell %p points out of heap\n", cell);

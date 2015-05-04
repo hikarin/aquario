@@ -22,7 +22,7 @@ static int get_obj_size( size_t size );
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 #if defined( _DEBUG )
-static void copy_gc_stack_check(Cell cell);
+static void copy_gc_stack_check(Cell* cell);
 #endif //_DEBUG
 
 #define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
@@ -102,13 +102,15 @@ void* gc_malloc_copy( size_t size )
 }
 
 #if defined( _DEBUG )
-void copy_gc_stack_check(Cell cell)
+void copy_gc_stack_check(Cell* cell)
 {
-  if( !(from_space <= (char*)cell && (char*)cell < from_space + HEAP_SIZE/2 ) && cell ){
-    printf("[WARNING] cell %p points out of heap\n", cell);
+  if( (from_space <= (char*)cell && (char*)cell < from_space + HEAP_SIZE/2) ||
+      (to_space <= (char*)cell && (char*)cell < to_space + HEAP_SIZE/2) ){
+    printf("[WARNING] cell %p points the heap\n", cell);
   }
 }
 #endif //_DEBUG
+
 int get_obj_size( size_t size ){
   return sizeof( Copy_GC_Header ) + size;
 }

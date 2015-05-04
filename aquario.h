@@ -47,7 +47,7 @@ Cell newCell(Type t, size_t size);
   pushArg(c2);                            \
   pushArg(c3);
 
-#define PUSH_ARG4(c1, c2, c3, c4)         \
+#define PUSH_ARGS4(c1, c2, c3, c4)        \
   PUSH_ARGS2(c1, c2)                      \
   PUSH_ARGS2(c3, c4)
 
@@ -106,7 +106,7 @@ typedef enum {
 ErrorNo errorNumber;
 
 #define STACKSIZE 1024
-Cell stack[ STACKSIZE ];
+Cell* stack[ STACKSIZE ];
 int stack_top;
 
 void init();
@@ -114,8 +114,8 @@ int hash(char* key);
 Cell getVar(char* name);
 void setVarCell(Cell strCell, Cell c);
 void setVar(char* name, Cell c);
-inline Cell popArg();
-inline void pushArg(Cell c);
+inline Cell* popArg();
+inline void pushArg(Cell* cellp);
 void dupArg();
 void exchArg();
 void clearArgs();

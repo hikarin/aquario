@@ -62,7 +62,7 @@ static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 static Boolean is_nersary_obj(Cell* objp);
 #if defined( _DEBUG )
-static void generational_gc_stack_check(Cell cell);
+static void generational_gc_stack_check(Cell* cell);
 static void remembered_set_check();
 #endif //_DEBUG
 
@@ -160,7 +160,7 @@ void gc_term_generational()
 }
 
 #if defined( _DEBUG )
-void generational_gc_stack_check(Cell cell)
+void generational_gc_stack_check(Cell* cell)
 {
   //Do Nothing.
 }
