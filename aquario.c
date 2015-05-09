@@ -389,8 +389,11 @@ Cell setAppendCell(Cell ls, Cell c)
   while(!nullp(cdr(cdr))){
     cdr = cdr(cdr);
   }
-  PUSH_ARGS2(&c, &ls)
+  PUSH_ARGS3(&c, &ls, &cdr)
+
   Cell tmp = pairCell(c, NIL);
+  popArg();
+
   gc_write_barrier( cdr, &cdr(cdr), tmp );
   //  ls = popArg();
   popArg();
