@@ -198,12 +198,12 @@ Cell cloneSymbolTree(Cell src)
 
 Cell evalExp(Cell exp)
 {
+  pushArg(&exp);
   Cell exps = pairCell( exp, NIL);
   Cell params = NIL;
   Cell proc = NIL;
   Cell args = NIL;
-  PUSH_ARGS4(&exp, &exps, &params, &proc)
-  pushArg(&args);
+  PUSH_ARGS4(&exps, &params, &proc, &args)
 
   Boolean is_loop = TRUE;
   for(;is_loop==TRUE;exps=cdr(exps)){
