@@ -23,13 +23,14 @@ static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 #if defined( _DEBUG )
 static void copy_gc_stack_check(Cell* cell);
+static int gc_count = 0;
 #endif //_DEBUG
 
 #define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
 #define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Copy_GC_Header*)(obj)-1)->forwarding)
-#define IS_COPIED(obj) (FORWARDING(obj) != (obj))
+#define IS_COPIED(obj) (FORWARDING(obj) != (obj) && to_space <= (char*)(obj) && (char*)(obj) < to_space+HEAP_SIZE/2)
 
 static char* from_space  = NULL;
 static char* to_space    = NULL;
@@ -43,7 +44,7 @@ void* copy_object(Cell obj)
   if( obj == NULL ){
     return NULL;
   }
-  
+
   if( IS_COPIED(obj) ){
     return FORWARDING(obj);
   }
@@ -107,6 +108,7 @@ void copy_gc_stack_check(Cell* cell)
   if( (from_space <= (char*)cell && (char*)cell < from_space + HEAP_SIZE/2) ||
       (to_space <= (char*)cell && (char*)cell < to_space + HEAP_SIZE/2) ){
     printf("[WARNING] cell %p points the heap\n", cell);
+    exit(-1);
   }
 }
 #endif //_DEBUG
@@ -138,12 +140,12 @@ void gc_start_copy()
   void* tmp = from_space;
   from_space = to_space;
   to_space = tmp;
-#if defined( _DEBUG )
-  memset(to_space, 0, HEAP_SIZE/2);
-#endif //_DEBUG
 
 #if defined( _DEBUG )
+  memset(to_space, 0, HEAP_SIZE/2);
+
   printf("GC end\n");
+  gc_count++;
 #endif //_DEBUG
 }
 
