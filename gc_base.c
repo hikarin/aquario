@@ -56,7 +56,15 @@ void trace_roots(void (*trace) (Cell* cellp)){
   int scan = stack_top;
   while( scan > 0 ){
     Cell* cellp = stack[ --scan ];
+#if defined( _DEBUG )
+    Boolean isNull = (*cellp==NULL);
+#endif
     trace( cellp );
+#if defined( _DEBUG )
+    if( !isNull && !(*cellp) ){
+      printf("OMG OMG\n");
+    }
+#endif
   }
 
   //trace global variable.
@@ -92,6 +100,14 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
     case T_PAIR:
       trace(&(car(cell)));
       trace(&(cdr(cell)));
+#if defined( _DEBUG )
+      if( !car(cell) ){
+	printf("car NULL!!\n");
+      }
+      if( !cdr(cell) ){
+	printf("cdr NULL!!!!!\n");
+      }
+#endif
       break;
     case T_PROC:
       break;

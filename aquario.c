@@ -135,7 +135,6 @@ Cell clone(Cell src)
   int size = getCellSize( src );
   pushArg(&src);
   Cell new = gc_malloc( size );
-  //  src = popArg();
   popArg();
   gc_memcpy( (char*)new, (char*)src, size );
   return new;
@@ -651,8 +650,6 @@ Cell readList(FILE* fp)
       pushArg(&list);
       pushArg(&exp);
       exp = readElem(fp);
-      //      list = popArg();
-      //      popArg();
       list = setAppendCell(list, exp);
       popArg();
       popArg();
@@ -665,7 +662,15 @@ Cell readList(FILE* fp)
 Cell readQuot(FILE* fp)
 {
   Cell elem = readElem(fp);
-  Cell quot = setAppendCell(pairCell(symbolCell("quote"), NIL), elem);
+  pushArg( &elem );
+  Cell sym = symbolCell("quote");
+
+  Cell pair = pairCell(sym, NIL);
+  pushArg(&pair);
+
+  Cell quot = setAppendCell(pair, elem);
+  popArg();
+  popArg();
   return quot;
 }
 
@@ -759,7 +764,6 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   if(!nullp(chain)){
     pushArg(&chain);
     Cell pair = pairCell(nameCell, c);
-    //    chain = popArg();
     popArg();
     gc_write_barrier( chain, &car(chain), pair );
   }
@@ -791,7 +795,6 @@ void setVar(char* name, Cell c)
   pushArg(&c);
   Cell nameCell = stringCell(name);
   Cell chain = getChain(name, &key);
-  //  c = stack[ stack_top-1 ];
   registerVar(nameCell, chain, c, &env[key]);
   popArg();
 }
@@ -855,7 +858,9 @@ void callProc(char* name)
 
 Cell getReturn()
 {
-  return retReg;
+  Cell ret = retReg;
+  retReg = NIL;
+  return ret;
 }
 
 void setReturn(Cell c)
@@ -1068,12 +1073,7 @@ void op_largerdigitp()
 void op_largeroreqdigitp()
 {
   Cell* args = stack[ stack_top-1 ];
-  //  Cell* c1 = &car(*args);
-  //  Cell* c2 = &cadr(*args);
-  //  pushArg(c2);
   int i1 = ivalue(evalExp(car(*args)));
-  //  c2 = popArg();
-  //  popArg();
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 >= i2 ){
     setReturn(T);
@@ -1088,9 +1088,6 @@ void op_largeroreqdigitp()
 void op_lessdigitp()
 {
   Cell* args = stack[ stack_top-1 ];
-  //  Cell* c1 = &car(*args);
-  //  Cell* c2 = &cadr(*args);
-  //  pushArg(c2);
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 < i2 ){
@@ -1228,12 +1225,7 @@ void op_div()
 void op_append()
 {
   Cell* args = stack[ stack_top-1 ];
-  //  Cell* c1 = &car(*args);
-  //  Cell* c2 = &cadr(*args);
-  //  pushArg(c2);
   Cell result = clone( car(*args) );
-  //  c2 = popArg();
-  //popArg();
   setReturn(setAppendList(result, cadr(*args)));
 
   popArg();
@@ -1241,7 +1233,6 @@ void op_append()
 
 void op_reverse()
 {
-  //  Cell* args = popArg();
   Cell* args = stack[ stack_top-1 ];
   if( isPair(car(*args) ) ){
     Cell reverse = reverseList(car(*args));
@@ -1503,9 +1494,11 @@ void syntax_begin()
 {
   Cell* args = stack[ stack_top-1 ];
   for(;!nullp(cdr(*args));args=&cdr(*args)){
-    evalExp(car(*args));
+    evalExp( car(*args) );
   }
-  setReturn(evalExp(car(*args)));
+
+  Cell evalCell = evalExp( car(*args) );
+  setReturn( evalCell );
 
   popArg();
 }
@@ -1520,7 +1513,6 @@ int repl()
     callProc("read");
     ret = getReturn();
     if(ret==EOFobj) break;
-    //    pushArg(pairCell(ret, NIL));    // => [... (ret)]
     Cell pair = pairCell(ret, NIL);
     pushArg(&pair);
     dupArg();                       // => [... (ret) (ret)]
