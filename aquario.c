@@ -1416,6 +1416,7 @@ void syntax_define()
     popArg();
     return;
   }
+  pushArg(&symbol);
   Cell obj = cadr(*args);
   obj = evalExp(obj);
   if( obj != UNDEF ){
@@ -1423,9 +1424,9 @@ void syntax_define()
     setVarCell(symbol, obj);
   }
 
-  Cell var = getVar(symbolname(symbol));
-  setReturn(var);
+  setReturn(symbol);
 
+  popArg();
   popArg();
 }
 
