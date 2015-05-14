@@ -662,15 +662,14 @@ Cell readList(FILE* fp)
 Cell readQuot(FILE* fp)
 {
   Cell elem = readElem(fp);
-  pushArg( &elem );
-  Cell sym = symbolCell("quote");
+  pushArg(&elem);
 
-  Cell pair = pairCell(sym, NIL);
-  pushArg(&pair);
+  Cell symbol = symbolCell("quote");
+  Cell symbolPair = pairCell(symbol, NIL);
 
-  Cell quot = setAppendCell(pair, elem);
+  Cell quot = setAppendCell(symbolPair, elem);
   popArg();
-  popArg();
+
   return quot;
 }
 
@@ -1423,7 +1422,9 @@ void syntax_define()
     symbol = car(*args);
     setVarCell(symbol, obj);
   }
-  setReturn(obj);
+
+  Cell var = getVar(symbolname(symbol));
+  setReturn(var);
 
   popArg();
 }
