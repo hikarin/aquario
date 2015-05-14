@@ -36,3 +36,9 @@
 (print "")
 (show-result)
 (print "")
+
+(gc-stress)
+(load "test.lsp")
+(print "")
+(show-result)
+(print "")
