@@ -13,12 +13,14 @@
 (assert-equal '(/ (- (+ 1 (* 3 79)) 38) 40) '5)
 (assert-equal '(* 451 (+ (- 213 78) (- 7 10) (+ (/ 100 10) 8) (- (+ 4 5) (* 31 100) 500) 711) 800) '-984984000)
 
+(assert-equal '(define x 999) ''x)
 (assert-equal '(undef? x) '#f)
 (assert-equal '(undef? m) '#t)
-(assert-equal '(undef? (define p (define q r))) '#t)
-(assert-equal '(undef? p) '#t)
+(assert-equal '(undef? (define p (define q r))) '#f)
+(assert-equal '(undef? p) '#f)
 (assert-equal '(undef? q) '#t)
 
+(assert-equal '(define str "hoge") ''str)
 (assert-equal 'str '"hoge")
 (assert-equal '(set! str "fuga") '"fuga")
 (assert-equal 'str '"fuga")
