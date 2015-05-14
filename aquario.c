@@ -676,7 +676,13 @@ Cell readList(FILE* fp)
 Cell readQuot(FILE* fp)
 {
   Cell elem = readElem(fp);
-  Cell quot = setAppendCell(pairCell(symbolCell("quote"), NIL), elem);
+  pushArg(elem);
+
+  Cell symbol = symbolCell("quote");
+  Cell symbolPair = pairCell(symbol, NIL);
+  elem = popArg();
+
+  Cell quot = setAppendCell(symbolPair, elem);
   return quot;
 }
 
