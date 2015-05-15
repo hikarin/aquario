@@ -415,9 +415,6 @@ Cell setAppendList(Cell ls, Cell append)
 
 Cell reverseList(Cell ls)
 {
-#if defined( _DEBUG )
-  printf("OK!!!!\n");
-#endif
   Cell reverse = NIL;
   for(;!nullp(ls);ls=cdr(ls)){
     reverse = pairCell(car(ls), reverse);
@@ -428,20 +425,16 @@ Cell reverseList(Cell ls)
 Cell applyList(Cell ls)
 {
   if(nullp(ls)) return ls;
-  Cell c = NULL;
-  Cell top = NULL;
   pushArg(&ls);
-  pushArg(&c);
-  pushArg(&top);
 
-  c = evalExp(car(ls));
-  top = pairCell(NIL, NIL);
-  gc_write_barrier( top, &car(top), c );
+  Cell c = evalExp(car(ls));
+  Cell top = pairCell(c, NIL);
   Cell last = top;
   Cell tmp = cdr(ls);
   Cell tmp2 = NIL;
   Cell tmpCar = NIL;
 
+  pushArg(&top);
   pushArg(&last);
   pushArg(&tmp);
   pushArg(&tmp2);
@@ -455,10 +448,9 @@ Cell applyList(Cell ls)
     last = tmp2;
   }
   popArg();
-  popArg();
-  popArg();
-  popArg();
 
+  popArg();
+  popArg();
   popArg();
   popArg();
   popArg();
@@ -1486,9 +1478,12 @@ void syntax_set()
   
   Cell dst = evalExp(cadr(*args));
   c1 = car(*args);
+
+  pushArg(&dst);
   setVarCell(c1, dst);
   setReturn(dst);
 
+  popArg();
   popArg();
 }
 
