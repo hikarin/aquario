@@ -51,6 +51,27 @@ Cell newCell(Type t, size_t size);
   PUSH_ARGS2(c1, c2)                      \
   PUSH_ARGS2(c3, c4)
 
+#define PUSH_ARGS5(c1, c2, c3, c4, c5)    \
+  PUSH_ARGS2(c1, c2)                      \
+  PUSH_ARGS3(c3, c4, c5)
+
+#define POP_ARGS2()                       \
+  popArg();                               \
+  popArg();
+
+#define POP_ARGS3()                       \
+  popArg();                               \
+  popArg();                               \
+  popArg();
+
+#define POP_ARGS4()                       \
+  POP_ARGS2()                             \
+  POP_ARGS2()
+
+#define POP_ARGS5()                       \
+  POP_ARGS2()                             \
+  POP_ARGS3()
+
 void setString(Cell c, char* str);
 
 Cell clone(Cell c);

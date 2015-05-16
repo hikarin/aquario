@@ -71,18 +71,10 @@ Cell pairCell(Cell a, Cell d)
   PUSH_ARGS2(&a, &d);
   Cell cons     = newCell(T_PAIR, sizeof(struct cell));
 
-  //set cdr cell.
-  //  Cell cdr_cell = stack[ stack_top-1 ];
-  //  gc_init_ptr( &cdr(cons), cdr_cell );
   gc_init_ptr(&cdr(cons), d);
-
-  //set car cell.
-  //  Cell car_cell = stack[ stack_top-1 ];
-  //  gc_init_ptr( &car(cons), car_cell );
   gc_init_ptr( &car(cons), a );
 
-  popArg();
-  popArg();
+  POP_ARGS2();
   return cons;
 }
 
@@ -112,8 +104,6 @@ Cell lambdaCell(Cell param, Cell exp)
 {
   PUSH_ARGS2(&param, &exp);
   Cell c = newCell(T_LAMBDA, sizeof(struct cell));
-  //  gc_init_ptr( &lambdaexp(c), popArg() );
-  //  gc_init_ptr( &lambdaparam(c), popArg() );
   gc_init_ptr( &lambdaexp(c), exp );
   gc_init_ptr( &lambdaparam(c), param );
   popArg();
@@ -277,12 +267,7 @@ Cell evalExp(Cell exp)
       }
     }
   }
-
-  popArg();
-  popArg();
-  popArg();
-  popArg();
-  popArg();
+  POP_ARGS5();
 
   return getReturn();
 }
@@ -391,12 +376,9 @@ Cell setAppendCell(Cell ls, Cell c)
   PUSH_ARGS3(&c, &ls, &cdr)
 
   Cell tmp = pairCell(c, NIL);
-  popArg();
 
   gc_write_barrier( cdr, &cdr(cdr), tmp );
-  //  ls = popArg();
-  popArg();
-  popArg();
+  POP_ARGS3();
   return ls;
 }
 
@@ -434,11 +416,7 @@ Cell applyList(Cell ls)
   Cell tmp2 = NIL;
   Cell tmpCar = NIL;
 
-  pushArg(&top);
-  pushArg(&last);
-  pushArg(&tmp);
-  pushArg(&tmp2);
-  pushArg(&tmpCar);
+  PUSH_ARGS5(&top, &last, &tmp, &tmp2, &tmpCar);
 
   for(;!nullp(tmp); tmp=cdr(tmp) ){
     tmpCar = evalExp(car(tmp));
@@ -447,12 +425,8 @@ Cell applyList(Cell ls)
     gc_write_barrier( last, &cdr(last), tmp2 );
     last = tmp2;
   }
-  popArg();
 
-  popArg();
-  popArg();
-  popArg();
-  popArg();
+  POP_ARGS5();
   popArg();
 
   return top;
@@ -639,12 +613,10 @@ Cell readList(FILE* fp)
       return NULL;
     default:
       ungetc(c, fp);
-      pushArg(&list);
-      pushArg(&exp);
+      PUSH_ARGS2(&list, &exp);
       exp = readElem(fp);
       list = setAppendCell(list, exp);
-      popArg();
-      popArg();
+      POP_ARGS2();
       break;
     }
   }
@@ -696,13 +668,13 @@ Cell readElem(FILE* fp)
     elem = NULL;
   }
   else if(token[0]=='('){
-    elem = readList(fp);        // => [...]
+    elem = readList(fp);
   }
   else if(token[0]=='\''){
-    elem = readQuot(fp);        // => [...]
+    elem = readQuot(fp);
   }
   else{
-    elem = tokenToCell(token);  // => [...]
+    elem = tokenToCell(token);
   }
 
   if(elem==NULL){
@@ -1418,8 +1390,7 @@ void syntax_define()
 
   setReturn(symbol);
 
-  popArg();
-  popArg();
+  POP_ARGS2();
 }
 
 void syntax_ifelse()
@@ -1483,8 +1454,7 @@ void syntax_set()
   setVarCell(c1, dst);
   setReturn(dst);
 
-  popArg();
-  popArg();
+  POP_ARGS2();
 }
 
 void syntax_begin()
