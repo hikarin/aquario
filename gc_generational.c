@@ -133,9 +133,6 @@ void gc_init_generational(GC_Init_Info* gc_info)
   memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
 #if defined( _DEBUG )
   printf("sizeof tenured_mark_tbl: %ld\n", sizeof(tenured_mark_tbl));
-  printf("sizeof Generational_GC_Header: %ld\n", sizeof(Generational_GC_Header));
-  printf("sizeof int: %ld\n", sizeof(int));
-  printf("sizeof int: %ld\n", sizeof(int*));
 #endif
 }
 
@@ -243,30 +240,11 @@ void minor_gc()
     scan = prev_tenured_top;
     while( scan < (char*)tenured_top ){
       Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
-#if defined( _DEBUG )
-      if( !IS_TENURED(obj) ){
-	printf("OMG: not TENURED!\n");
-      }
-#endif
       int obj_size = GET_OBJECT_SIZE(obj);
       trace_object(obj, copy_and_update);
       if(trace_object_bool(obj, is_nersary_obj) && !IS_REMEMBERED(obj)){
-#if defined( _CUT )
-	if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-	  clean_remembered_set();
-	  if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-	    printf("remembered set full.\n");
-	    exit(-1);
-	  }
-	}
-#endif
 	add_remembered_set(obj);
       }
-#if defined( _DEBUG )
-      else if( IS_REMEMBERED(obj) ){
-	printf("remembered!!\n");
-      }
-#endif
       scan += obj_size;
     }
     prev_tenured_top = tenured_top;
@@ -308,15 +286,15 @@ void add_remembered_set(Cell obj)
 
   remembered_set[remembered_set_top++] = obj;
   SET_REMEMBERED(obj);
-#if defined( _DEBUG )
-  remembered_set_check();
-#endif
 }
 
 void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
 {
   if( IS_TENURED(obj) && IS_NERSARY(newcell) && !IS_REMEMBERED(obj) ){
     add_remembered_set(obj);
+#if defined( _DEBUG )
+    remembered_set_check();
+#endif
   }
   *cellp = newcell;
 }
@@ -371,11 +349,6 @@ void mark_object(Cell* objp)
   Cell obj = *objp;
   if( obj && !IS_MARKED(obj) ){
     SET_MARK(obj);
-#if defined( _DEBUG )
-    if( IS_TENURED(obj) ){
-      printf("marked: %ld, %d\n", (char*)obj-tenured_space, type(obj));
-    }
-#endif
     if(mark_stack_top >= MARK_STACK_SIZE){
       printf("[GC] mark stack overflow.\n");
       exit(-1);
@@ -477,6 +450,9 @@ void slide()
     scanned += obj_size;
   }
   tenured_top = tenured_new_top;
+#if defined( _DEBUG )
+  remembered_set_check();
+#endif
 
   //clear mark bit in young objects.
   memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
@@ -515,34 +491,6 @@ void major_gc()
 
   //mark phase.
   mark();
-#if defined( _DEBUG )
-  printf("[mark done] ");
-  printf("tenured_space: %p\n", tenured_space);
-  int index = 0;
-  for(index=0; index<stack_top; index++){
-    printf("stack[%4d]: type(%2d)\n", index, type( *stack[index] ) );
-  }
-  for(index=0; index<TENURED_SIZE/BIT_WIDTH; index++){
-    int bit = 0;
-    for(bit=0; bit < BIT_WIDTH; bit++){
-      if( tenured_mark_tbl[index] & (1<<bit) ){
-	Cell obj = (Cell)( tenured_space + (index*BIT_WIDTH+bit) );
-	printf("obj %p is marked. type: %x\n", obj, type(obj));
-      }
-    }
-  }
-
-  printf("nersary_space: %p\n", from_space);
-  for(index=0; index<TENURED_SIZE/BIT_WIDTH; index++){
-    int bit = 0;
-    for(bit=0; bit < BIT_WIDTH; bit++){
-      if( nersary_mark_tbl[index] & (1<<bit) ){
-	Cell obj = (Cell)( from_space + (index*BIT_WIDTH+bit) );
-	printf("obj %p is marked. type: %x\n", obj, type(obj));
-      }
-    }
-  }
-#endif
 
   //compaction phase.
   compact();
