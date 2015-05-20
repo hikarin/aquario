@@ -40,15 +40,16 @@ typedef struct generational_gc_header{
 #define INC_AGE(obj) (OBJ_FLAGS(obj)++)
 
 //mark table: a bit per WORD
-static int nersary_mark_tbl[NERSARY_SIZE/64+1];
-static int tenured_mark_tbl[TENURED_SIZE/64+1];
+#define BIT_WIDTH    32
+static int nersary_mark_tbl[NERSARY_SIZE/BIT_WIDTH+1];
+static int tenured_mark_tbl[TENURED_SIZE/BIT_WIDTH+1];
 
-#define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/64 )] & (1 << (((char*)(obj)-tenured_space)%64) ))
-#define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/64 )] & (1 << (((char*)(obj)-from_space)%64) ) )
+#define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/BIT_WIDTH )] & (1 << (((char*)(obj)-tenured_space)%BIT_WIDTH) ) )
+#define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )] & (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ) )
 #define IS_MARKED(obj) (IS_TENURED(obj) ? IS_MARKED_TENURED(obj) : IS_MARKED_NERSARY(obj))
 
-#define SET_MARK_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/64 )] |= (1 << (((char*)(obj)-tenured_space)%64) ))
-#define SET_MARK_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/64 )] |= (1 << (((char*)(obj)-from_space)%64) ))
+#define SET_MARK_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/BIT_WIDTH )] |= (1 << (((char*)(obj)-tenured_space)%BIT_WIDTH) ))
+#define SET_MARK_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )] |= (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ))
 #define SET_MARK(obj)  (IS_TENURED(obj) ? SET_MARK_TENURED(obj) : SET_MARK_NERSARY(obj))
 
 static void gc_start_generational();
@@ -130,6 +131,12 @@ void gc_init_generational(GC_Init_Info* gc_info)
 
   memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
   memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
+#if defined( _DEBUG )
+  printf("sizeof tenured_mark_tbl: %ld\n", sizeof(tenured_mark_tbl));
+  printf("sizeof Generational_GC_Header: %ld\n", sizeof(Generational_GC_Header));
+  printf("sizeof int: %ld\n", sizeof(int));
+  printf("sizeof int: %ld\n", sizeof(int*));
+#endif
 }
 
 //Allocation.
@@ -364,6 +371,11 @@ void mark_object(Cell* objp)
   Cell obj = *objp;
   if( obj && !IS_MARKED(obj) ){
     SET_MARK(obj);
+#if defined( _DEBUG )
+    if( IS_TENURED(obj) ){
+      printf("marked: %ld, %d\n", (char*)obj-tenured_space, type(obj));
+    }
+#endif
     if(mark_stack_top >= MARK_STACK_SIZE){
       printf("[GC] mark stack overflow.\n");
       exit(-1);
@@ -505,6 +517,31 @@ void major_gc()
   mark();
 #if defined( _DEBUG )
   printf("[mark done] ");
+  printf("tenured_space: %p\n", tenured_space);
+  int index = 0;
+  for(index=0; index<stack_top; index++){
+    printf("stack[%4d]: type(%2d)\n", index, type( *stack[index] ) );
+  }
+  for(index=0; index<TENURED_SIZE/BIT_WIDTH; index++){
+    int bit = 0;
+    for(bit=0; bit < BIT_WIDTH; bit++){
+      if( tenured_mark_tbl[index] & (1<<bit) ){
+	Cell obj = (Cell)( tenured_space + (index*BIT_WIDTH+bit) );
+	printf("obj %p is marked. type: %x\n", obj, type(obj));
+      }
+    }
+  }
+
+  printf("nersary_space: %p\n", from_space);
+  for(index=0; index<TENURED_SIZE/BIT_WIDTH; index++){
+    int bit = 0;
+    for(bit=0; bit < BIT_WIDTH; bit++){
+      if( nersary_mark_tbl[index] & (1<<bit) ){
+	Cell obj = (Cell)( from_space + (index*BIT_WIDTH+bit) );
+	printf("obj %p is marked. type: %x\n", obj, type(obj));
+      }
+    }
+  }
 #endif
 
   //compaction phase.
