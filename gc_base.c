@@ -28,9 +28,8 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     gc_init_generational(gc_init);
     printf("Garbage Collector: generational\n");
   }else{
-    //    gc_init_generational(gc_init);
-    //    printf("Garbage Collector: generational\n");
-    gc_init_copy(gc_init);
+    gc_init_generational(gc_init);
+    printf("Garbage Collector: generational\n");
   }
   if(!gc_init->gc_write_barrier){
     //option.
