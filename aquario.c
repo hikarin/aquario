@@ -191,8 +191,7 @@ Cell evalExp(Cell exp)
   Cell exps = pairCell( exp, NIL);
   Cell params = NIL;
   Cell proc = NIL;
-  Cell args = NIL;
-  PUSH_ARGS4(&exps, &params, &proc, &args)
+  PUSH_ARGS3(&exps, &params, &proc)
 
   Boolean is_loop = TRUE;
   for(;is_loop==TRUE;exps=cdr(exps)){
@@ -206,7 +205,7 @@ Cell evalExp(Cell exp)
       }
     }else if( type(exp) == T_PAIR ){
       proc = evalExp(car(exp));
-      args = cdr(exp);
+      Cell args = cdr(exp);
       opType operator;
       switch(type(proc)){
       case T_PROC:
@@ -222,6 +221,7 @@ Cell evalExp(Cell exp)
 	break;
       case T_LAMBDA:
 	{
+	  pushArg(&args);
 	  params = lambdaparam(proc);
 	  if( !is_loop ){
 	    is_loop = TRUE;
@@ -235,6 +235,7 @@ Cell evalExp(Cell exp)
 	      exps = cloneSymbolTree(exps);
 	      letParam(exps, params, args);
 	      exps = pairCell(NIL, exps);
+	      popArg();
 	      continue;
 	    }
 	  }else{
@@ -254,6 +255,7 @@ Cell evalExp(Cell exp)
 	      evalExp(exp);
 	    }
 	  }
+	  popArg();
 	  break;
 	}
       default:
@@ -267,7 +269,7 @@ Cell evalExp(Cell exp)
       }
     }
   }
-  POP_ARGS5();
+  POP_ARGS4();
 
   return getReturn();
 }
