@@ -1465,12 +1465,13 @@ void syntax_set()
 
 void syntax_begin()
 {
-  Cell* args = getStackTop();
-  for(;!nullp(cdr(*args));args=&cdr(*args)){
-    evalExp( car(*args) );
+  Cell args = *popArg();
+  pushArg(&args);
+  for(;!nullp(cdr(args));args=cdr(args)){
+    evalExp(car(args));
   }
 
-  Cell evalCell = evalExp( car(*args) );
+  Cell evalCell = evalExp(car(args));
   setReturn( evalCell );
 
   popArg();
