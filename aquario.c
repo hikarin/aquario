@@ -25,6 +25,7 @@ static void (*gc_stack_check)(Cell* cell);
 
 static Cell getChain(char* name, int* key);
 static void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env);
+static Cell* getStackTop();
 
 inline int getCellSize(Cell cell)
 {
@@ -740,6 +741,11 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   }
 }
 
+Cell* getStackTop()
+{
+  return stack[ stack_top-1 ];
+}
+
 Cell getChain(char* name, int* key)
 {
   *key = hash(name)%ENVSIZE;
@@ -793,7 +799,7 @@ inline void pushArg(Cell* c)
 
 void dupArg()
 {
-  Cell* c = stack[ stack_top-1 ];
+  Cell* c = getStackTop();
   pushArg(c);
 }
 
@@ -1006,7 +1012,7 @@ void op_zerop()
 //equal.
 void op_eqdigitp()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if(i1==i2){
@@ -1022,7 +1028,7 @@ void op_eqdigitp()
 //larger than.
 void op_largerdigitp()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 > i2 ){
@@ -1037,7 +1043,7 @@ void op_largerdigitp()
 //larger than or equal.
 void op_largeroreqdigitp()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 >= i2 ){
@@ -1052,7 +1058,7 @@ void op_largeroreqdigitp()
 //less than.
 void op_lessdigitp()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 < i2 ){
@@ -1189,7 +1195,7 @@ void op_div()
 
 void op_append()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   Cell result = clone( car(*args) );
   setReturn(setAppendList(result, cadr(*args)));
 
@@ -1198,7 +1204,7 @@ void op_append()
 
 void op_reverse()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   if( isPair(car(*args) ) ){
     Cell reverse = reverseList(car(*args));
     setReturn(reverse);
@@ -1217,7 +1223,7 @@ void op_read()
 
 void op_eval()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   setReturn(evalExp(car(*args)));
   if(errorNumber==PARSE_ERR){
     fprintf(stderr, "%s\n", errorString);
@@ -1364,7 +1370,7 @@ void op_undefp()
 
 void syntax_define()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
 
   int argNum = length( *args );
   if( argNum > 2 ){
@@ -1397,7 +1403,7 @@ void syntax_define()
 
 void syntax_ifelse()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
 
   int argNum = length(*args);
   if( argNum > 3 ){
@@ -1442,7 +1448,7 @@ void syntax_quote()
 
 void syntax_set()
 {  
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   Cell c1 = car(*args);
   if( type(c1) != T_SYMBOL ){
     setParseError("not a variable given.");
@@ -1461,7 +1467,7 @@ void syntax_set()
 
 void syntax_begin()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   for(;!nullp(cdr(*args));args=&cdr(*args)){
     evalExp( car(*args) );
   }
