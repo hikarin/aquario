@@ -1073,7 +1073,7 @@ void op_lessdigitp()
 //less than or equal.
 void op_lessoreqdigitp()
 {
-  Cell* args = stack[ stack_top-1 ];
+  Cell* args = getStackTop();
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 <= i2 ){
