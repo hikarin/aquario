@@ -31,7 +31,7 @@ static void is_to_object(Cell* objp);
 #define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Copy_GC_Header*)(obj)-1)->forwarding)
-#define IS_COPIED(obj) (FORWARDING(obj) != (obj))
+#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+HEAP_SIZE/2))
 
 static char* from_space  = NULL;
 static char* to_space    = NULL;

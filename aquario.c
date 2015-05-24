@@ -1370,29 +1370,27 @@ void op_undefp()
 
 void syntax_define()
 {
-  Cell* args = getStackTop();
+  Cell args = *popArg();
 
-  int argNum = length( *args );
+  int argNum = length(args);
   if( argNum > 2 ){
     setParseError( "too many parameters for specital from DEFINE " );
-    popArg();
     return;
   }else if( argNum < 2 ){
     setParseError( "too few parameter for special from DEFINE " );
-    popArg();
     return;
   }
-  Cell symbol = car(*args);
+  Cell symbol = car(args);
   if( type( symbol ) != T_SYMBOL ){
     setParseError( "not a symbol: " );
-    popArg();
     return;
   }
   pushArg(&symbol);
-  Cell obj = cadr(*args);
+  pushArg(&args);
+  Cell obj = cadr(args);
   obj = evalExp(obj);
   if( obj != UNDEF ){
-    symbol = car(*args);
+    symbol = car(args);
     setVarCell(symbol, obj);
   }
 
