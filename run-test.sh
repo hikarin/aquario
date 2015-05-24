@@ -1,10 +1,10 @@
 make opt
 
 #copying
-time ./aquario -GC copying tak.lsp
+time ./aquario -GC copy tak.lsp
 
 #mark_compact
-time ./aquario -GC mark_compact tak.lsp
+time ./aquario -GC mc tak.lsp
 
 #generational
-time ./aquario -GC generational tak.lsp
+time ./aquario -GC gen tak.lsp
