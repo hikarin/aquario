@@ -17,9 +17,9 @@ clean:
 
 test: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_TEST
-	./aquario -GC generational do_test.lsp
-	./aquario -GC copying do_test.lsp
-	./aquario -GC mark_compact do_test.lsp
+	./aquario -GC gen do_test.lsp
+	./aquario -GC copy do_test.lsp
+	./aquario -GC mc do_test.lsp
 
 debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g
