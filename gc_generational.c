@@ -10,12 +10,12 @@
 #endif //_DEBUG
 
 typedef struct generational_gc_header{
+  Cell forwarding;
   int obj_size;
   int flags;
-  Cell forwarding;
 }Generational_GC_Header;
 
-#define NERSARY_SIZE (HEAP_SIZE/10)
+#define NERSARY_SIZE (HEAP_SIZE/5)
 #define TENURED_SIZE (HEAP_SIZE-(NERSARY_SIZE*2))
 #define TENURING_THRESHOLD  (15)
 
@@ -45,11 +45,11 @@ static int nersary_mark_tbl[NERSARY_SIZE/BIT_WIDTH+1];
 static int tenured_mark_tbl[TENURED_SIZE/BIT_WIDTH+1];
 
 #define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/BIT_WIDTH )] & (1 << (((char*)(obj)-tenured_space)%BIT_WIDTH) ) )
-#define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )] & (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ) )
+#define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )]    & (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ) )
 #define IS_MARKED(obj) (IS_TENURED(obj) ? IS_MARKED_TENURED(obj) : IS_MARKED_NERSARY(obj))
 
 #define SET_MARK_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/BIT_WIDTH )] |= (1 << (((char*)(obj)-tenured_space)%BIT_WIDTH) ))
-#define SET_MARK_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )] |= (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ))
+#define SET_MARK_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )]    |= (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ))
 #define SET_MARK(obj)  (IS_TENURED(obj) ? SET_MARK_TENURED(obj) : SET_MARK_NERSARY(obj))
 
 static void gc_start_generational();
@@ -63,7 +63,7 @@ static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 static Boolean is_nersary_obj(Cell* objp);
 #if defined( _DEBUG )
-static void generational_gc_stack_check(Cell* cell);
+static void generational_gc_stack_check(Cell* cellp);
 static void remembered_set_check();
 #endif //_DEBUG
 
@@ -89,7 +89,7 @@ static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 
-#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || (to_space <= (char*)(obj) && (char*)(obj) < to_space+NERSARY_SIZE))
+#define IS_COPIED(obj) (FORWARDING(obj) != (obj))
 #define IS_ALLOCATABLE_TENURED() (tenured_top + NERSARY_SIZE < tenured_space + TENURED_SIZE)
 
 #define MARK_STACK_SIZE 1000
@@ -111,8 +111,8 @@ void gc_init_generational(GC_Init_Info* gc_info)
   printf( "generational gc init\n");
 
   //nersary space.
-  from_space = (char*)malloc(NERSARY_SIZE);
-  to_space = (char*)malloc(NERSARY_SIZE);
+  from_space  = (char*)malloc(NERSARY_SIZE);
+  to_space    = (char*)malloc(NERSARY_SIZE);
   nersary_top = from_space;
 
   //tenured space.
@@ -164,7 +164,7 @@ void gc_term_generational()
 }
 
 #if defined( _DEBUG )
-void generational_gc_stack_check(Cell* cell)
+void generational_gc_stack_check(Cell* cellp)
 {
   //Do Nothing.
 }
@@ -214,6 +214,9 @@ void minor_gc()
   char* prev_nersary_top = nersary_top;
   char* prev_tenured_top = tenured_top;
 
+#if defined( _DEBUG )
+    remembered_set_check();
+#endif
   //copy all objects that are reachable from roots.
   trace_roots(copy_and_update);
 
@@ -348,6 +351,12 @@ void mark_object(Cell* objp)
 {
   Cell obj = *objp;
   if( obj && !IS_MARKED(obj) ){
+    if( !(from_space <= (char*)obj && (char*)obj < nersary_top) &&
+	!(tenured_space <= (char*)obj && (char*)obj < tenured_top) ){
+
+      printf("mark corrupted obj\n");
+      exit(-1);
+    }
     SET_MARK(obj);
     if(mark_stack_top >= MARK_STACK_SIZE){
       printf("[GC] mark stack overflow.\n");
@@ -365,7 +374,6 @@ void move_object(Cell obj)
 
   memcpy(new_header, old_header, size);
   Cell new_cell = (Cell)(((Generational_GC_Header*)new_header)+1);
-  SET_TENURED(obj);
 
   FORWARDING(new_cell) = new_cell;
   if(IS_REMEMBERED(new_cell)){
@@ -483,7 +491,7 @@ void major_gc()
 {
 #if defined( _DEBUG )
   printf("major GC start ...");
-  printf("remembered_set_top: %d  ", remembered_set_top);
+  remembered_set_check();
 #endif
   //initialization.
   mark_stack_top = 0;
@@ -495,8 +503,6 @@ void major_gc()
   //compaction phase.
   compact();
 #if defined( _DEBUG )
-  printf("[compact done] ");
-  printf("remembered_set_top: %d  ", remembered_set_top);
-  printf("major GC end\n");
+  remembered_set_check();
 #endif
 }
