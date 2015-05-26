@@ -1,4 +1,3 @@
-(gc-stress)
 (define tak (lambda (x y z)
 	      (if (<= x y)
 		  z
@@ -7,4 +6,4 @@
 		      (tak (- z 1) x y)))))
 
 
-(print (tak 8 4 0))
+(print (tak 18 9 0))

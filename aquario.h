@@ -37,6 +37,41 @@ Cell newCell(Type t, size_t size);
 #define isProc(p)       ((p)->_type==T_PROC)
 #define isSyntax(p)     ((p)->_type==T_SYNTAX)
 #define isLambda(p)     ((p)->_type==T_LAMBDA)
+
+#define PUSH_ARGS2(c1, c2)                \
+  pushArg(c1);                            \
+  pushArg(c2);
+
+#define PUSH_ARGS3(c1, c2, c3)            \
+  pushArg(c1);                            \
+  pushArg(c2);                            \
+  pushArg(c3);
+
+#define PUSH_ARGS4(c1, c2, c3, c4)        \
+  PUSH_ARGS2(c1, c2)                      \
+  PUSH_ARGS2(c3, c4)
+
+#define PUSH_ARGS5(c1, c2, c3, c4, c5)    \
+  PUSH_ARGS2(c1, c2)                      \
+  PUSH_ARGS3(c3, c4, c5)
+
+#define POP_ARGS2()                       \
+  popArg();                               \
+  popArg();
+
+#define POP_ARGS3()                       \
+  popArg();                               \
+  popArg();                               \
+  popArg();
+
+#define POP_ARGS4()                       \
+  POP_ARGS2()                             \
+  POP_ARGS2()
+
+#define POP_ARGS5()                       \
+  POP_ARGS2()                             \
+  POP_ARGS3()
+
 void setString(Cell c, char* str);
 
 Cell clone(Cell c);
@@ -92,7 +127,7 @@ typedef enum {
 ErrorNo errorNumber;
 
 #define STACKSIZE 1024
-Cell stack[ STACKSIZE ];
+Cell* stack[ STACKSIZE ];
 int stack_top;
 
 void init();
@@ -100,8 +135,8 @@ int hash(char* key);
 Cell getVar(char* name);
 void setVarCell(Cell strCell, Cell c);
 void setVar(char* name, Cell c);
-inline Cell popArg();
-inline void pushArg(Cell c);
+inline Cell* popArg();
+inline void pushArg(Cell* cellp);
 void dupArg();
 void exchArg();
 void clearArgs();

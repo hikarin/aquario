@@ -50,7 +50,7 @@ typedef struct gc_init_info{
   void  (*gc_memcpy) (char*, char*, size_t); //memcpy;
   void  (*gc_term) ();                       //terminate;
 #if defined( _DEBUG )
-  void (*gc_stack_check)(Cell);              //stack check(option).
+  void (*gc_stack_check)(Cell*);              //stack check(option).
 #endif //_DEBUG
 }GC_Init_Info;
 

@@ -1,16 +1,10 @@
 make opt
 
 #copying
-time ./aquario -GC copying tak.lsp
-#gprof ./aquario gmon.out > analysis.txt
-#cat analysis.txt
+time ./aquario -GC copy tak.lsp
 
 #mark_compact
-time ./aquario -GC mark_compact tak.lsp
-#gprof ./aquario gmon.out > analysis.txt
-#cat analysis.txt
+time ./aquario -GC mc tak.lsp
 
 #generational
-time ./aquario -GC generational tak.lsp
-#gprof ./aquario gmon.out > analysis.txt
-#cat analysis.txt
+time ./aquario -GC gen tak.lsp

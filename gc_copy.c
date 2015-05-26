@@ -22,14 +22,16 @@ static int get_obj_size( size_t size );
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 #if defined( _DEBUG )
-static void copy_gc_stack_check(Cell cell);
+static void copy_gc_stack_check(Cell* cell);
+static int gc_count = 0;
+static void is_to_object(Cell* objp);
 #endif //_DEBUG
 
 #define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
 #define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Copy_GC_Header*)(obj)-1)->forwarding)
-#define IS_COPIED(obj) (FORWARDING(obj) != (obj))
+#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+HEAP_SIZE/2))
 
 static char* from_space  = NULL;
 static char* to_space    = NULL;
@@ -43,8 +45,13 @@ void* copy_object(Cell obj)
   if( obj == NULL ){
     return NULL;
   }
-  
+
   if( IS_COPIED(obj) ){
+#if defined( _DEBUG )
+    if( !FORWARDING(obj) ){
+      printf( "OOOOOOOMMMMMMMGGGGGG\n");
+    }
+#endif
     return FORWARDING(obj);
   }
   Copy_GC_Header* new_header = (Copy_GC_Header*)top;
@@ -102,13 +109,25 @@ void* gc_malloc_copy( size_t size )
 }
 
 #if defined( _DEBUG )
-void copy_gc_stack_check(Cell cell)
+void copy_gc_stack_check(Cell* cell)
 {
-  if( !(from_space <= (char*)cell && (char*)cell < from_space + HEAP_SIZE/2 ) && cell ){
-    printf("[WARNING] cell %p points out of heap\n", cell);
+  if(to_space <= (char*)cell && (char*)cell < to_space + HEAP_SIZE/2){
+    printf("[WARNING] cell %p points the heap\n", cell);
+    exit(-1);
+  }
+}
+
+void is_to_object(Cell* objp){
+  if( *objp == NULL ){
+    return;
+  }
+  Cell obj = *objp;
+  if( to_space <= (char*)obj && (char*)obj < to_space + HEAP_SIZE/2 ){
+    printf("obj %p is in to_space!!!!\n", obj);
   }
 }
 #endif //_DEBUG
+
 int get_obj_size( size_t size ){
   return sizeof( Copy_GC_Header ) + size;
 }
@@ -136,12 +155,24 @@ void gc_start_copy()
   void* tmp = from_space;
   from_space = to_space;
   to_space = tmp;
-#if defined( _DEBUG )
-  memset(to_space, 0, HEAP_SIZE/2);
-#endif //_DEBUG
 
 #if defined( _DEBUG )
+  scanned = from_space;
+  while( scanned < top ){
+    Cell cell = (Cell)(((Copy_GC_Header*)scanned) + 1);
+    //    if( type(cell) == T_PAIR && (car(cell) == NULL || cdr(cell) == NULL) ){
+    if( GET_OBJECT_SIZE(cell) <= 0 || FORWARDING(cell) == NULL || FORWARDING(cell) != cell ){
+      printf("OH MY GODDESS\n");
+      exit(-1);
+    }
+    trace_object(cell, is_to_object);
+    scanned += GET_OBJECT_SIZE(cell);
+  }
+  memset(to_space, 0, HEAP_SIZE/2);
+  trace_roots( is_to_object );
+
   printf("GC end\n");
+  gc_count++;
 #endif //_DEBUG
 }
 

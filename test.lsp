@@ -13,14 +13,14 @@
 (assert-equal '(/ (- (+ 1 (* 3 79)) 38) 40) '5)
 (assert-equal '(* 451 (+ (- 213 78) (- 7 10) (+ (/ 100 10) 8) (- (+ 4 5) (* 31 100) 500) 711) 800) '-984984000)
 
-(assert-equal '(define x 999) '999)
+(assert-equal '(define x 999) ''x)
 (assert-equal '(undef? x) '#f)
 (assert-equal '(undef? m) '#t)
-(assert-equal '(undef? (define p (define q r))) '#t)
-(assert-equal '(undef? p) '#t)
+(assert-equal '(undef? (define p (define q r))) '#f)
+(assert-equal '(undef? p) '#f)
 (assert-equal '(undef? q) '#t)
 
-(assert-equal '(define str "hoge") '"hoge")
+(assert-equal '(define str "hoge") ''str)
 (assert-equal 'str '"hoge")
 (assert-equal '(set! str "fuga") '"fuga")
 (assert-equal 'str '"fuga")
@@ -28,7 +28,7 @@
 (assert-equal '(begin (define str1 "hoge") (define str2 "hoge") (equal? str1 str2)) '#t)
 (assert-equal '(begin (set! str1 "fugafuga") (set! str2 "fugafuga") (equal? str1 str2)) '#t)
 
-(assert-equal '(define sym 'hogehoge) ''hogehoge)
+(assert-equal '(define sym 'hogehoge) ''sym)
 (assert-equal 'sym ''hogehoge)
 (assert-equal '(set! sym 'hogehoge) ''hogehoge)
 (assert-equal 'sym ''hogehoge)
@@ -43,12 +43,13 @@
 (assert-equal '(car (cdr (cdr '(70 60 50 40 30 20 10)))) '50)
 (assert-equal '(car (cdr (cdr (cdr '(70 60 50 40 30 20 10))))) '40)
 
-(assert-equal '(define c (cons 5 10)) '(cons 5 10))
+(assert-equal '(define c (cons 5 10)) ''c)
 (assert-equal '(car c) '5)
 (assert-equal '(cdr c) '10)
-(assert-equal '(define d (cons c c)) '(cons (cons 5 10) (cons 5 10)))
+(assert-equal '(define d (cons c c)) ''d)
+(assert-equal 'd '(cons (cons 5 10) (cons 5 10)))
 
-(assert-equal '(define x 100) '100)
+(assert-equal '(define x 100) ''x)
 (assert-equal 'x '100)
 (assert-equal '(begin (define fact (lambda (n)
 			       (if (= n 1) 1

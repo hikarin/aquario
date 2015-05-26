@@ -34,7 +34,7 @@ static void decrement_count(Cell* objp);
 static void gc_term_reference_count();
 
 #if defined( _DEBUG )
-static void reference_count_stack_check( Cell cell );
+static void reference_count_stack_check( Cell* cell );
 static void reference_check();
 static void mark_obj(Cell* objp);
 static void clear_obj(Cell* objp);
@@ -216,7 +216,7 @@ void reclaim_obj( Cell obj )
 }
 
 #if defined( _DEBUG )
-void reference_count_stack_check(Cell cell)
+void reference_count_stack_check(Cell* cell)
 {
   if( !(heap <= (char*)cell && (char*)cell < heap + HEAP_SIZE ) ){
     printf("[WARNING] cell %p points out of heap\n", cell);
