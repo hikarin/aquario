@@ -137,7 +137,6 @@ void setVar(char* name, Cell c);
 inline Cell* popArg();
 inline void pushArg(Cell* cellp);
 void dupArg();
-void exchArg();
 void clearArgs();
 void callProc(char* name);
 Cell getReturn();

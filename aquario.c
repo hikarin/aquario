@@ -806,13 +806,6 @@ void dupArg()
   pushArg(c);
 }
 
-void exchArg()
-{
-  Cell* c1 = popArg();
-  Cell* c2 = popArg();
-  PUSH_ARGS2(c1, c2)
-}
-
 void clearArgs()
 {
   stack_top = 0;
@@ -839,10 +832,6 @@ Cell getReturn()
 
 void setReturn(Cell c)
 {
-#if defined( _DEBUG )
-  //  gc_stack_check(c);
-#endif //_DEBUG
-  
   retReg = c;
 }
 
