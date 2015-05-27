@@ -14,6 +14,7 @@ static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer
 static void gc_memcpy_default(char* dst, char* src, size_t size); //memcpy;
 #if defined( _DEBUG )
 static void gc_stack_check_default(Cell* obj);
+static int total_malloc_size;
 #endif //_DEBUG
 
 //definitions of Garbage Collectors' name.
@@ -23,6 +24,9 @@ static void gc_stack_check_default(Cell* obj);
 
 void gc_init(const char* gc_char, GC_Init_Info* gc_init)
 {
+#if defined( _DEBUG )
+  total_malloc_size = 0;
+#endif
   if( strcmp( gc_char, GC_STR_COPYING ) == 0 ){
     gc_init_copy(gc_init);
   }else if( strcmp( gc_char, GC_STR_MARKCOMPACT ) == 0 ){
@@ -30,7 +34,8 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, GC_STR_GENERATIONAL) == 0 ){
     gc_init_generational(gc_init);
   }else{
-    gc_init_markcompact(gc_init);
+    //default.
+    gc_init_generational(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.
@@ -92,14 +97,6 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
     case T_PAIR:
       trace(&(car(cell)));
       trace(&(cdr(cell)));
-#if defined( _DEBUG )
-      if( !car(cell) ){
-	printf("car NULL!!\n");
-      }
-      if( !cdr(cell) ){
-	printf("cdr NULL!!!!!\n");
-      }
-#endif
       break;
     case T_PROC:
       break;
@@ -177,7 +174,25 @@ void gc_memcpy_default(char* dst, char* src, size_t size)
   memcpy( dst, src, size );
 }
 
+void* aq_malloc(size_t size)
+{
 #if defined( _DEBUG )
+  total_malloc_size += size;
+#endif
+  return malloc(size);
+}
+
+void  aq_free(void* p)
+{
+  free(p);
+}
+
+#if defined( _DEBUG )
+size_t get_total_malloc_size()
+{
+  return total_malloc_size;
+}
+
 void gc_stack_check_default(Cell* cell)
 {
   //Do nothing.

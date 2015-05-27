@@ -111,12 +111,12 @@ void gc_init_generational(GC_Init_Info* gc_info)
   printf( "generational gc init\n");
 
   //nersary space.
-  from_space  = (char*)malloc(NERSARY_SIZE);
-  to_space    = (char*)malloc(NERSARY_SIZE);
+  from_space  = (char*)aq_malloc(NERSARY_SIZE);
+  to_space    = (char*)aq_malloc(NERSARY_SIZE);
   nersary_top = from_space;
 
   //tenured space.
-  tenured_space   = (char*)malloc(TENURED_SIZE);
+  tenured_space   = (char*)aq_malloc(TENURED_SIZE);
   tenured_top     = tenured_space;
   
   gc_info->gc_malloc        = gc_malloc_generational;
@@ -158,9 +158,12 @@ void* gc_malloc_generational( size_t size )
 
 void gc_term_generational()
 {
-  free(from_space);
-  free(to_space);
-  free(tenured_space);
+  aq_free(from_space);
+  aq_free(to_space);
+  aq_free(tenured_space);
+#if defined( _DEBUG )
+  printf("used memory: %ld\n", get_total_malloc_size());
+#endif
 }
 
 #if defined( _DEBUG )

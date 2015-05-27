@@ -27,6 +27,9 @@ static Cell getChain(char* name, int* key);
 static void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env);
 static Cell* getStackTop();
 
+static void init();
+static void term();
+
 inline int getCellSize(Cell cell)
 {
   switch( type(cell) ){
@@ -923,6 +926,11 @@ void init()
   setVar("begin",   syntaxCell(syntax_begin));
 }
 
+void term()
+{
+  gc_term();
+}
+
 void op_gc()
 {
   popArg();
@@ -1516,6 +1524,6 @@ int main(int argc, char *argv[])
   }else{
     load_file( argv[ i ] );
   }
-  gc_term();
+  term();
   return 0;
 }

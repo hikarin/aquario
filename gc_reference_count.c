@@ -72,7 +72,7 @@ static Boolean is_root_inc  = FALSE;
 //Initialization.
 void gc_init_reference_count(GC_Init_Info* gc_info)
 {
-  heap     = (char*)malloc(HEAP_SIZE);
+  heap     = (char*)aq_malloc(HEAP_SIZE);
   freelist = (Free_Chunk*)heap;
   freelist->chunk_size = HEAP_SIZE;
   freelist->next       = NULL;
@@ -394,7 +394,7 @@ void gc_memcpy_reference_count(char* dst, char* src, size_t size)
 //term.
 void gc_term_reference_count()
 {
-  free(heap);
+  aq_free(heap);
 }
 
 void add_zct(Cell obj)

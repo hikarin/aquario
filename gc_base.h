@@ -8,8 +8,11 @@ void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );
 Boolean trace_object_bool( Cell cell, Boolean (*trace) (Cell* cellp) );
 
+void* aq_malloc(size_t size);
+void  aq_free(void* p);
+
 #if defined( _DEBUG )
-void print_env();
+size_t get_total_malloc_size();
 #endif //defined( _DEBUG )
 
 extern Boolean g_GC_stress;

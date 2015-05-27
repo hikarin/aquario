@@ -75,7 +75,7 @@ void move_object(Cell obj)
 //Initialization.
 void gc_init_markcompact(GC_Init_Info* gc_info)
 {
-  heap = (char*)malloc(HEAP_SIZE);
+  heap = (char*)aq_malloc(HEAP_SIZE);
   top = heap;
 
   gc_info->gc_malloc        = gc_malloc_markcompact;
@@ -228,5 +228,9 @@ void gc_start_markcompact()
 //term.
 void gc_term_markcompact()
 {
-  free( heap );
+  aq_free( heap );
+
+#if defined( _DEBUG )
+  printf("used memory: %ld\n", get_total_malloc_size());
+#endif
 }

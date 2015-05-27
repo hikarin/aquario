@@ -130,7 +130,6 @@ ErrorNo errorNumber;
 Cell* stack[ STACKSIZE ];
 int stack_top;
 
-void init();
 int hash(char* key);
 Cell getVar(char* name);
 void setVarCell(Cell strCell, Cell c);

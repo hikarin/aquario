@@ -47,11 +47,6 @@ void* copy_object(Cell obj)
   }
 
   if( IS_COPIED(obj) ){
-#if defined( _DEBUG )
-    if( !FORWARDING(obj) ){
-      printf( "OOOOOOOMMMMMMMGGGGGG\n");
-    }
-#endif
     return FORWARDING(obj);
   }
   Copy_GC_Header* new_header = (Copy_GC_Header*)top;
@@ -74,8 +69,8 @@ void copy_and_update(Cell* objp)
 //Initialization.
 void gc_init_copy(GC_Init_Info* gc_info)
 {
-  from_space = (char*)malloc(HEAP_SIZE/2);
-  to_space   = (char*)malloc(HEAP_SIZE/2);
+  from_space = (char*)aq_malloc(HEAP_SIZE/2);
+  to_space   = (char*)aq_malloc(HEAP_SIZE/2);
   top        = from_space;
   
   gc_info->gc_malloc        = gc_malloc_copy;
@@ -135,9 +130,6 @@ int get_obj_size( size_t size ){
 //Start Garbage Collection.
 void gc_start_copy()
 {
-#if defined( _DEBUG )
-  printf("GC start\n");
-#endif //_DEBUG
   top = to_space;
   
   //Copy all objects that are reachable from roots.
@@ -155,30 +147,15 @@ void gc_start_copy()
   void* tmp = from_space;
   from_space = to_space;
   to_space = tmp;
-
-#if defined( _DEBUG )
-  scanned = from_space;
-  while( scanned < top ){
-    Cell cell = (Cell)(((Copy_GC_Header*)scanned) + 1);
-    //    if( type(cell) == T_PAIR && (car(cell) == NULL || cdr(cell) == NULL) ){
-    if( GET_OBJECT_SIZE(cell) <= 0 || FORWARDING(cell) == NULL || FORWARDING(cell) != cell ){
-      printf("OH MY GODDESS\n");
-      exit(-1);
-    }
-    trace_object(cell, is_to_object);
-    scanned += GET_OBJECT_SIZE(cell);
-  }
-  memset(to_space, 0, HEAP_SIZE/2);
-  trace_roots( is_to_object );
-
-  printf("GC end\n");
-  gc_count++;
-#endif //_DEBUG
 }
 
 //term.
 void gc_term_copy()
 {
-  free( from_space );
-  free( to_space );
+  aq_free( from_space );
+  aq_free( to_space );
+
+#if defined( _DEBUG )
+  printf("used memory: %ld\n", get_total_malloc_size());
+#endif
 }
