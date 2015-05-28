@@ -49,6 +49,8 @@ typedef struct gc_init_info{
   void  (*gc_init_ptr) (Cell*, Cell);        //init pointer;
   void  (*gc_memcpy) (char*, char*, size_t); //memcpy;
   void  (*gc_term) ();                       //terminate;
+  void  (*gc_pushArg) (Cell* cellp);
+  Cell* (*gc_popArg) ();
 #if defined( _DEBUG )
   void (*gc_stack_check)(Cell*);              //stack check(option).
 #endif //_DEBUG

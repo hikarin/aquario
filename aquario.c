@@ -19,6 +19,8 @@ static void (*gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
 static void (*gc_init_ptr) (Cell* cellp, Cell newcell);
 static void (*gc_memcpy) (char* dst, char* src, size_t size);
 static void (*gc_term) ();
+static void (*pushArg) (Cell* cellp);
+static Cell* (*popArg) ();
 #if defined( _DEBUG )
 static void (*gc_stack_check)(Cell* cell);
 #endif //_DEBUG
@@ -773,33 +775,6 @@ void setVar(char* name, Cell c)
   popArg();
 }
 
-inline Cell* popArg()
-{
-  Cell* c = stack[ --stack_top ];
-#if defined( _DEBUG )
-  if( stack_top < 0 ){
-    printf( "OMG....stack underflow\n" );
-  }
-#endif //_DEBUG
-
-#if defined( _DEBUG )
-  //  gc_stack_check(c);  
-#endif //_DEBUG
-  return c;
-}
-inline void pushArg(Cell* c)
-{
-  if( stack_top >= STACKSIZE ){
-    setParseError( "Stack Overflow" );
-    return;
-  }
-#if defined( _DEBUG )
-  gc_stack_check(c);
-#endif //_DEBUG
-  
-  stack[stack_top++] = c;
-}
-
 void dupArg()
 {
   Cell* c = getStackTop();
@@ -948,6 +923,7 @@ void op_gc_stress()
 void set_gc(char* gc_char)
 {
   GC_Init_Info gc_info;
+  memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, &gc_info );
   
   gc_malloc        = gc_info.gc_malloc;
@@ -956,6 +932,8 @@ void set_gc(char* gc_char)
   gc_init_ptr      = gc_info.gc_init_ptr;
   gc_memcpy        = gc_info.gc_memcpy;
   gc_term          = gc_info.gc_term;
+  pushArg          = gc_info.gc_pushArg;
+  popArg           = gc_info.gc_popArg;
 #if defined( _DEBUG )
   gc_stack_check   = gc_info.gc_stack_check;
 #endif //_DEBUG

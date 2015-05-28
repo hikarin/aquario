@@ -87,6 +87,8 @@ void gc_init_markcompact(GC_Init_Info* gc_info)
 #if defined( _DEBUG )
   gc_info->gc_stack_check   = markcompact_gc_stack_check;
 #endif //_DEBUG
+
+  printf("GC: Mark Compact\n");
 }
 
 //Allocation.

@@ -82,6 +82,8 @@ void gc_init_copy(GC_Init_Info* gc_info)
 #if defined( _DEBUG )
   gc_info->gc_stack_check   = copy_gc_stack_check;
 #endif //_DEBUG
+
+  printf("GC: Copying\n");
 }
 
 //Allocation.

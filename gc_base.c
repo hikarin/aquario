@@ -17,10 +17,14 @@ static void gc_stack_check_default(Cell* obj);
 static int total_malloc_size;
 #endif //_DEBUG
 
+static Cell* popArg_default();
+static void pushArg_default(Cell* c);
+
 //definitions of Garbage Collectors' name.
-#define GC_STR_COPYING      "copy"
-#define GC_STR_MARKCOMPACT  "mc"
-#define GC_STR_GENERATIONAL "gen"
+#define GC_STR_COPYING         "copy"
+#define GC_STR_MARKCOMPACT     "mc"
+#define GC_STR_GENERATIONAL    "gen"
+#define GC_STR_REFERENCE_COUNT "ref"
 
 void gc_init(const char* gc_char, GC_Init_Info* gc_init)
 {
@@ -31,11 +35,13 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     gc_init_copy(gc_init);
   }else if( strcmp( gc_char, GC_STR_MARKCOMPACT ) == 0 ){
     gc_init_markcompact(gc_init);
-  }else if( strcmp( gc_char, GC_STR_GENERATIONAL) == 0 ){
+  }else if( strcmp( gc_char, GC_STR_GENERATIONAL ) == 0 ){
     gc_init_generational(gc_init);
+  }else if( strcmp( gc_char, GC_STR_REFERENCE_COUNT ) == 0 ){
+    gc_init_reference_count(gc_init);
   }else{
     //default.
-    gc_init_generational(gc_init);
+    gc_init_reference_count(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.
@@ -49,11 +55,49 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     //option.
     gc_init->gc_memcpy = gc_memcpy_default;
   }
+
+  if(!gc_init->gc_pushArg){
+    //option.
+    gc_init->gc_pushArg = pushArg_default;
+  }
+  if(!gc_init->gc_popArg){
+    //option.
+    gc_init->gc_popArg = popArg_default;
+  }
+
 #if defined( _DEBUG )
   if(!gc_init->gc_stack_check){
     gc_init->gc_stack_check = gc_stack_check_default;
   }
 #endif //_DEBUG
+}
+
+Cell* popArg_default()
+{
+  Cell* c = stack[ --stack_top ];
+#if defined( _DEBUG )
+  if( stack_top < 0 ){
+    printf( "OMG....stack underflow\n" );
+  }
+#endif //_DEBUG
+
+#if defined( _DEBUG )
+  //  gc_stack_check(c);  
+#endif //_DEBUG
+  return c;
+}
+
+void pushArg_default(Cell* c)
+{
+  if( stack_top >= STACKSIZE ){
+    setParseError( "Stack Overflow" );
+    return;
+  }
+#if defined( _DEBUG )
+  //  gc_stack_check(c);
+#endif //_DEBUG
+  
+  stack[stack_top++] = c;
 }
 
 void trace_roots(void (*trace) (Cell* cellp)){

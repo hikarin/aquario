@@ -88,6 +88,8 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
 #endif //_DEBUG
   memset(zct, 0, sizeof(zct));
   zct_top = 0;
+
+  printf("GC: Reference Counting\n");
 }
 
 //Allocation.
@@ -309,12 +311,12 @@ void reference_check()
       Cell obj = (Cell)((Reference_Count_Header*)scan + 1);
       if( !IS_MARKED(obj) ){
 	printf("  !MARKED: %d(%p)", type(obj), obj );
-	//	exit(-1);
+	exit(-1);
 	leaked_size += GET_OBJECT_SIZE(obj);
       }
       int obj_size = GET_OBJECT_SIZE(obj);
       scan += obj_size;
-      //      printf("%d ", obj_size);
+      printf("%d ", obj_size);
     }
   }
   printf("leaked size: %d(%d)\n", leaked_size, get_total_chunk_size());
@@ -364,7 +366,7 @@ void decrement_count(Cell* objp)
 void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 {
 #if defined( _DEBUG )
-  //  printf("wb: %d: %d(%d)=> %d(%d)\n", type(obj), type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
+  printf("wb: %d: %d(%d)=> %d(%d)\n", type(obj), type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
 #endif
   increment_count( &newcell );
   decrement_count( cellp );

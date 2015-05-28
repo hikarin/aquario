@@ -108,8 +108,6 @@ static void compact();
 //Initialization.
 void gc_init_generational(GC_Init_Info* gc_info)
 {
-  printf( "generational gc init\n");
-
   //nersary space.
   from_space  = (char*)aq_malloc(NERSARY_SIZE);
   to_space    = (char*)aq_malloc(NERSARY_SIZE);
@@ -134,6 +132,8 @@ void gc_init_generational(GC_Init_Info* gc_info)
 #if defined( _DEBUG )
   printf("sizeof tenured_mark_tbl: %ld\n", sizeof(tenured_mark_tbl));
 #endif
+
+  printf("GC: Generational\n");
 }
 
 //Allocation.

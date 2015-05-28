@@ -134,8 +134,6 @@ int hash(char* key);
 Cell getVar(char* name);
 void setVarCell(Cell strCell, Cell c);
 void setVar(char* name, Cell c);
-inline Cell* popArg();
-inline void pushArg(Cell* cellp);
 void dupArg();
 void exchArg();
 void clearArgs();
