@@ -10,6 +10,7 @@
 #include "gc_generational.h"
 
 static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);     //write barrier;
+static void gc_write_barrier_root_default(Cell* cellp, Cell cell);     //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size); //memcpy;
 #if defined( _DEBUG )
@@ -17,8 +18,8 @@ static void gc_stack_check_default(Cell* obj);
 static int total_malloc_size;
 #endif //_DEBUG
 
-static Cell* popArg_default();
-static void pushArg_default(Cell* c);
+Cell* popArg_default();
+void pushArg_default(Cell* cellp);
 
 //definitions of Garbage Collectors' name.
 #define GC_STR_COPYING         "copy"
@@ -47,6 +48,11 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     //option.
     gc_init->gc_write_barrier = gc_write_barrier_default;
   }
+  if(!gc_init->gc_write_barrier_root){
+    //option.
+    gc_init->gc_write_barrier_root = gc_write_barrier_root_default;
+  }
+
   if(!gc_init->gc_init_ptr){
     //option.
     gc_init->gc_init_ptr = gc_init_ptr_default;
@@ -87,7 +93,7 @@ Cell* popArg_default()
   return c;
 }
 
-void pushArg_default(Cell* c)
+void pushArg_default(Cell* cellp)
 {
   if( stack_top >= STACKSIZE ){
     setParseError( "Stack Overflow" );
@@ -97,7 +103,7 @@ void pushArg_default(Cell* c)
   //  gc_stack_check(c);
 #endif //_DEBUG
   
-  stack[stack_top++] = c;
+  stack[stack_top++] = cellp;
 }
 
 void trace_roots(void (*trace) (Cell* cellp)){
@@ -153,7 +159,7 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
       trace(&(lambdaexp(cell)));
       break;
     default:
-      printf("Object Corrupted.\n");
+      printf("trace_object: Object Corrupted(%p).\n", cell);
       printf("%d\n", type(cell));
       exit(-1);
     }
@@ -194,7 +200,7 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
       }
       break;
     default:
-      printf("Object Corrupted.\n");
+      printf("trace_object_bool: Object Corrupted(%p).\n", cell);
       printf("%d\n", type(cell));
       exit(-1);
     }
@@ -204,6 +210,11 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
 }
 
 void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell)
+{
+  *cellp = cell;
+}
+
+void gc_write_barrier_root_default(Cell* cellp, Cell cell)
 {
   *cellp = cell;
 }

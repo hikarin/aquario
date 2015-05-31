@@ -8,6 +8,9 @@ void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );
 Boolean trace_object_bool( Cell cell, Boolean (*trace) (Cell* cellp) );
 
+Cell* popArg_default();
+void pushArg_default(Cell* cellp);
+
 void* aq_malloc(size_t size);
 void  aq_free(void* p);
 

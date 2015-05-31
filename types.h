@@ -5,9 +5,9 @@
 
 typedef void (*opType)();
 typedef enum type{
-  T_NONE,	//0.
   T_CHAR,	//1.
   T_STRING,	//2.
+  T_NONE,
   T_INTEGER,	//3.
   T_PAIR,	//4.
   T_PROC,	//5.
@@ -46,6 +46,7 @@ typedef struct gc_init_info{
   void* (*gc_malloc) (size_t);               //malloc function;
   void  (*gc_start) ();                      //gc function;
   void  (*gc_write_barrier) (Cell, Cell*, Cell);   //write barrier;
+  void  (*gc_write_barrier_root) (Cell*, Cell);   //write barrier root;
   void  (*gc_init_ptr) (Cell*, Cell);        //init pointer;
   void  (*gc_memcpy) (char*, char*, size_t); //memcpy;
   void  (*gc_term) ();                       //terminate;

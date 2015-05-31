@@ -21,6 +21,8 @@ static void (*gc_memcpy) (char* dst, char* src, size_t size);
 static void (*gc_term) ();
 static void (*pushArg) (Cell* cellp);
 static Cell* (*popArg) ();
+
+static void (*gc_write_barrier_root) (Cell* srcp, Cell dst);
 #if defined( _DEBUG )
 static void (*gc_stack_check)(Cell* cell);
 #endif //_DEBUG
@@ -741,7 +743,7 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   else{
     pushArg(env);
     Cell entry = pairCell(nameCell, c);
-    *env = pairCell(entry, *env);
+    gc_write_barrier_root(env, pairCell(entry, *env));
     popArg();
   }
 }
@@ -817,8 +819,8 @@ void setReturn(Cell c)
 #if defined( _DEBUG )
   //  gc_stack_check(c);
 #endif //_DEBUG
-  
-  retReg = c;
+  gc_write_barrier_root( &retReg, c );
+  //  retReg = c;
 }
 
 void setParseError(char* str)
@@ -929,6 +931,7 @@ void set_gc(char* gc_char)
   gc_malloc        = gc_info.gc_malloc;
   gc_start         = gc_info.gc_start;
   gc_write_barrier = gc_info.gc_write_barrier;
+  gc_write_barrier_root = gc_info.gc_write_barrier_root;
   gc_init_ptr      = gc_info.gc_init_ptr;
   gc_memcpy        = gc_info.gc_memcpy;
   gc_term          = gc_info.gc_term;
@@ -1503,5 +1506,8 @@ int main(int argc, char *argv[])
     load_file( argv[ i ] );
   }
   term();
+#if defined( _DEBUG )
+  printf("Bye-bye\n");
+#endif
   return 0;
 }
