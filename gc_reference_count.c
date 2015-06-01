@@ -37,6 +37,9 @@ static void reference_check();
 static void mark_obj(Cell* objp);
 static int get_total_chunk_size();
 
+static void mark();
+static void clear();
+
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top = 0;
 static Cell mark_stack[MARK_STACK_SIZE];
@@ -70,16 +73,8 @@ static Cell* pop_reference_count();
 #define GET_OBJECT_SIZE(obj) (((Reference_Count_Header*)(obj)-1)->obj_size)
 
 #define REF_CNT(obj) (((Reference_Count_Header*)(obj)-1)->ref_cnt)
-#define INC_REF_CNT(obj) (REF_CNT(obj)++);	\
-  printf("INC: %p\n", obj);
-#define DEC_REF_CNT(obj) (REF_CNT(obj)--);      \
-  //printf("DEC: %p\n", obj);
-
-#if defined( _CUT )
-#define IS_MARKED(obj)  (((Reference_Count_Header*)(obj) - 1)->mark_bit)
-#define CLEAR_MARK(obj) (((Reference_Count_Header*)(obj) - 1)->mark_bit = FALSE)
-#define SET_MARK(obj)   (((Reference_Count_Header*)(obj) - 1)->mark_bit = TRUE)
-#endif
+#define INC_REF_CNT(obj) (REF_CNT(obj)++);
+#define DEC_REF_CNT(obj) (REF_CNT(obj)--);
 
 //Initialization.
 void gc_init_reference_count(GC_Init_Info* gc_info)
@@ -104,10 +99,6 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
   memset(mark_tbl, 0, sizeof(mark_tbl));
 #endif //_DEBUG
 
-#if defined( _CUT )
-  memset(zct, 0, sizeof(zct));
-  zct_top = 0;
-#endif
   printf("GC: Reference Counting\n");
 }
 
@@ -136,7 +127,8 @@ void* gc_malloc_reference_count( size_t size )
   Reference_Count_Header* new_header = (Reference_Count_Header*)chunk;
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
-  REF_CNT(ret)         = 0;
+  REF_CNT(ret)         = 1;
+
   return ret;
 }
 
@@ -161,23 +153,23 @@ void reclaim_obj( Cell obj )
   if( REF_CNT(obj) < 0 ){
     printf("REF_CNT minus\n");
   }
+
+  mark();
+  if( IS_MARKED(obj) ){
+    printf("OH MY GOD\n");
+    exit(-1);
+    return;
+  }else{
+    printf("safe\n");
+  }
+
+  clear();
 #endif
-     REF_CNT(obj) = -1;
+  REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
 
 #if defined( _DEBUG )
-  memset(obj, 0, GET_OBJECT_SIZE(obj));
   return;
-#endif
-
-#if defined( _CUT )
-  scan_zct();
-  chunk = get_free_chunk( allocate_size );
-  if( !chunk ){
-    printf("Heap Exhausted.\n");
-    printf("reclaimed: %p, %ld (freelist: %p)\n", obj, freelist);
-    return;
-  }
 #endif
 
 #if defined( _CUT )
@@ -267,7 +259,7 @@ void mark_obj(Cell* objp)
     Cell obj = *objp;
     if( obj && !IS_MARKED(obj) ){
       if( mark_stack_top >= MARK_STACK_SIZE ){
-	printf("STACK_OVERFLOW____!!!\n");
+	printf("STACK_OVERFLOW!!!\n");
 	exit(-1);
       }
       mark_stack[mark_stack_top++] = obj;
@@ -287,7 +279,6 @@ void mark()
     marked_size += GET_OBJECT_SIZE(obj);
     trace_object(obj, mark_obj);
   }
-  printf("marked: %d ", marked_size);
 }
 
 int get_total_chunk_size()
@@ -303,6 +294,8 @@ int get_total_chunk_size()
 
 void reference_check()
 {
+  return;
+
   mark();
 
   char* scan = heap;
@@ -340,9 +333,7 @@ int get_obj_size( size_t size )
 //Start Garbage Collection.
 void gc_start_reference_count()
 {
-#if defined( _CUT )
-  scan_zct();
-#endif
+  //Nothing.
 }
 
 //For compatibility to trace_object(), this function receives a pointer to Cell.
