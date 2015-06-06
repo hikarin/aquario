@@ -772,11 +772,8 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
     gc_write_barrier( chain, &car(chain), pair );
   }
   else{
-    Cell tmp = *env;
-    pushArg(&tmp);
     Cell entry = pairCell(nameCell, c);
     gc_write_barrier_root(env, pairCell(entry, *env));
-    popArg();
   }
 }
 
