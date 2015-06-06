@@ -94,10 +94,12 @@ int eofp(Cell c);
 int zerop(Cell c);
 int eqdigitp(Cell c);
 int length(Cell ls);
-Cell setAppendCell(Cell ls, Cell c);
+//Cell setAppendCell(Cell ls, Cell c);
+void setAppendCell(Cell ls, Cell c);
 Cell setAppendList(Cell ls, Cell append);
 Cell reverseList(Cell ls);
-Cell applyList(Cell ls);
+//Cell applyList(Cell ls);
+void applyList(Cell ls);
 
 void printPair(Cell c);
 void printCell(Cell c);

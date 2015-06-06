@@ -5,9 +5,9 @@
 
 typedef void (*opType)();
 typedef enum type{
-  T_CHAR,	//1.
-  T_STRING,	//2.
-  T_NONE,
+  T_CHAR,	//0.
+  T_STRING,	//1.
+  T_NONE,       //2
   T_INTEGER,	//3.
   T_PAIR,	//4.
   T_PROC,	//5.

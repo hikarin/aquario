@@ -9,6 +9,9 @@
 typedef struct reference_count_header{
   int obj_size;
   int ref_cnt;
+#if defined( _DEBUG )
+  int debug_ref_cnt;
+#endif
 }Reference_Count_Header;
 
 struct free_chunk;
@@ -76,6 +79,12 @@ static Cell* pop_reference_count();
 #define INC_REF_CNT(obj) (REF_CNT(obj)++);
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--);
 
+#if defined( _DEBUG )
+#define DEBUG_REF_CNT(obj) (((Reference_Count_Header*)(obj)-1)->debug_ref_cnt)
+#define DEBUG_INC_REF_CNT(obj) (DEBUG_REF_CNT(obj)++);
+#define DEBUG_DEC_REF_CNT(obj) (DEBUG_REF_CNT(obj)--);
+#endif
+
 //Initialization.
 void gc_init_reference_count(GC_Init_Info* gc_info)
 {
@@ -128,6 +137,9 @@ void* gc_malloc_reference_count( size_t size )
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
   REF_CNT(ret)         = 1;
+#if defined( _DEBUG )
+  DEBUG_REF_CNT(ret)   = 1;
+#endif
 
   return ret;
 }

@@ -122,9 +122,6 @@ Cell lambdaCell(Cell param, Cell exp)
 Cell noneCell()
 {
   Cell c = newCell(T_NONE, sizeof(struct cell));
-#if defined( _DEBUG )
-  memset( c, 0, sizeof(struct cell) );
-#endif //_DEBUG
   return c;
 }
 
@@ -218,7 +215,9 @@ Cell evalExp(Cell exp)
       switch(type(proc)){
       case T_PROC:
 	operator = procvalue(proc);
-	args = applyList(args);
+	//	args = applyList(args);
+	applyList(args);
+	args = getReturn();
 	pushArg(&args);                                   //=> [....exps args]
 	operator();                                       //=> [....exps]
 	break;
@@ -239,7 +238,9 @@ Cell evalExp(Cell exp)
 	      setReturn(UNDEF);
 	    }else{
 	      args = cloneTree(args);
-	      args = applyList(args);
+	      //args = applyList(args);
+	      applyList(args);
+	      args = getReturn();
 	      exps = cloneSymbolTree(exps);
 	      letParam(exps, params, args);
 	      exps = pairCell(NIL, exps);
@@ -252,7 +253,9 @@ Cell evalExp(Cell exp)
 	      setReturn(UNDEF);
 	    }else{
 	      args = cloneTree(args);
-	      args = applyList(args);
+	      //args = applyList(args);
+	      applyList(args);
+	      args = getReturn();
 	      Cell tmps = lambdaexp(proc);
 	      tmps = cloneSymbolTree(tmps);
 	      letParam(tmps, params, args);
@@ -369,27 +372,38 @@ int length(Cell ls)
   return length;
 }
 
-Cell setAppendCell(Cell ls, Cell c)
+//Cell setAppendCell(Cell ls, Cell c)
+void setAppendCell(Cell ls, Cell c)
 {
   if(nullp(ls)){
     if(nullp(c)){
-      return ls;
+      //      return ls;
+      setReturn(ls);
+      return;
     }
     else{
-      return pairCell(c, NIL);
+      //      return pairCell(c, NIL);
+      setReturn(pairCell(c, NIL));
+      return;
     }
   }
   Cell cdr = ls;
   while(!nullp(cdr(cdr))){
     cdr = cdr(cdr);
   }
+
   PUSH_ARGS3(&c, &ls, &cdr)
 
   Cell tmp = pairCell(c, NIL);
 
   gc_write_barrier( cdr, &cdr(cdr), tmp );
-  POP_ARGS3();
-  return ls;
+  //  POP_ARGS3();
+  popArg();
+  popArg();
+  popArg();
+
+  setReturn(ls);
+  //  return ls;
 }
 
 Cell setAppendList(Cell ls, Cell append)
@@ -414,32 +428,50 @@ Cell reverseList(Cell ls)
   return reverse;
 }
 
-Cell applyList(Cell ls)
+//Cell applyList(Cell ls)
+void applyList(Cell ls)
 {
-  if(nullp(ls)) return ls;
+  if(nullp(ls)){
+    setReturn(ls);
+    return;
+    //    return ls;
+  }
   pushArg(&ls);
 
   Cell c = evalExp(car(ls));
   Cell top = pairCell(c, NIL);
   Cell last = top;
   Cell tmp = cdr(ls);
-  Cell tmp2 = NIL;
-  Cell tmpCar = NIL;
+  //  Cell tmp2 = NIL;
+  //  Cell tmpCar = NIL;
 
-  PUSH_ARGS5(&top, &last, &tmp, &tmp2, &tmpCar);
+  //PUSH_ARGS5(&top, &last, &tmp, &tmp2, &tmpCar);
+  //  PUSH_ARGS4(&last, &tmp, &tmp2, &tmpCar);
+  PUSH_ARGS3(&top, &last, &tmp);
 
-  for(;!nullp(tmp); tmp=cdr(tmp) ){
+  for(;!nullp(tmp); tmp=cdr(tmp)){
+#if defined( _CUT )
     tmpCar = evalExp(car(tmp));
     tmp2 = pairCell(NIL, NIL);
     gc_write_barrier( tmp2, &car(tmp2), tmpCar );
     gc_write_barrier( last, &cdr(last), tmp2 );
     last = tmp2;
+#else
+    Cell exp = evalExp(car(tmp));
+    gc_write_barrier( last, &cdr(last), pairCell(exp, NIL) );
+    last = cdr(last);
+#endif
   }
 
-  POP_ARGS5();
+  setReturn(top);
+
+  //POP_ARGS5();
+  popArg();
+  popArg();
   popArg();
 
-  return top;
+  popArg();
+  //  return top;
 }
 
 void printCons(Cell c)
@@ -625,7 +657,9 @@ Cell readList(FILE* fp)
       ungetc(c, fp);
       PUSH_ARGS2(&list, &exp);
       exp = readElem(fp);
-      list = setAppendCell(list, exp);
+      //      list = setAppendCell(list, exp);
+      setAppendCell(list, exp);
+      list = getReturn();
       POP_ARGS2();
       break;
     }
@@ -641,7 +675,9 @@ Cell readQuot(FILE* fp)
   Cell symbol = symbolCell("quote");
   Cell symbolPair = pairCell(symbol, NIL);
 
-  Cell quot = setAppendCell(symbolPair, elem);
+  //  Cell quot = setAppendCell(symbolPair, elem);
+  setAppendCell(symbolPair, elem);
+  Cell quot = getReturn();
   popArg();
 
   return quot;
@@ -816,9 +852,6 @@ Cell getReturn()
 
 void setReturn(Cell c)
 {
-#if defined( _DEBUG )
-  //  gc_stack_check(c);
-#endif //_DEBUG
   gc_write_barrier_root( &retReg, c );
   //  retReg = c;
 }
