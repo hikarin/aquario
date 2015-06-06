@@ -238,7 +238,6 @@ Cell evalExp(Cell exp)
 	      setReturn(UNDEF);
 	    }else{
 	      args = cloneTree(args);
-	      //args = applyList(args);
 	      applyList(args);
 	      args = getReturn();
 	      exps = cloneSymbolTree(exps);
@@ -253,7 +252,6 @@ Cell evalExp(Cell exp)
 	      setReturn(UNDEF);
 	    }else{
 	      args = cloneTree(args);
-	      //args = applyList(args);
 	      applyList(args);
 	      args = getReturn();
 	      Cell tmps = lambdaexp(proc);
@@ -372,17 +370,14 @@ int length(Cell ls)
   return length;
 }
 
-//Cell setAppendCell(Cell ls, Cell c)
 void setAppendCell(Cell ls, Cell c)
 {
   if(nullp(ls)){
     if(nullp(c)){
-      //      return ls;
       setReturn(ls);
       return;
     }
     else{
-      //      return pairCell(c, NIL);
       setReturn(pairCell(c, NIL));
       return;
     }
@@ -397,13 +392,9 @@ void setAppendCell(Cell ls, Cell c)
   Cell tmp = pairCell(c, NIL);
 
   gc_write_barrier( cdr, &cdr(cdr), tmp );
-  //  POP_ARGS3();
-  popArg();
-  popArg();
-  popArg();
+  POP_ARGS3();
 
   setReturn(ls);
-  //  return ls;
 }
 
 Cell setAppendList(Cell ls, Cell append)
@@ -428,13 +419,11 @@ Cell reverseList(Cell ls)
   return reverse;
 }
 
-//Cell applyList(Cell ls)
 void applyList(Cell ls)
 {
   if(nullp(ls)){
     setReturn(ls);
     return;
-    //    return ls;
   }
   pushArg(&ls);
 
@@ -442,36 +431,19 @@ void applyList(Cell ls)
   Cell top = pairCell(c, NIL);
   Cell last = top;
   Cell tmp = cdr(ls);
-  //  Cell tmp2 = NIL;
-  //  Cell tmpCar = NIL;
 
-  //PUSH_ARGS5(&top, &last, &tmp, &tmp2, &tmpCar);
-  //  PUSH_ARGS4(&last, &tmp, &tmp2, &tmpCar);
   PUSH_ARGS3(&top, &last, &tmp);
 
   for(;!nullp(tmp); tmp=cdr(tmp)){
-#if defined( _CUT )
-    tmpCar = evalExp(car(tmp));
-    tmp2 = pairCell(NIL, NIL);
-    gc_write_barrier( tmp2, &car(tmp2), tmpCar );
-    gc_write_barrier( last, &cdr(last), tmp2 );
-    last = tmp2;
-#else
     Cell exp = evalExp(car(tmp));
     gc_write_barrier( last, &cdr(last), pairCell(exp, NIL) );
     last = cdr(last);
-#endif
   }
 
   setReturn(top);
 
-  //POP_ARGS5();
+  POP_ARGS3();
   popArg();
-  popArg();
-  popArg();
-
-  popArg();
-  //  return top;
 }
 
 void printCons(Cell c)
@@ -657,7 +629,6 @@ Cell readList(FILE* fp)
       ungetc(c, fp);
       PUSH_ARGS2(&list, &exp);
       exp = readElem(fp);
-      //      list = setAppendCell(list, exp);
       setAppendCell(list, exp);
       list = getReturn();
       POP_ARGS2();
@@ -675,7 +646,6 @@ Cell readQuot(FILE* fp)
   Cell symbol = symbolCell("quote");
   Cell symbolPair = pairCell(symbol, NIL);
 
-  //  Cell quot = setAppendCell(symbolPair, elem);
   setAppendCell(symbolPair, elem);
   Cell quot = getReturn();
   popArg();
@@ -853,7 +823,6 @@ Cell getReturn()
 void setReturn(Cell c)
 {
   gc_write_barrier_root( &retReg, c );
-  //  retReg = c;
 }
 
 void setParseError(char* str)
