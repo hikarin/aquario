@@ -196,10 +196,12 @@ Cell evalExp(Cell exp)
   Cell exps = pairCell( exp, NIL);
   Cell params = NIL;
   Cell proc = NIL;
-  PUSH_ARGS3(&exps, &params, &proc)
+  //  PUSH_ARGS3(&exps, &params, &proc)
+  PUSH_ARGS3(&proc, &params, &exps);
 
   Boolean is_loop = TRUE;
-  for(;is_loop==TRUE;exps=cdr(exps)){
+  //  for(;is_loop==TRUE;exps=cdr(exps)){
+  for(;is_loop==TRUE;popArg(),exps=cdr(exps),pushArg(&exps)){
     exp = car(exps);
     if( nullp(cdr(exps) ) ){
       is_loop = FALSE;
@@ -215,7 +217,6 @@ Cell evalExp(Cell exp)
       switch(type(proc)){
       case T_PROC:
 	operator = procvalue(proc);
-	//	args = applyList(args);
 	applyList(args);
 	args = getReturn();
 	pushArg(&args);                                   //=> [....exps args]
@@ -422,27 +423,48 @@ Cell reverseList(Cell ls)
 void applyList(Cell ls)
 {
   if(nullp(ls)){
+#if defined( _DEBUG )
+  printf("ls: %p\n", ls);
+#endif
     setReturn(ls);
     return;
   }
   pushArg(&ls);
-
+#if defined( _DEBUG )
+  printf("ls: %p\n", ls);
+#endif
   Cell c = evalExp(car(ls));
+#if defined( _DEBUG )
+  printf("c: %p\n", c);
+#endif
   Cell top = pairCell(c, NIL);
   Cell last = top;
-  Cell tmp = cdr(ls);
+#if defined( _DEBUG )
+  printf("c: %p, top: %p, last: %p\n", c, top, last);
+#endif
 
-  PUSH_ARGS3(&top, &last, &tmp);
-
-  for(;!nullp(tmp); tmp=cdr(tmp)){
-    Cell exp = evalExp(car(tmp));
-    gc_write_barrier( last, &cdr(last), pairCell(exp, NIL) );
-    last = cdr(last);
+  PUSH_ARGS2(&top, &last);
+  for(;!nullp(cdr(ls)); ls=cdr(ls),last=cdr(last)){
+#if defined( _DEBUG )
+    printf("car(cdr(ls)): %p, cdr(ls): %p\n", car(cdr(ls)), cdr(ls));
+#endif
+    Cell exp = evalExp(car(cdr(ls)));
+#if defined( _DEBUG )
+    printf("exp: %p\n", exp);
+#endif
+    gc_write_barrier(last, &cdr(last), pairCell(exp, NIL));
   }
 
   setReturn(top);
+#if defined( _DEBUG )
+  Cell t = top;
+  while(!nullp(t)){
+    printf(">>> t: %p\n", t);
+    t=cdr(t);
+  }
+#endif
 
-  POP_ARGS3();
+  POP_ARGS2();
   popArg();
 }
 
@@ -735,6 +757,9 @@ void setVarCell(Cell strCell, Cell c)
 {
   int key = 0;
   Cell chain = getChain(strvalue(strCell), &key);
+#if defined( _DEBUG )
+  printf("c: %p, name: %s, key: %d\n", c, strvalue(strCell), key); 
+#endif
   registerVar(strCell, chain, c, &env[key]);
 }
 
@@ -747,7 +772,8 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
     gc_write_barrier( chain, &car(chain), pair );
   }
   else{
-    pushArg(env);
+    Cell tmp = *env;
+    pushArg(&tmp);
     Cell entry = pairCell(nameCell, c);
     gc_write_barrier_root(env, pairCell(entry, *env));
     popArg();
@@ -779,6 +805,9 @@ void setVar(char* name, Cell c)
   pushArg(&c);
   Cell nameCell = stringCell(name);
   Cell chain = getChain(name, &key);
+#if defined( _DEBUG )
+  printf("c: %p, name: %s, key: %d\n", c, name, key); 
+#endif
   registerVar(nameCell, chain, c, &env[key]);
   popArg();
 }

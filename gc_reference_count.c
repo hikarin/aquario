@@ -136,9 +136,11 @@ void* gc_malloc_reference_count( size_t size )
   Reference_Count_Header* new_header = (Reference_Count_Header*)chunk;
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
-  REF_CNT(ret)         = 1;
+  REF_CNT(ret)         = 0;
 #if defined( _DEBUG )
-  DEBUG_REF_CNT(ret)   = 1;
+  DEBUG_REF_CNT(ret)   = 0;
+
+  printf("allocated: %p\n", ret);
 #endif
 
   return ret;
@@ -375,8 +377,8 @@ void decrement_count(Cell* objp)
 void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 {
 #if defined( _DEBUG )
-  printf("wb: %d: %d(%d)=> %d(%d)\n", type(obj), type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
-  printf("\t%p => %p\n", *cellp, newcell);
+  //  printf("wb: %d: %d(%d)=> %d(%d)\n", type(obj), type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
+  //  printf("\t%p => %p\n", *cellp, newcell);
 #endif
   increment_count( &newcell );
   decrement_count( cellp );
@@ -389,8 +391,8 @@ void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell)
 {
 #if defined( _DEBUG )
-  printf("wb: %d(%d)=> %d(%d)\n", type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
-  printf("\t%p => %p\n", *cellp, newcell);
+  //  printf("wb: %d(%d)=> %d(%d)\n", type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
+  //  printf("\t%p => %p\n", *cellp, newcell);
 #endif
   increment_count( &newcell );
   decrement_count( cellp );
