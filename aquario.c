@@ -196,13 +196,14 @@ Cell evalExp(Cell exp)
   Cell exps = pairCell( exp, NIL);
   Cell params = NIL;
   Cell proc = NIL;
-  //  PUSH_ARGS3(&exps, &params, &proc)
-  PUSH_ARGS3(&proc, &params, &exps);
+  PUSH_ARGS3(&exps, &params, &proc)
+  //PUSH_ARGS3(&proc, &params, &exps);
 
   Boolean is_loop = TRUE;
   //  for(;is_loop==TRUE;exps=cdr(exps)){
-  for(;is_loop==TRUE;popArg(),exps=cdr(exps),pushArg(&exps)){
-    exp = car(exps);
+  for(;is_loop==TRUE;gc_write_barrier_root(&exps, cdr(exps))){
+    //    exp = car(exps);
+    gc_write_barrier_root(&exp, car(exps));
     if( nullp(cdr(exps) ) ){
       is_loop = FALSE;
     }
@@ -211,7 +212,8 @@ Cell evalExp(Cell exp)
 	setReturn( getVar(symbolname(exp)) );
       }
     }else if( type(exp) == T_PAIR ){
-      proc = evalExp(car(exp));
+      //      proc = evalExp(car(exp));
+      gc_write_barrier_root(&proc, evalExp(car(exp)));
       Cell args = cdr(exp);
       opType operator;
       switch(type(proc)){
@@ -230,20 +232,26 @@ Cell evalExp(Cell exp)
       case T_LAMBDA:
 	{
 	  pushArg(&args);
-	  params = lambdaparam(proc);
+	  //	  params = lambdaparam(proc);
+	  gc_write_barrier_root(&params, lambdaparam(proc));
 	  if( !is_loop ){
 	    is_loop = TRUE;
-	    exps = lambdaexp(proc);
+	    //	    exps = lambdaexp(proc);
+	    gc_write_barrier_root(&exps, lambdaexp(proc));
 	    if(length(args) != length(params)){
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      args = cloneTree(args);
+	      //	      args = cloneTree(args);
+	      gc_write_barrier_root(&args, cloneTree(args));
 	      applyList(args);
-	      args = getReturn();
-	      exps = cloneSymbolTree(exps);
+	      //	      args = getReturn();
+	      gc_write_barrier_root(&args, getReturn());
+	      //	      exps = cloneSymbolTree(exps);
+	      gc_write_barrier_root(&exps, cloneSymbolTree(exps));
 	      letParam(exps, params, args);
-	      exps = pairCell(NIL, exps);
+	      //	      exps = pairCell(NIL, exps);
+	      gc_write_barrier_root(&exps, pairCell(NIL, exps));
 	      popArg();
 	      continue;
 	    }
@@ -252,9 +260,11 @@ Cell evalExp(Cell exp)
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      args = cloneTree(args);
+	      //	      args = cloneTree(args);
+	      gc_write_barrier_root(&args, cloneTree(args));
 	      applyList(args);
-	      args = getReturn();
+	      //	      args = getReturn();
+	      gc_write_barrier_root(&args, getReturn());
 	      Cell tmps = lambdaexp(proc);
 	      tmps = cloneSymbolTree(tmps);
 	      letParam(tmps, params, args);
@@ -391,8 +401,8 @@ void setAppendCell(Cell ls, Cell c)
   PUSH_ARGS3(&c, &ls, &cdr)
 
   Cell tmp = pairCell(c, NIL);
-
   gc_write_barrier( cdr, &cdr(cdr), tmp );
+
   POP_ARGS3();
 
   setReturn(ls);
@@ -430,40 +440,17 @@ void applyList(Cell ls)
     return;
   }
   pushArg(&ls);
-#if defined( _DEBUG )
-  printf("ls: %p\n", ls);
-#endif
   Cell c = evalExp(car(ls));
-#if defined( _DEBUG )
-  printf("c: %p\n", c);
-#endif
   Cell top = pairCell(c, NIL);
   Cell last = top;
-#if defined( _DEBUG )
-  printf("c: %p, top: %p, last: %p\n", c, top, last);
-#endif
 
   PUSH_ARGS2(&top, &last);
   for(;!nullp(cdr(ls)); ls=cdr(ls),last=cdr(last)){
-#if defined( _DEBUG )
-    printf("car(cdr(ls)): %p, cdr(ls): %p\n", car(cdr(ls)), cdr(ls));
-#endif
     Cell exp = evalExp(car(cdr(ls)));
-#if defined( _DEBUG )
-    printf("exp: %p\n", exp);
-#endif
     gc_write_barrier(last, &cdr(last), pairCell(exp, NIL));
   }
 
   setReturn(top);
-#if defined( _DEBUG )
-  Cell t = top;
-  while(!nullp(t)){
-    printf(">>> t: %p\n", t);
-    t=cdr(t);
-  }
-#endif
-
   POP_ARGS2();
   popArg();
 }
@@ -650,9 +637,9 @@ Cell readList(FILE* fp)
     default:
       ungetc(c, fp);
       PUSH_ARGS2(&list, &exp);
-      exp = readElem(fp);
+      gc_write_barrier_root(&exp, readElem(fp));
       setAppendCell(list, exp);
-      list = getReturn();
+      gc_write_barrier_root(&list, getReturn());
       POP_ARGS2();
       break;
     }
@@ -802,9 +789,6 @@ void setVar(char* name, Cell c)
   pushArg(&c);
   Cell nameCell = stringCell(name);
   Cell chain = getChain(name, &key);
-#if defined( _DEBUG )
-  printf("c: %p, name: %s, key: %d\n", c, name, key); 
-#endif
   registerVar(nameCell, chain, c, &env[key]);
   popArg();
 }
@@ -1407,7 +1391,8 @@ void syntax_define()
   Cell obj = cadr(args);
   obj = evalExp(obj);
   if( obj != UNDEF ){
-    symbol = car(args);
+    gc_write_barrier_root(&symbol, car(args));
+    //    symbol = car(args);
     setVarCell(symbol, obj);
   }
 
@@ -1484,7 +1469,8 @@ void syntax_begin()
 {
   Cell args = *popArg();
   pushArg(&args);
-  for(;!nullp(cdr(args));args=cdr(args)){
+  //for(;!nullp(cdr(args));args=cdr(args)){
+  for(;!nullp(cdr(args));gc_write_barrier_root(&args,cdr(args))){
     evalExp(car(args));
   }
 
