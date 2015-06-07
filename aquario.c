@@ -196,14 +196,12 @@ Cell evalExp(Cell exp)
   Cell exps = pairCell( exp, NIL);
   Cell params = NIL;
   Cell proc = NIL;
-  PUSH_ARGS3(&exps, &params, &proc)
-  //PUSH_ARGS3(&proc, &params, &exps);
+  PUSH_ARGS3(&proc, &params, &exps);
+  // => [... exp proc params exps]
 
   Boolean is_loop = TRUE;
-  //  for(;is_loop==TRUE;exps=cdr(exps)){
-  for(;is_loop==TRUE;gc_write_barrier_root(&exps, cdr(exps))){
-    //    exp = car(exps);
-    gc_write_barrier_root(&exp, car(exps));
+  for(;is_loop==TRUE;gc_write_barrier_root(stack[stack_top-1]/*exps*/, cdr(exps))){
+    gc_write_barrier_root(stack[stack_top-4]/*exp*/, car(exps));
     if( nullp(cdr(exps) ) ){
       is_loop = FALSE;
     }
@@ -212,8 +210,7 @@ Cell evalExp(Cell exp)
 	setReturn( getVar(symbolname(exp)) );
       }
     }else if( type(exp) == T_PAIR ){
-      //      proc = evalExp(car(exp));
-      gc_write_barrier_root(&proc, evalExp(car(exp)));
+      gc_write_barrier_root(stack[stack_top-3]/*proc*/, evalExp(car(exp)));
       Cell args = cdr(exp);
       opType operator;
       switch(type(proc)){
@@ -232,27 +229,25 @@ Cell evalExp(Cell exp)
       case T_LAMBDA:
 	{
 	  pushArg(&args);
-	  //	  params = lambdaparam(proc);
-	  gc_write_barrier_root(&params, lambdaparam(proc));
+	  // => [... exp proc params exps args]
+	  gc_write_barrier_root(stack[stack_top-3]/*params*/, lambdaparam(proc));
 	  if( !is_loop ){
 	    is_loop = TRUE;
-	    //	    exps = lambdaexp(proc);
-	    gc_write_barrier_root(&exps, lambdaexp(proc));
+	    gc_write_barrier_root(stack[stack_top-2]/*exps*/, lambdaexp(proc));
 	    if(length(args) != length(params)){
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      //	      args = cloneTree(args);
-	      gc_write_barrier_root(&args, cloneTree(args));
+	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
 	      applyList(args);
-	      //	      args = getReturn();
-	      gc_write_barrier_root(&args, getReturn());
-	      //	      exps = cloneSymbolTree(exps);
-	      gc_write_barrier_root(&exps, cloneSymbolTree(exps));
+	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, cloneSymbolTree(exps));
 	      letParam(exps, params, args);
 	      //	      exps = pairCell(NIL, exps);
-	      gc_write_barrier_root(&exps, pairCell(NIL, exps));
+	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, pairCell(NIL, exps));
 	      popArg();
+	      // => [... exp proc params exps]
+
 	      continue;
 	    }
 	  }else{
@@ -260,11 +255,10 @@ Cell evalExp(Cell exp)
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      //	      args = cloneTree(args);
-	      gc_write_barrier_root(&args, cloneTree(args));
+	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
 	      applyList(args);
-	      //	      args = getReturn();
-	      gc_write_barrier_root(&args, getReturn());
+	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+
 	      Cell tmps = lambdaexp(proc);
 	      tmps = cloneSymbolTree(tmps);
 	      letParam(tmps, params, args);
@@ -276,6 +270,7 @@ Cell evalExp(Cell exp)
 	    }
 	  }
 	  popArg();
+	  // => [... exp proc params exps]
 	  break;
 	}
       default:
@@ -637,9 +632,12 @@ Cell readList(FILE* fp)
     default:
       ungetc(c, fp);
       PUSH_ARGS2(&list, &exp);
-      gc_write_barrier_root(&exp, readElem(fp));
+      // => [... list exp]
+      gc_write_barrier_root(stack[stack_top-1]/*exp*/, readElem(fp));
+
       setAppendCell(list, exp);
-      gc_write_barrier_root(&list, getReturn());
+      gc_write_barrier_root(stack[stack_top-2]/*list*/, getReturn());
+
       POP_ARGS2();
       break;
     }
@@ -825,9 +823,13 @@ void callProc(char* name)
 
 Cell getReturn()
 {
+#if defined( _CUT )
   Cell ret = retReg;
   retReg = NIL;
   return ret;
+#else
+  return retReg;
+#endif
 }
 
 void setReturn(Cell c)
@@ -1391,7 +1393,7 @@ void syntax_define()
   Cell obj = cadr(args);
   obj = evalExp(obj);
   if( obj != UNDEF ){
-    gc_write_barrier_root(&symbol, car(args));
+    gc_write_barrier_root(stack[stack_top-2], car(args));
     //    symbol = car(args);
     setVarCell(symbol, obj);
   }
@@ -1469,8 +1471,7 @@ void syntax_begin()
 {
   Cell args = *popArg();
   pushArg(&args);
-  //for(;!nullp(cdr(args));args=cdr(args)){
-  for(;!nullp(cdr(args));gc_write_barrier_root(&args,cdr(args))){
+  for(;!nullp(cdr(args));gc_write_barrier_root(stack[stack_top-1]/*args*/,cdr(args))){
     evalExp(car(args));
   }
 

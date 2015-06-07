@@ -139,8 +139,6 @@ void* gc_malloc_reference_count( size_t size )
   REF_CNT(ret)         = 0;
 #if defined( _DEBUG )
   DEBUG_REF_CNT(ret)   = 0;
-
-  printf("allocated: %p\n", ret);
 #endif
 
   return ret;
@@ -394,9 +392,11 @@ void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell)
   //  printf("wb: %d(%d)=> %d(%d)\n", type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
   //  printf("\t%p => %p\n", *cellp, newcell);
 #endif
-  increment_count( &newcell );
-  decrement_count( cellp );
+  Cell prev = *cellp;
+
   *cellp = newcell;
+  increment_count( &newcell );
+  decrement_count( &prev );
 #if defined( _DEBUG )
   reference_check();
 #endif
