@@ -398,9 +398,9 @@ void setAppendCell(Cell ls, Cell c)
   Cell tmp = pairCell(c, NIL);
   gc_write_barrier( cdr, &cdr(cdr), tmp );
 
-  POP_ARGS3();
-
   setReturn(ls);
+
+  POP_ARGS3();
 }
 
 Cell setAppendList(Cell ls, Cell append)
@@ -1472,13 +1472,12 @@ void syntax_set()
 
 void syntax_begin()
 {
-  Cell args = *popArg();
-  pushArg(&args);
-  for(;!nullp(cdr(args));gc_write_barrier_root(stack[stack_top-1]/*args*/,cdr(args))){
-    evalExp(car(args));
+  Cell* args = getStackTop();
+  for(;!nullp(cdr(*args));gc_write_barrier_root(stack[stack_top-1]/*args*/,cdr(*args))){
+    evalExp(car(*args));
   }
 
-  Cell evalCell = evalExp(car(args));
+  Cell evalCell = evalExp(car(*args));
   setReturn( evalCell );
 
   popArg();
