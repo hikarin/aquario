@@ -306,6 +306,7 @@ int get_total_chunk_size()
 
 void reference_check()
 {
+  return;
   mark();
 
   char* scan = heap;

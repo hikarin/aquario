@@ -1,8 +1,8 @@
 #include "types.h"
 
 //#define HEAP_SIZE (260*1024)
-#define HEAP_SIZE (1*1024*1024)
-//#define HEAP_SIZE (10*1024*1024)
+//#define HEAP_SIZE (1*1024*1024)
+#define HEAP_SIZE (10*1024*1024)
 
 void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );

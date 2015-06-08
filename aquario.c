@@ -440,9 +440,12 @@ void applyList(Cell ls)
   Cell last = top;
 
   PUSH_ARGS2(&top, &last);
-  for(;!nullp(cdr(ls)); ls=cdr(ls),last=cdr(last)){
+  while( !nullp(cdr(ls)) ){
     Cell exp = evalExp(car(cdr(ls)));
+
     gc_write_barrier(last, &cdr(last), pairCell(exp, NIL));
+    gc_write_barrier_root(stack[stack_top-3]/*ls*/,   cdr(ls));
+    gc_write_barrier_root(stack[stack_top-1]/*last*/, cdr(last));
   }
 
   setReturn(top);

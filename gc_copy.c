@@ -23,8 +23,6 @@ static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 #if defined( _DEBUG )
 static void copy_gc_stack_check(Cell* cell);
-static int gc_count = 0;
-static void is_to_object(Cell* objp);
 #endif //_DEBUG
 
 #define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
@@ -111,16 +109,6 @@ void copy_gc_stack_check(Cell* cell)
   if(to_space <= (char*)cell && (char*)cell < to_space + HEAP_SIZE/2){
     printf("[WARNING] cell %p points the heap\n", cell);
     exit(-1);
-  }
-}
-
-void is_to_object(Cell* objp){
-  if( *objp == NULL ){
-    return;
-  }
-  Cell obj = *objp;
-  if( to_space <= (char*)obj && (char*)obj < to_space + HEAP_SIZE/2 ){
-    printf("obj %p is in to_space!!!!\n", obj);
   }
 }
 #endif //_DEBUG
