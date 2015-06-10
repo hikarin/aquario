@@ -74,7 +74,8 @@ Cell newCell(Type t, size_t size);
 
 void setString(Cell c, char* str);
 
-Cell clone(Cell c);
+void clone(Cell c);
+//Cell clone(Cell c);
 
 Cell charCell(char ch);
 Cell stringCell(char* str);

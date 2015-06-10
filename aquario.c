@@ -125,68 +125,91 @@ Cell noneCell()
   return c;
 }
 
-Cell clone(Cell src)
+//Cell clone(Cell src)
+void clone(Cell src)
 {
   int size = getCellSize( src );
   pushArg(&src);
   Cell new = gc_malloc( size );
   popArg();
   gc_memcpy( (char*)new, (char*)src, size );
-  return new;
+  //  return new;
+  setReturn(new);
 }
 
-Cell cloneTree(Cell src)
+//Cell cloneTree(Cell src)
+void cloneTree(Cell src)
 {
   if(isPair(src)){
-    Cell top = clone(src);
+    //    Cell top = clone(src);
+    clone(src);
+    Cell top = getReturn();
     pushArg(&top);
     if(isPair(car(top))){
-      Cell carCell = cloneTree(car(top));
-      gc_write_barrier(top, &car(top), carCell);
+      //      Cell carCell = cloneTree(car(top));
+      cloneTree(car(top));
+      gc_write_barrier(top, &car(top), getReturn());
     }
     if(isPair(cdr(top))){
-      Cell cdrCell = cloneTree(cdr(top));
-      gc_write_barrier(top, &cdr(top), cdrCell);
+      //Cell cdrCell = cloneTree(cdr(top));
+      cloneTree(cdr(top));
+      gc_write_barrier(top, &cdr(top), getReturn());
     }
-    return *popArg();
+
+    setReturn(top);
+    popArg();
   }
   else if(isNone(src)){
-    return src;
+    setReturn(src);
   }
   else{
-    return clone(src);
+    //    setReturn(clone(src));
+    clone(src);
   }
 }
 
-Cell cloneSymbolTree(Cell src)
+//Cell cloneSymbolTree(Cell src)
+void cloneSymbolTree(Cell src)
 {
   if(isPair(src)){
-    Cell top = clone(src);
+    //    Cell top = clone(src);
+    clone(src);
+    Cell top = getReturn();
     pushArg(&top);
     //clone car.
     if(isPair(car(top))){
-      Cell newCar = cloneSymbolTree(car(top));
-      gc_write_barrier(top, &car(top), newCar);
+      //      Cell newCar = cloneSymbolTree(car(top));
+      cloneSymbolTree(car(top));
+      gc_write_barrier(top, &car(top), getReturn());
     }else if(isSymbol(car(top))){
-      Cell newCar = cloneSymbolTree(car(top));
-      gc_write_barrier(top, &car(top), newCar);
+      //      Cell newCar = cloneSymbolTree(car(top));
+      cloneSymbolTree(car(top));
+      gc_write_barrier(top, &car(top), getReturn());
     }
 
     //clone cdr.
     if(isPair(cdr(top))){
-      Cell newCdr = cloneSymbolTree(cdr(top));
-      gc_write_barrier(top, &cdr(top), newCdr);
+      //      Cell newCdr = cloneSymbolTree(cdr(top));
+      cloneSymbolTree(cdr(top));
+      gc_write_barrier(top, &cdr(top), getReturn());
     }else if(isSymbol(cdr(top))){
-      Cell newCdr = cloneSymbolTree(cdr(top));
-      gc_write_barrier(top, &cdr(top), newCdr);
+      cloneSymbolTree(cdr(top));
+      //      Cell newCdr = cloneSymbolTree(cdr(top));
+      gc_write_barrier(top, &cdr(top), getReturn());
     }
-    return *popArg();
+
+    //    return *popArg();
+    setReturn(top);
+    popArg();
   }
   else if(isSymbol(src)){
-    return clone(src);
+    //    return clone(src);
+    //    setReturn(clone(src));
+    clone(src);
   }
   else{
-    return src;
+    //    return src;
+    setReturn(src);
   }
 }
 
@@ -238,10 +261,13 @@ Cell evalExp(Cell exp)
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
+	      //	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
+	      cloneTree(args);
+	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	      applyList(args);
 	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, cloneSymbolTree(exps));
+	      cloneSymbolTree(exps);
+	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, getReturn());
 	      letParam(exps, params, args);
 	      //	      exps = pairCell(NIL, exps);
 	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, pairCell(NIL, exps));
@@ -255,12 +281,15 @@ Cell evalExp(Cell exp)
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
+	      //	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
+	      cloneTree(args);
+	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	      applyList(args);
 	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 
 	      Cell tmps = lambdaexp(proc);
-	      tmps = cloneSymbolTree(tmps);
+	      cloneSymbolTree(tmps);
+	      tmps = getReturn();
 	      letParam(tmps, params, args);
 	      tmps = pairCell(symbolCell("begin"), tmps);
 	      type(exp) = type(tmps);
@@ -303,6 +332,7 @@ void letParam(Cell exp, Cell dummyParams, Cell realParams)
 	gc_write_barrier( exp, &car(exp), find );
       }
     }
+
     Cell cdrCell = cdr(exp);
     if(isPair(cdrCell)){
       letParam(cdrCell, dummyParams, realParams);
@@ -1202,7 +1232,9 @@ void op_div()
 void op_append()
 {
   Cell* args = getStackTop();
-  Cell result = clone( car(*args) );
+  //  Cell result = clone( car(*args) );
+  clone(car(*args));
+  Cell result = getReturn();
   setReturn(setAppendList(result, cadr(*args)));
 
   popArg();
