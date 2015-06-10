@@ -125,7 +125,6 @@ Cell noneCell()
   return c;
 }
 
-//Cell clone(Cell src)
 void clone(Cell src)
 {
   int size = getCellSize( src );
@@ -133,25 +132,20 @@ void clone(Cell src)
   Cell new = gc_malloc( size );
   popArg();
   gc_memcpy( (char*)new, (char*)src, size );
-  //  return new;
   setReturn(new);
 }
 
-//Cell cloneTree(Cell src)
 void cloneTree(Cell src)
 {
   if(isPair(src)){
-    //    Cell top = clone(src);
     clone(src);
     Cell top = getReturn();
     pushArg(&top);
     if(isPair(car(top))){
-      //      Cell carCell = cloneTree(car(top));
       cloneTree(car(top));
       gc_write_barrier(top, &car(top), getReturn());
     }
     if(isPair(cdr(top))){
-      //Cell cdrCell = cloneTree(cdr(top));
       cloneTree(cdr(top));
       gc_write_barrier(top, &cdr(top), getReturn());
     }
@@ -163,52 +157,41 @@ void cloneTree(Cell src)
     setReturn(src);
   }
   else{
-    //    setReturn(clone(src));
     clone(src);
   }
 }
 
-//Cell cloneSymbolTree(Cell src)
 void cloneSymbolTree(Cell src)
 {
   if(isPair(src)){
-    //    Cell top = clone(src);
     clone(src);
     Cell top = getReturn();
     pushArg(&top);
     //clone car.
     if(isPair(car(top))){
-      //      Cell newCar = cloneSymbolTree(car(top));
       cloneSymbolTree(car(top));
       gc_write_barrier(top, &car(top), getReturn());
     }else if(isSymbol(car(top))){
-      //      Cell newCar = cloneSymbolTree(car(top));
       cloneSymbolTree(car(top));
       gc_write_barrier(top, &car(top), getReturn());
     }
 
     //clone cdr.
     if(isPair(cdr(top))){
-      //      Cell newCdr = cloneSymbolTree(cdr(top));
       cloneSymbolTree(cdr(top));
       gc_write_barrier(top, &cdr(top), getReturn());
     }else if(isSymbol(cdr(top))){
       cloneSymbolTree(cdr(top));
-      //      Cell newCdr = cloneSymbolTree(cdr(top));
       gc_write_barrier(top, &cdr(top), getReturn());
     }
 
-    //    return *popArg();
     setReturn(top);
     popArg();
   }
   else if(isSymbol(src)){
-    //    return clone(src);
-    //    setReturn(clone(src));
     clone(src);
   }
   else{
-    //    return src;
     setReturn(src);
   }
 }
@@ -258,10 +241,10 @@ Cell evalExp(Cell exp)
 	    is_loop = TRUE;
 	    gc_write_barrier_root(stack[stack_top-2]/*exps*/, lambdaexp(proc));
 	    if(length(args) != length(params)){
-	      setParseError("wrong number arguments");
+	      printf("wrong number arguments\n");
 	      setReturn(UNDEF);
+	      is_loop = FALSE;
 	    }else{
-	      //	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
 	      cloneTree(args);
 	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	      applyList(args);
@@ -269,7 +252,6 @@ Cell evalExp(Cell exp)
 	      cloneSymbolTree(exps);
 	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, getReturn());
 	      letParam(exps, params, args);
-	      //	      exps = pairCell(NIL, exps);
 	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, pairCell(NIL, exps));
 	      popArg();
 	      // => [... exp proc params exps]
@@ -281,7 +263,6 @@ Cell evalExp(Cell exp)
 	      setParseError("wrong number arguments");
 	      setReturn(UNDEF);
 	    }else{
-	      //	      gc_write_barrier_root(stack[stack_top-1]/*args*/, cloneTree(args));
 	      cloneTree(args);
 	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	      applyList(args);
@@ -828,13 +809,6 @@ void dupArg()
 {
   Cell* c = getStackTop();
   pushArg(c);
-}
-
-void exchArg()
-{
-  Cell* c1 = popArg();
-  Cell* c2 = popArg();
-  PUSH_ARGS2(c1, c2)
 }
 
 void clearArgs()

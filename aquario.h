@@ -138,7 +138,6 @@ Cell getVar(char* name);
 void setVarCell(Cell strCell, Cell c);
 void setVar(char* name, Cell c);
 void dupArg();
-void exchArg();
 void clearArgs();
 void callProc(char* name);
 Cell getReturn();
