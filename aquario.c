@@ -231,8 +231,10 @@ Cell evalExp(Cell exp)
 	    is_loop = TRUE;
 	    exps = lambdaexp(proc);
 	    if(length(args) != length(params)){
-	      setParseError("wrong number arguments");
+	      //setParseError("wrong number arguments");
+	      printf("wrong number arguments\n");
 	      setReturn(UNDEF);
+	      is_loop = FALSE;
 	    }else{
 	      args = cloneTree(args);
 	      args = applyList(args);
