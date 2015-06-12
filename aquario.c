@@ -260,8 +260,9 @@ Cell evalExp(Cell exp)
 	    }
 	  }else{
 	    if(length(args) != length(params)){
-	      setParseError("wrong number arguments");
+	      printf("wrong number arguments\n");
 	      setReturn(UNDEF);
+	      is_loop = FALSE;
 	    }else{
 	      cloneTree(args);
 	      gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
@@ -787,6 +788,7 @@ Cell getChain(char* name, int* key)
   Cell chain = env[*key];
   if(env[*key]==NULL){
     chain = NIL;
+    //    gc_write_barrier_root(&env[*key], NIL);
     env[*key] = NIL;
   }
   while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){

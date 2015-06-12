@@ -58,16 +58,6 @@ static int mark_tbl[HEAP_SIZE/BIT_WIDTH+1];
 static char* heap           = NULL;
 static Free_Chunk* freelist = NULL;
 
-#if defined( _CUT )
-#define ZCT_SIZE 0xFF
-static Cell zct[ZCT_SIZE];
-static void add_zct(Cell obj);
-static void scan_zct();
-static void root_inc_cnt(Cell* objp);
-static void root_dec_cnt(Cell* objp);
-static int zct_top          = 0;
-#endif
-
 static void push_reference_count(Cell* cellp);
 static Cell* pop_reference_count();
 static void push_reference_count(Cell* cellp);
@@ -376,14 +366,14 @@ void decrement_count(Cell* objp)
 void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 {
 #if defined( _DEBUG )
-  //  printf("wb: %d: %d(%d)=> %d(%d)\n", type(obj), type(*cellp), REF_CNT(*cellp), type(newcell), REF_CNT(newcell) );
-  //  printf("\t%p => %p\n", *cellp, newcell);
-#endif
+  Cell old = *cellp;
+  *cellp = newcell;
+  increment_count( &newcell );
+  decrement_count( &old );
+#else
   increment_count( &newcell );
   decrement_count( cellp );
   *cellp = newcell;
-#if defined( _DEBUG )
-  reference_check();
 #endif
 }
 
