@@ -8,3 +8,6 @@ time ./aquario -GC mc tak.lsp
 
 #generational
 time ./aquario -GC gen tak.lsp
+
+#reference_count
+time ./aquario -GC ref tak.lsp

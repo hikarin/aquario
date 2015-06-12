@@ -17,9 +17,10 @@ clean:
 
 test: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_TEST
-	./aquario -GC gen do_test.lsp
+	./aquario -GC gen  do_test.lsp
 	./aquario -GC copy do_test.lsp
-	./aquario -GC mc do_test.lsp
+	./aquario -GC mc   do_test.lsp
+	./aquario -GC ref  do_test.lsp
 
 debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g

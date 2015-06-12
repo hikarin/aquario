@@ -440,9 +440,6 @@ Cell reverseList(Cell ls)
 void applyList(Cell ls)
 {
   if(nullp(ls)){
-#if defined( _DEBUG )
-  printf("ls: %p\n", ls);
-#endif
     setReturn(ls);
     return;
   }
@@ -757,9 +754,6 @@ void setVarCell(Cell strCell, Cell c)
 {
   int key = 0;
   Cell chain = getChain(strvalue(strCell), &key);
-#if defined( _DEBUG )
-  printf("c: %p, name: %s, key: %d\n", c, strvalue(strCell), key); 
-#endif
   registerVar(strCell, chain, c, &env[key]);
 }
 
