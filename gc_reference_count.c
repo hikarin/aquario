@@ -134,7 +134,6 @@ Free_Chunk* get_free_chunk( size_t size )
       }
       break;
     }
-    
     chunk = &((*chunk)->next);
   }
 
@@ -143,17 +142,12 @@ Free_Chunk* get_free_chunk( size_t size )
 
 void reclaim_obj( Cell obj )
 {
-#if defined( _DEBUG )
-  if( REF_CNT(obj) < 0 ){
-    printf("REF_CNT minus\n");
-  }
-#endif
-
   REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
   
   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
-  size_t obj_size = GET_OBJECT_SIZE( obj );  
+  size_t obj_size = GET_OBJECT_SIZE( obj );
+
   if(!freelist){
     //No object in freelist.
     freelist             = obj_top;
@@ -253,16 +247,7 @@ void decrement_count(Cell* objp)
 //Write Barrier.
 void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell)
 {
-#if defined( _DEBUG )
-  Cell old = *cellp;
-  *cellp = newcell;
-  increment_count( &newcell );
-  decrement_count( &old );
-#else
-  increment_count( &newcell );
-  decrement_count( cellp );
-  *cellp = newcell;
-#endif
+  gc_write_barrier_root_reference_count(cellp, newcell);
 }
 
 void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell)

@@ -9,10 +9,10 @@
 #include "gc_reference_count.h"
 #include "gc_generational.h"
 
-static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);     //write barrier;
-static void gc_write_barrier_root_default(Cell* cellp, Cell cell);     //write barrier;
-static void gc_init_ptr_default(Cell* cellp, Cell cell);          //init pointer;
-static void gc_memcpy_default(char* dst, char* src, size_t size); //memcpy;
+static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //write barrier;
+static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
+static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
+static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
 #if defined( _DEBUG )
 static void gc_stack_check_default(Cell* obj);
 static int total_malloc_size;
@@ -42,7 +42,7 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     gc_init_reference_count(gc_init);
   }else{
     //default.
-    gc_init_reference_count(gc_init);
+    gc_init_generational(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.
