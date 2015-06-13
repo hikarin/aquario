@@ -369,11 +369,6 @@ int notp(Cell c)
   return c==F?1:0;
 }
 
-int eofp(Cell c)
-{
-  return c==EOFobj?1:0;
-}
-
 int zerop(Cell c)
 {
   return ivalue(c)==0?1:0;
@@ -500,7 +495,7 @@ void printCell(Cell c)
     else if(c==UNDEF){
       printf("#undef");
     }
-    else if(c==EOFobj){
+    else if(EOF_P(c)){
       printf("#<eof>");
     }
     else{
@@ -716,7 +711,7 @@ Cell readElem(FILE* fp)
     ErrorNo err = errorNumber;
     clearError();
     if(err==EOF_ERR){
-      return EOFobj;
+      return (Cell)AQ_EOF;
     }
     else{
       return NULL;
@@ -869,7 +864,6 @@ void init()
   gc_init_ptr( &T, noneCell() );
   gc_init_ptr( &F, noneCell() );
   gc_init_ptr( &UNDEF, noneCell() );
-  gc_init_ptr( &EOFobj, noneCell() );
   
   gc_init_ptr( &retReg, NIL );
 
@@ -996,7 +990,7 @@ void op_notp()
 void op_eofp()
 {
   Cell* args = popArg();
-  if(eofp(car(*args))){
+  if(EOF_P(car(*args))){
     setReturn(T);
   }
   else{
@@ -1268,7 +1262,7 @@ void load_file( const char* filename )
   FILE* fp = fopen(filename, "r");
   if( fp ){
     Cell cell = NULL;
-    while(!eofp(cell = readElem(fp))){
+    while(!EOF_P(cell = readElem(fp))){
       evalExp(cell);
     }
     fclose(fp);
@@ -1494,7 +1488,7 @@ int repl()
     clearError();
     callProc("read");
     ret = getReturn();
-    if(ret==EOFobj) break;
+    if(EOF_P(ret)) break;
     Cell pair = pairCell(ret, NIL);
     pushArg(&pair);
     dupArg();                       // => [... (ret) (ret)]

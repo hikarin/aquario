@@ -119,7 +119,6 @@ void trace_roots(void (*trace) (Cell* cellp)){
   trace( &T );
   trace( &F );
   trace( &UNDEF );
-  trace( &EOFobj );
 
   //trace return value.
   trace( &retReg );

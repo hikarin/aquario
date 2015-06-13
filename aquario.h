@@ -87,7 +87,6 @@ int isdigitstr(char* str);
 int nullp(Cell c);
 int truep(Cell c);
 int notp(Cell c);
-int eofp(Cell c);
 int zerop(Cell c);
 int eqdigitp(Cell c);
 int length(Cell ls);
