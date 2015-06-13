@@ -242,6 +242,88 @@ void  aq_free(void* p)
   free(p);
 }
 
+Free_Chunk* get_free_chunk( Free_Chunk** freelistp, size_t size )
+{
+  //returns a chunk which size is larger than required size.
+  Free_Chunk** chunk = freelistp;
+  Free_Chunk* ret = NULL;
+  while(*chunk){
+    if((*chunk)->chunk_size >= size){
+      //a chunk found.
+      ret = *chunk;
+      if((*chunk)->chunk_size >= size + sizeof(Free_Chunk)){
+	int chunk_size = (*chunk)->chunk_size - size;
+	Free_Chunk* next = (*chunk)->next;
+	(*chunk)->chunk_size = size;
+
+	*chunk = (Free_Chunk*)((char*)(*chunk)+size);
+	(*chunk)->chunk_size = chunk_size;
+	(*chunk)->next = next;
+      }else{
+	*chunk = (*chunk)->next;
+      }
+      break;
+    }
+    chunk = &((*chunk)->next);
+  }
+
+  return ret;
+}
+
+void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size )
+{
+  Free_Chunk* freelist = *freelistp;
+  if(!freelist){
+    //No object in freelist.
+    *freelistp        = chunk;
+    chunk->chunk_size = size;
+    chunk->next       = NULL;
+  }else if( chunk < freelist ){
+    if( (char*)chunk + size == (char*)freelist ){
+      //Coalesce.
+      chunk->next       = freelist->next;
+      chunk->chunk_size = size + freelist->chunk_size;
+    }else{
+      chunk->next       = freelist;
+      chunk->chunk_size = size;
+    }
+    *freelistp = chunk;
+  }else{
+    Free_Chunk* tmp = NULL;
+    for( tmp = freelist; tmp->next; tmp = tmp->next ){
+      if( (char*)tmp < (char*)chunk && (char*)chunk < (char*)tmp->next ){
+	//Coalesce.
+	if( (char*)tmp + tmp->chunk_size == (char*)chunk ){
+	  if( (char*)chunk + size == (char*)tmp->next ){
+	    //Coalesce with previous and next Free_Chunk.
+	    tmp->chunk_size += (size + tmp->next->chunk_size);
+	    tmp->next        = tmp->next->next;
+	  }else{
+	    //Coalesce with previous Free_Chunk.
+	    tmp->chunk_size += size;
+	  }
+	}else if( (char*)chunk + size == (char*)tmp->next ){
+	  //Coalesce with next Free_Chunk.
+	  size_t new_size      = tmp->next->chunk_size + size;
+	  Free_Chunk* new_next = tmp->next->next;
+	  chunk->chunk_size  = new_size;
+	  chunk->next        = new_next;
+	  tmp->next            = chunk;
+	}else{
+	  //Just put obj into freelist.
+	  chunk->chunk_size  = size;
+	  chunk->next        = tmp->next;
+	  tmp->next            = chunk;
+	}
+	return;
+      }
+    }
+    tmp->next           = chunk;
+    chunk->next       = NULL;
+    chunk->chunk_size = size;
+  }
+}
+
 #if defined( _DEBUG )
 size_t get_total_malloc_size()
 {

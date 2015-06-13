@@ -11,13 +11,6 @@ typedef struct reference_count_header{
   int ref_cnt;
 }Reference_Count_Header;
 
-struct free_chunk;
-
-typedef struct free_chunk{
-  int chunk_size;
-  struct free_chunk* next;
-}Free_Chunk;
-
 static void gc_start_reference_count();
 static inline void* gc_malloc_reference_count(size_t size);
 static void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell);
@@ -25,7 +18,6 @@ static void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell);
 static void gc_init_ptr_reference_count(Cell* cellp, Cell newcell);
 static void gc_memcpy_reference_count(char* dst, char* src, size_t size);
 static int get_obj_size( size_t size );
-static Free_Chunk* get_free_chunk( size_t size );
 static void reclaim_obj( Cell obj );
 static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
@@ -96,7 +88,7 @@ Cell* pop_reference_count()
 void* gc_malloc_reference_count( size_t size )
 {
   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
-  Free_Chunk* chunk = get_free_chunk( allocate_size );
+  Free_Chunk* chunk = get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
     printf("Heap Exhausted.\n");
     exit(-1);
@@ -108,34 +100,6 @@ void* gc_malloc_reference_count( size_t size )
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
   REF_CNT(ret)         = 0;
-
-  return ret;
-}
-
-Free_Chunk* get_free_chunk( size_t size )
-{
-  //returns a chunk which size is larger than required size.
-  Free_Chunk** chunk = &freelist;
-  Free_Chunk* ret = NULL;
-  while(*chunk){
-    if((*chunk)->chunk_size >= size){
-      //a chunk found.
-      ret = *chunk;
-      if((*chunk)->chunk_size >= size + sizeof(Free_Chunk)){
-	int chunk_size = (*chunk)->chunk_size - size;
-	Free_Chunk* next = (*chunk)->next;
-	(*chunk)->chunk_size = size;
-
-	*chunk = (Free_Chunk*)((char*)(*chunk)+size);
-	(*chunk)->chunk_size = chunk_size;
-	(*chunk)->next = next;
-      }else{
-	*chunk = (*chunk)->next;
-      }
-      break;
-    }
-    chunk = &((*chunk)->next);
-  }
 
   return ret;
 }

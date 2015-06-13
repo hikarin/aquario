@@ -4,6 +4,12 @@
 //#define HEAP_SIZE (1*1024*1024)
 #define HEAP_SIZE (10*1024*1024)
 
+struct free_chunk;
+typedef struct free_chunk{
+  int chunk_size;
+  struct free_chunk* next;
+}Free_Chunk;
+
 void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );
 Boolean trace_object_bool( Cell cell, Boolean (*trace) (Cell* cellp) );
@@ -13,6 +19,8 @@ void pushArg_default(Cell* cellp);
 
 void* aq_malloc(size_t size);
 void  aq_free(void* p);
+Free_Chunk* get_free_chunk( Free_Chunk** freelistp, size_t size );
+void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size );
 
 #if defined( _DEBUG )
 size_t get_total_malloc_size();
