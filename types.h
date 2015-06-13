@@ -15,12 +15,24 @@ typedef enum type{
   T_SYMBOL,	//7.
   T_LAMBDA,	//8.
 } Type;
-struct cell;
+
+#define AQ_FALSE  0
+#define AQ_TRUE   2
+#define AQ_NIL    4
+#define AQ_UNDEF  6
+
+typedef unsigned long VALUE;
+
+#define AQ_IMMEDIATE_MASK 0x07
+#define NIL_P(v)      ((VALUE)(v) == AQ_NIL)
+#define TRUE_P(v)     ((VALUE)(v) == AQ_TRUE)
+#define FALSE_P(v)    ((VALUE)(v) == AQ_FALSE)
+#define CELL_P(v)     (((v) & AQ_IMMEDIATE_MASK) == 0)
 
 typedef struct cell *Cell;
 typedef union cellUnion
 {
-  char    _char;
+  char   _char;
   char   _string[1];
   int     _integer;
   struct{

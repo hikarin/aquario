@@ -77,10 +77,10 @@ Cell intCell(int val)
 Cell pairCell(Cell a, Cell d)
 {
   PUSH_ARGS2(&a, &d);
-  Cell cons     = newCell(T_PAIR, sizeof(struct cell));
+  Cell cons = newCell(T_PAIR, sizeof(struct cell));
 
   gc_init_ptr(&cdr(cons), d);
-  gc_init_ptr( &car(cons), a );
+  gc_init_ptr(&car(cons), a);
 
   POP_ARGS2();
   return cons;

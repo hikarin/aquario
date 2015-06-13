@@ -72,11 +72,7 @@ Cell newCell(Type t, size_t size);
   POP_ARGS2()                             \
   POP_ARGS3()
 
-void setString(Cell c, char* str);
-
 void clone(Cell c);
-//Cell clone(Cell c);
-
 Cell charCell(char ch);
 Cell stringCell(char* str);
 Cell intCell(int val);
@@ -116,8 +112,7 @@ Cell evalExp(Cell exp);
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 
-//Cell retReg;
-#define ENVSIZE 30000
+#define ENVSIZE 3000
 Cell env[ENVSIZE];
 #define LINESIZE 1024
 char errorString[LINESIZE];
