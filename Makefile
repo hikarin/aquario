@@ -2,7 +2,7 @@
 #
 CFLAGS = -Wall
 CC = gcc
-CSOURCES = aquario.c gc_base.c gc_copy.c gc_markcompact.c gc_reference_count.c gc_generational.c
+CSOURCES = aquario.c gc_base.c gc_copy.c gc_markcompact.c gc_reference_count.c gc_generational.c gc_marksweep.c
 
 TARGET = aquario
 SOURCES = $(CSOURCES)
