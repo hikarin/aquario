@@ -111,17 +111,20 @@ void trace_roots(void (*trace) (Cell* cellp)){
   int scan = stack_top;
   while( scan > 0 ){
     Cell* cellp = stack[ --scan ];
-    trace( cellp );
+    if(CELL_P(*cellp)){
+      trace( cellp );
+    }
   }
 
   //trace global variable.
   trace( &NIL );
   trace( &T );
   trace( &F );
-  trace( &UNDEF );
 
   //trace return value.
-  trace( &retReg );
+  if(CELL_P(retReg)){
+    trace( &retReg );
+  }
 
   //trace env.
   int i;

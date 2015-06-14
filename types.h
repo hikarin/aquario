@@ -24,14 +24,14 @@ typedef enum type{
 
 typedef unsigned long VALUE;
 
-#define AQ_IMMEDIATE_MASK 0x07
+#define AQ_IMMEDIATE_MASK    0x03
 #define NIL_P(v)      ((VALUE)(v) == AQ_NIL)
 #define TRUE_P(v)     ((VALUE)(v) == AQ_TRUE)
 #define FALSE_P(v)    ((VALUE)(v) == AQ_FALSE)
 #define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
 #define EOF_P(v)      ((VALUE)(v) == AQ_EOF)
 
-#define CELL_P(v)     (((v) & AQ_IMMEDIATE_MASK) == 0)
+#define CELL_P(v)     (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0)
 
 typedef struct cell *Cell;
 typedef union cellUnion
@@ -52,7 +52,7 @@ struct cell{
 
 //Cell T, F, NIL, UNDEF, EOFobj;
 Cell retReg;
-Cell T, F, NIL, UNDEF;
+Cell T, F, NIL;
 
 typedef enum boolean{
   FALSE  = 0,

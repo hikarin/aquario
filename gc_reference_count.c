@@ -180,6 +180,9 @@ void gc_start_reference_count()
 //For compatibility to trace_object(), this function receives a pointer to Cell.
 void increment_count(Cell* objp)
 {
+  if( !CELL_P(*objp) ){
+    return;
+  }
   Cell obj = *objp;
   if( obj ){
     INC_REF_CNT( obj )
@@ -188,6 +191,9 @@ void increment_count(Cell* objp)
 
 void decrement_count(Cell* objp)
 {
+  if( !CELL_P(*objp) ){
+    return;
+  }
   Cell obj = *objp;
   if( obj ){
 #if defined( _DEBUG )
@@ -218,9 +224,7 @@ void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell)
 //Init Pointer.
 void gc_init_ptr_reference_count(Cell* cellp, Cell newcell)
 {
-  if( newcell ){
-    INC_REF_CNT(newcell);
-  }
+  increment_count(&newcell);
   *cellp = newcell;
 }
 
