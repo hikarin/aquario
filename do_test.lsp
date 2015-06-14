@@ -1,4 +1,5 @@
 (define test-result '())
+(define total 0)
 
 (define assert-equal
   (lambda (exp1 exp2)

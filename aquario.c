@@ -446,6 +446,11 @@ void applyList(Cell ls)
   }
   pushArg(&ls);
   Cell c = evalExp(car(ls));
+  if(UNDEF_P(c)){
+    setReturn(c);
+    popArg();
+    return;
+  }
   Cell top = pairCell(c, NIL);
   Cell last = top;
 
@@ -872,7 +877,6 @@ void init()
   gc_init_ptr( &NIL, noneCell() );
   gc_init_ptr( &T, noneCell() );
   gc_init_ptr( &F, noneCell() );
-  //  gc_init_ptr( &UNDEF, noneCell() );
   
   gc_init_ptr( &retReg, NIL );
 
@@ -962,11 +966,6 @@ void set_gc(char* gc_char)
 #endif //_DEBUG
   
   g_GC_stress      = FALSE;
-}
-
-void op_unknown()
-{
-  setReturn((Cell)AQ_UNDEF);
 }
 
 void op_nullp()
@@ -1159,6 +1158,10 @@ void op_add()
 {
   Cell* args = popArg();
   int ans = 0;
+  if( !CELL_P(*args) ){
+    setReturn((Cell)AQ_UNDEF);
+    return;
+  }
   while(!nullp(*args)){
     ans += ivalue(car(*args));
     args = &cdr(*args);
@@ -1401,8 +1404,7 @@ void syntax_define()
   Cell obj = cadr(args);
   obj = evalExp(obj);
   if(!UNDEF_P(obj)){
-    gc_write_barrier_root(stack[stack_top-2], car(args));
-    //    symbol = car(args);
+    gc_write_barrier_root(stack[stack_top-2]/*symbol*/, car(args));
     setVarCell(symbol, obj);
   }
 
