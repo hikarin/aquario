@@ -10,8 +10,14 @@
 
 typedef struct marksweep_gc_header{
   int obj_size;
-  Boolean mark_bit;
 }MarkSweep_GC_Header;
+
+//mark table: a bit per WORD
+#define BIT_WIDTH    32
+static int mark_tbl[HEAP_SIZE/BIT_WIDTH+1];
+
+#define IS_MARKED(obj) (mark_tbl[(((char*)(obj)-heap)/BIT_WIDTH )] & (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
+#define SET_MARK(obj)  (mark_tbl[(((char*)(obj)-heap)/BIT_WIDTH )] |= (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
 
 static void gc_start_marksweep();
 static inline void* gc_malloc_marksweep(size_t size);
@@ -25,12 +31,7 @@ static void marksweep_gc_stack_check(Cell* cellp);
 #define IS_ALLOCATABLE( size ) (top + sizeof( MarkSweep_GC_Header ) + (size) < heap + HEAP_SIZE )
 #define GET_OBJECT_SIZE(obj) (((MarkSweep_GC_Header*)(obj)-1)->obj_size)
 
-#define IS_MARKED(obj)  (((MarkSweep_GC_Header*)(obj)-1)->mark_bit)
-#define SET_MARK(obj)   (((MarkSweep_GC_Header*)(obj)-1)->mark_bit=TRUE)
-#define CLEAR_MARK(obj) (((MarkSweep_GC_Header*)(obj)-1)->mark_bit=FALSE)
-
 static char* heap        = NULL;
-static char* top         = NULL;
 
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top;
@@ -109,6 +110,9 @@ int get_obj_size( size_t size ){
 
 void mark()
 {
+  mark_stack_top = 0;
+  memset(mark_tbl, 0, sizeof(nersary_mark_tbl));
+
   //mark root objects.
   trace_roots(mark_object);
 
@@ -121,7 +125,6 @@ void mark()
 
 void sweep()
 {
-
 }
 
 //Start Garbage Collection.
