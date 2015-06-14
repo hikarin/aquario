@@ -28,10 +28,10 @@ static int get_obj_size( size_t size );
 static void marksweep_gc_stack_check(Cell* cellp);
 #endif //_DEBUG
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( MarkSweep_GC_Header ) + (size) < heap + HEAP_SIZE )
 #define GET_OBJECT_SIZE(obj) (((MarkSweep_GC_Header*)(obj)-1)->obj_size)
 
-static char* heap        = NULL;
+static char* heap           = NULL;
+static Free_Chunk* freelist = NULL;
 
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top;
@@ -58,7 +58,9 @@ void mark_object(Cell* objp)
 void gc_init_marksweep(GC_Init_Info* gc_info)
 {
   heap = (char*)aq_malloc(HEAP_SIZE);
-  top = heap;
+  freelist = (Free_Chunk*)heap;
+  freelist->chunk_size = HEAP_SIZE;
+  freelist->next       = NULL;
 
   gc_info->gc_malloc        = gc_malloc_marksweep;
   gc_info->gc_start         = gc_start_marksweep;
@@ -76,18 +78,18 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 //Allocation.
 void* gc_malloc_marksweep( size_t size )
 {
-  if( g_GC_stress || !IS_ALLOCATABLE( size ) ){
+  Free_Chunk* chunk = get_free_chunk(&freelist, size);
+  if( !chunk ){
     gc_start_marksweep();
-    if( !IS_ALLOCATABLE( size ) ){
+    chunk = get_free_chunk(&freelist, size);
+    if( !chunk ){
       printf("Heap Exhausted.\n");
       exit(-1);
     }
   }
-  MarkSweep_GC_Header* new_header = (MarkSweep_GC_Header*)top;
+  MarkSweep_GC_Header* new_header = (MarkSweep_GC_Header*)chunk;
   Cell ret = (Cell)(new_header+1);
   int allocate_size = (get_obj_size(size) + 3) / 4 * 4;
-  top += allocate_size;
-  CLEAR_MARK(ret);
   new_header->obj_size = allocate_size;
   return ret;
 }
@@ -111,7 +113,7 @@ int get_obj_size( size_t size ){
 void mark()
 {
   mark_stack_top = 0;
-  memset(mark_tbl, 0, sizeof(nersary_mark_tbl));
+  memset(mark_tbl, 0, sizeof(mark_tbl));
 
   //mark root objects.
   trace_roots(mark_object);
