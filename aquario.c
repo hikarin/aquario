@@ -487,6 +487,9 @@ void printLineCell(Cell c)
 
 void printCell(Cell c)
 {
+  if(!c){
+    return;
+  }
   switch(type(c)){
   case T_NONE:
     if(c==T){
