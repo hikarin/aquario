@@ -446,12 +446,22 @@ void applyList(Cell ls)
   }
   pushArg(&ls);
   Cell c = evalExp(car(ls));
+  if(c == UNDEF){
+    setReturn(c);
+    popArg();
+    return;
+  }
+
   Cell top = pairCell(c, NIL);
   Cell last = top;
 
   PUSH_ARGS2(&top, &last);
   while( !nullp(cdr(ls)) ){
     Cell exp = evalExp(car(cdr(ls)));
+    if(exp == UNDEF){
+      gc_write_barrier_root(stack[stack_top-2]/*top*/, UNDEF);
+      break;
+    }
 
     gc_write_barrier(last, &cdr(last), pairCell(exp, NIL));
     gc_write_barrier_root(stack[stack_top-3]/*ls*/,   cdr(ls));
@@ -743,6 +753,7 @@ Cell getVar(char* name)
   int key = hash(name)%ENVSIZE;
   Cell chain = env[key];
   if(chain==NULL || nullp(chain)){
+    printError("unknown symbol: %s", name);
     return UNDEF;
   }
   while(strcmp(name, strvalue(caar(chain)))!=0){
@@ -1134,6 +1145,10 @@ void op_cdr()
 void op_cons()
 {
   Cell* args = popArg();
+  if( *args == UNDEF ){
+    setReturn( UNDEF );
+    return;
+  }
   Cell c1 = car(*args);
   Cell c2 = cadr(*args);
   int argNum = length( *args );
@@ -1143,7 +1158,7 @@ void op_cons()
   }else if( argNum < 2 ){
     setParseError( "too few arguments given to cons" );
     return;
-  }else if( c1 == UNDEF || c2 == UNDEF ) {
+  }else if( c2 == UNDEF ) {
     setReturn( UNDEF );
     return;
   }
