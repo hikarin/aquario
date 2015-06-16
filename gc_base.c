@@ -96,7 +96,7 @@ Cell* popArg_default()
 void pushArg_default(Cell* cellp)
 {
   if( stack_top >= STACKSIZE ){
-    setParseError( "Stack Overflow" );
+    printError( "Stack Overflow" );
     return;
   }
 #if defined( _DEBUG )
