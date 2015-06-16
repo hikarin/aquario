@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #include "aquario.h"
 #include "gc_base.h"
@@ -33,6 +33,7 @@ static Cell* getStackTop();
 
 static void init();
 static void term();
+static void printError(char *fmt, ...);
 
 inline int getCellSize(Cell cell)
 {
@@ -504,7 +505,7 @@ void printCell(Cell c)
       printf("#<eof>");
     }
     else{
-      setParseError("unknown cell");
+      printError("unknown cell");
     }
     break;
   case T_CHAR:
@@ -630,7 +631,7 @@ Cell readList(FILE* fp)
       list = setAppendList(list, exp);
       readToken(buf, sizeof(buf), fp);
       if(strcmp(buf, ")")!=0){
-	setParseError("unknown token after '.'");
+	printError("unknown token '%s' after '.'", buf);
 	return NULL;
       }
       return list;
@@ -1483,6 +1484,14 @@ void syntax_begin()
   setReturn( evalCell );
 
   popArg();
+}
+
+void printError(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  va_end(ap);
 }
 
 int repl()
