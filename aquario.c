@@ -225,6 +225,11 @@ Cell evalExp(Cell exp)
 	operator = procvalue(proc);
 	applyList(args);
 	args = getReturn();
+	if(args == UNDEF){
+	  is_loop = FALSE;
+	  setReturn(UNDEF);
+	  break;
+	}
 	pushArg(&args);                                   //=> [....exps args]
 	operator();                                       //=> [....exps]
 	break;
@@ -440,7 +445,7 @@ Cell reverseList(Cell ls)
 
 void applyList(Cell ls)
 {
-  if(nullp(ls)){
+  if(nullp(ls) || ls == UNDEF){
     setReturn(ls);
     return;
   }
@@ -1109,6 +1114,10 @@ void op_lessoreqdigitp()
 void op_car()
 {
   Cell* args = popArg();
+  if(*args == UNDEF){
+    setReturn(UNDEF);
+    return;
+  }
   Cell* c1 = &car(*args);
   int argNum = length( *args );
   if( argNum > 1 ){
@@ -1127,6 +1136,10 @@ void op_car()
 void op_cdr()
 {
   Cell* args = popArg();
+  if( *args == UNDEF ){
+    setReturn(UNDEF);
+    return;
+  }
   Cell* c1 = &car(*args);
   int argNum = length( *args );
   if( argNum > 1 ){
@@ -1174,6 +1187,10 @@ void op_list()
 void op_add()
 {
   Cell* args = popArg();
+  if(*args == UNDEF){
+    setReturn(UNDEF);
+    return;
+  }
   int ans = 0;
   while(!nullp(*args)){
     ans += ivalue(car(*args));
@@ -1270,6 +1287,10 @@ void op_print()
 void op_display()
 {
   Cell args = *popArg();
+  if(args == UNDEF){
+    setReturn(UNDEF);
+    return;
+  }
   for(;!nullp(args);args=cdr(args)){
     Cell c = car(args);
     if(isString(c)){
