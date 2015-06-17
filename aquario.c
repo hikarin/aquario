@@ -246,7 +246,7 @@ Cell evalExp(Cell exp)
 	    is_loop = TRUE;
 	    gc_write_barrier_root(stack[stack_top-2]/*exps*/, lambdaexp(proc));
 	    if(length(args) != length(params)){
-	      printError("wrong number arguments");
+	      printError("wrong number of arguments for lambda expresion");
 	      setReturn(UNDEF);
 	      is_loop = FALSE;
 	    }else{
@@ -265,7 +265,7 @@ Cell evalExp(Cell exp)
 	    }
 	  }else{
 	    if(length(args) != length(params)){
-	      printError("wrong number arguments\n");
+	      printError("wrong number arguments for lambda expression");
 	      setReturn(UNDEF);
 	      is_loop = FALSE;
 	    }else{
@@ -475,8 +475,7 @@ void applyList(Cell ls)
   }
 
   setReturn(top);
-  POP_ARGS2();
-  popArg();
+  POP_ARGS3();
 }
 
 void printCons(Cell c)
@@ -951,8 +950,8 @@ void op_nullp()
 {
   Cell* args = popArg();
   int argNum = length( *args );
-  if( argNum > 1 ){
-    printError( "too many arguments given to null?" );
+  if( argNum != 1 ){
+    printError("wrong number of arguments for null?");
     setReturn(UNDEF);
   }else if(nullp(car(*args))){
     setReturn(T);
@@ -1079,11 +1078,8 @@ void op_car()
   }
   Cell* c1 = &car(*args);
   int argNum = length( *args );
-  if( argNum > 1 ){
-    printError( "too many arguments given to car" );
-    setReturn(UNDEF);
-  }else if( argNum < 1 ){
-    printError( "too few arguments given to car" );
+  if( argNum != 1 ){
+    printError("wrong number of arguments for car");
     setReturn(UNDEF);
   }else if( type( *c1 ) != T_PAIR ){
     printError( "not a list given" );
@@ -1102,11 +1098,8 @@ void op_cdr()
   }
   Cell* c1 = &car(*args);
   int argNum = length( *args );
-  if( argNum > 1 ){
-    printError( "too many arguments given to cdr" );
-    setReturn(UNDEF);
-  }else if( argNum < 1 ){
-    printError("too few arguments given to cdr" );
+  if( argNum != 1 ){
+    printError("wrong number of arguments for cdr");
     setReturn(UNDEF);
   }else if( type( *c1 ) != T_PAIR ){
     printError( "not a list given" );
@@ -1124,11 +1117,8 @@ void op_cons()
     return;
   }
   int argNum = length( *args );
-  if( argNum > 2 ){
-    printError( "too many arguments given to cons" );
-    setReturn(UNDEF);
-  }else if( argNum < 2 ){
-    printError( "too few arguments given to cons" );
+  if( argNum != 2 ){
+    printError("wrong number of arguments for cons");
     setReturn(UNDEF);
   }else{
     Cell c1 = car(*args);
@@ -1363,11 +1353,8 @@ void syntax_define()
   Cell args = *popArg();
 
   int argNum = length(args);
-  if( argNum > 2 ){
-    printError( "too many parameters for special form DEFINE" );
-    setReturn(UNDEF);
-  }else if( argNum < 2 ){
-    printError( "too few parameter for special form DEFINE" );
+  if( argNum != 2 ){
+    printError("wrong number of arguments for define");
     setReturn(UNDEF);
   }else{
     Cell symbol = car(args);
@@ -1396,11 +1383,8 @@ void syntax_ifelse()
   Cell* args = getStackTop();
 
   int argNum = length(*args);
-  if( argNum > 3 ){
-    printError( "too many parameters for special form IF" );
-    setReturn(UNDEF);
-  }else if( argNum < 2 ){
-    printError( "too few parameters for special form IF" );
+  if( argNum < 2 || 3 < argNum ){
+    printError("wrong number of arguments for if");
     setReturn(UNDEF);
   }else{
     Cell cond = evalExp(car(*args));
