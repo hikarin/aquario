@@ -290,6 +290,10 @@ Cell evalExp(Cell exp)
 	  break;
 	}
       default:
+	if( retReg != UNDEF ){
+	  printError("not a proc");
+	  setReturn(UNDEF);
+	}
 	is_loop = FALSE;
       }
     }else{
@@ -1119,8 +1123,6 @@ void op_cons()
     setReturn( UNDEF );
     return;
   }
-  Cell c1 = car(*args);
-  Cell c2 = cadr(*args);
   int argNum = length( *args );
   if( argNum > 2 ){
     printError( "too many arguments given to cons" );
@@ -1128,10 +1130,14 @@ void op_cons()
   }else if( argNum < 2 ){
     printError( "too few arguments given to cons" );
     setReturn(UNDEF);
-  }else if( c2 == UNDEF ) {
-    setReturn( UNDEF );
   }else{
-    setReturn(pairCell(c1, c2));
+    Cell c1 = car(*args);
+    Cell c2 = cadr(*args);
+    if( c2 == UNDEF ) {
+      setReturn( UNDEF );
+    }else{
+      setReturn(pairCell(c1, c2));
+    }
   }
 }
 
@@ -1358,28 +1364,31 @@ void syntax_define()
 
   int argNum = length(args);
   if( argNum > 2 ){
-    printError( "too many parameters for specital from DEFINE " );
+    printError( "too many parameters for special form DEFINE" );
     setReturn(UNDEF);
   }else if( argNum < 2 ){
-    printError( "too few parameter for special from DEFINE " );
+    printError( "too few parameter for special form DEFINE" );
     setReturn(UNDEF);
+  }else{
+    Cell symbol = car(args);
+    if( type( symbol ) != T_SYMBOL ){
+      printError( "not a symbol" );
+      setReturn(UNDEF);
+    }else{
+      pushArg(&symbol);
+      pushArg(&args);
+      Cell obj = cadr(args);
+      obj = evalExp(obj);
+      if( obj != UNDEF ){
+	gc_write_barrier_root(stack[stack_top-2], car(args));
+	setVarCell(symbol, obj);
+	setReturn(symbol);
+	POP_ARGS2();
+      }else{
+	setReturn(UNDEF);
+      }
+    }
   }
-  Cell symbol = car(args);
-  if( type( symbol ) != T_SYMBOL ){
-    printError( "not a symbol: " );
-    setReturn(UNDEF);
-  }
-  pushArg(&symbol);
-  pushArg(&args);
-  Cell obj = cadr(args);
-  obj = evalExp(obj);
-  if( obj != UNDEF ){
-    gc_write_barrier_root(stack[stack_top-2], car(args));
-    setVarCell(symbol, obj);
-  }
-
-  setReturn(symbol);
-  POP_ARGS2();
 }
 
 void syntax_ifelse()
@@ -1388,10 +1397,10 @@ void syntax_ifelse()
 
   int argNum = length(*args);
   if( argNum > 3 ){
-    printError( "too many parameters for special from IF" );
+    printError( "too many parameters for special form IF" );
     setReturn(UNDEF);
   }else if( argNum < 2 ){
-    printError( "too few parameters for special operator IF" );
+    printError( "too few parameters for special form IF" );
     setReturn(UNDEF);
   }else{
     Cell cond = evalExp(car(*args));
