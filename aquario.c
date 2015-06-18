@@ -23,13 +23,18 @@ static void (*pushArg) (Cell* cellp);
 static Cell* (*popArg) ();
 
 static void (*gc_write_barrier_root) (Cell* srcp, Cell dst);
-#if defined( _DEBUG )
-static void (*gc_stack_check)(Cell* cell);
-#endif //_DEBUG
 
 static Cell getChain(char* name, int* key);
 static void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env);
 static Cell* getStackTop();
+
+#define WRONG_NUMBER_ARGUMENTS_ERROR(num, proc)            \
+  if(argNum != num){                                       \
+    printError("wrong number of arguments for %s", proc);  \
+    setReturn(UNDEF);                                      \
+    return;                                                \
+  }
+
 
 static void init();
 static void term();
@@ -229,13 +234,13 @@ Cell evalExp(Cell exp)
 	  setReturn(UNDEF);
 	  break;
 	}
-	pushArg(&args);                                   //=> [....exps args]
-	operator();                                       //=> [....exps]
+	pushArg(&args);      //=> [....exps args]
+	operator();          //=> [....exps]
 	break;
       case T_SYNTAX:
 	operator = syntaxvalue(proc);
-	pushArg(&args);                                   //=> [....exps args]
-	operator();                                       //=> [....exps]
+	pushArg(&args);      //=> [....exps args]
+	operator();          //=> [....exps]
 	break;
       case T_LAMBDA:
 	{
@@ -664,7 +669,6 @@ Cell readList(FILE* fp)
       PUSH_ARGS2(&list, &exp);
       // => [... list exp]
       gc_write_barrier_root(stack[stack_top-1]/*exp*/, readElem(fp));
-
       setAppendCell(list, exp);
       gc_write_barrier_root(stack[stack_top-2]/*list*/, getReturn());
 
@@ -792,7 +796,6 @@ Cell getChain(char* name, int* key)
   Cell chain = env[*key];
   if(env[*key]==NULL){
     chain = NIL;
-    //    gc_write_barrier_root(&env[*key], NIL);
     env[*key] = NIL;
   }
   while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
@@ -934,9 +937,6 @@ void set_gc(char* gc_char)
   gc_term          = gc_info.gc_term;
   pushArg          = gc_info.gc_pushArg;
   popArg           = gc_info.gc_popArg;
-#if defined( _DEBUG )
-  gc_stack_check   = gc_info.gc_stack_check;
-#endif //_DEBUG
   
   g_GC_stress      = FALSE;
 }
@@ -950,10 +950,8 @@ void op_nullp()
 {
   Cell* args = popArg();
   int argNum = length( *args );
-  if( argNum != 1 ){
-    printError("wrong number of arguments for null?");
-    setReturn(UNDEF);
-  }else if(nullp(car(*args))){
+  WRONG_NUMBER_ARGUMENTS_ERROR(1, "nullp");
+  if(nullp(car(*args))){
     setReturn(T);
   }else{
     setReturn(F);
@@ -1078,10 +1076,8 @@ void op_car()
   }
   Cell* c1 = &car(*args);
   int argNum = length( *args );
-  if( argNum != 1 ){
-    printError("wrong number of arguments for car");
-    setReturn(UNDEF);
-  }else if( type( *c1 ) != T_PAIR ){
+  WRONG_NUMBER_ARGUMENTS_ERROR(1, "car");
+  if( type( *c1 ) != T_PAIR ){
     printError( "not a list given" );
     setReturn(UNDEF);
   }else{
@@ -1098,10 +1094,8 @@ void op_cdr()
   }
   Cell* c1 = &car(*args);
   int argNum = length( *args );
-  if( argNum != 1 ){
-    printError("wrong number of arguments for cdr");
-    setReturn(UNDEF);
-  }else if( type( *c1 ) != T_PAIR ){
+  WRONG_NUMBER_ARGUMENTS_ERROR(1, "cdr");
+  if( type( *c1 ) != T_PAIR ){
     printError( "not a list given" );
     setReturn(UNDEF);
   }else{
@@ -1117,17 +1111,13 @@ void op_cons()
     return;
   }
   int argNum = length( *args );
-  if( argNum != 2 ){
-    printError("wrong number of arguments for cons");
-    setReturn(UNDEF);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, "cons");
+  Cell c1 = car(*args);
+  Cell c2 = cadr(*args);
+  if( c2 == UNDEF ) {
+    setReturn( UNDEF );
   }else{
-    Cell c1 = car(*args);
-    Cell c2 = cadr(*args);
-    if( c2 == UNDEF ) {
-      setReturn( UNDEF );
-    }else{
-      setReturn(pairCell(c1, c2));
-    }
+    setReturn(pairCell(c1, c2));
   }
 }
 
@@ -1191,7 +1181,6 @@ void op_div()
 void op_append()
 {
   Cell* args = getStackTop();
-  //  Cell result = clone( car(*args) );
   clone(car(*args));
   Cell result = getReturn();
   setReturn(setAppendList(result, cadr(*args)));
@@ -1238,6 +1227,8 @@ void op_display()
     setReturn(UNDEF);
     return;
   }
+  int argNum = length( args );
+  WRONG_NUMBER_ARGUMENTS_ERROR(1, "display");
   for(;!nullp(args);args=cdr(args)){
     Cell c = car(args);
     if(isString(c)){
@@ -1282,11 +1273,8 @@ void op_eqp()
 {
   Cell args = *popArg();
   int argNum = length(args);
-  if( argNum != 2 ){
-    printError("wrong number of arguments for eq?");
-    setReturn(UNDEF);
-  }
-  else if(car(args) == cadr(args)){
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, "eq?");
+  if(car(args) == cadr(args)){
     setReturn(T);
   }
   else{
@@ -1298,18 +1286,14 @@ void op_equalp()
 {
   Cell args = *popArg();
   int argNum = length(args);
-  if( argNum != 2 ){
-    printError("wrong number of arguments for equal?");
-    setReturn(UNDEF);
-  }
-  else{
-    Cell cell1 = car(args);
-    Cell cell2 = cadr(args);
-    if(is_equal(cell1, cell2)){
-      setReturn(T);
-    }else{
-      setReturn(F);
-    }
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, "equal?");
+
+  Cell cell1 = car(args);
+  Cell cell2 = cadr(args);
+  if(is_equal(cell1, cell2)){
+    setReturn(T);
+  }else{
+    setReturn(F);
   }
 }
 
@@ -1351,29 +1335,25 @@ Boolean is_equal(Cell cell1, Cell cell2)
 void syntax_define()
 {
   Cell args = *popArg();
-
   int argNum = length(args);
-  if( argNum != 2 ){
-    printError("wrong number of arguments for define");
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, "define");
+    
+  Cell symbol = car(args);
+  if( type( symbol ) != T_SYMBOL ){
+    printError( "not a symbol" );
     setReturn(UNDEF);
   }else{
-    Cell symbol = car(args);
-    if( type( symbol ) != T_SYMBOL ){
-      printError( "not a symbol" );
-      setReturn(UNDEF);
+    pushArg(&symbol);
+    pushArg(&args);
+    Cell obj = cadr(args);
+    obj = evalExp(obj);
+    if( obj != UNDEF ){
+      gc_write_barrier_root(stack[stack_top-2], car(args));
+      setVarCell(symbol, obj);
+      setReturn(symbol);
+      POP_ARGS2();
     }else{
-      pushArg(&symbol);
-      pushArg(&args);
-      Cell obj = cadr(args);
-      obj = evalExp(obj);
-      if( obj != UNDEF ){
-	gc_write_barrier_root(stack[stack_top-2], car(args));
-	setVarCell(symbol, obj);
-	setReturn(symbol);
-	POP_ARGS2();
-      }else{
-	setReturn(UNDEF);
-      }
+      setReturn(UNDEF);
     }
   }
 }
