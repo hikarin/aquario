@@ -73,9 +73,9 @@ Cell newCell(Type t, size_t size);
   POP_ARGS3()
 
 void setString(Cell c, char* str);
+void printError(char *fmt, ...);
 
 void clone(Cell c);
-//Cell clone(Cell c);
 
 Cell charCell(char ch);
 Cell stringCell(char* str);
@@ -120,14 +120,6 @@ Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 #define ENVSIZE 30000
 Cell env[ENVSIZE];
 #define LINESIZE 1024
-char errorString[LINESIZE];
-typedef enum {
-  NONE_ERR,
-  PARSE_ERR,
-  EOF_ERR,
-}ErrorNo;
-
-ErrorNo errorNumber;
 
 #define STACKSIZE 1024
 Cell* stack[ STACKSIZE ];
@@ -142,9 +134,6 @@ void clearArgs();
 void callProc(char* name);
 Cell getReturn();
 void setReturn(Cell c);
-void setParseError(char* errorStr);
-void setEOFException(char* str);
-void clearError();
 
 void op_nullp();
 void op_notp();

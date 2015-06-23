@@ -14,11 +14,6 @@
 (assert-equal '(* 451 (+ (- 213 78) (- 7 10) (+ (/ 100 10) 8) (- (+ 4 5) (* 31 100) 500) 711) 800) '-984984000)
 
 (assert-equal '(define x 999) ''x)
-(assert-equal '(undef? x) '#f)
-(assert-equal '(undef? m) '#t)
-(assert-equal '(undef? (define p (define q r))) '#f)
-(assert-equal '(undef? p) '#f)
-(assert-equal '(undef? q) '#t)
 
 (assert-equal '(define str "hoge") ''str)
 (assert-equal 'str '"hoge")
@@ -59,8 +54,20 @@
 (assert-equal '(begin (define fib (lambda (n)
 				    (if (< n 2) 1
 				      (+ (fib (- n 1)) (fib (- n 2))))))
+		      (define n 20)
+		      (fib n))
+	      '10946)
+(assert-equal '(begin (define fib (lambda (n)
+				    (if (< n 2) 1
+				      (+ (fib (- n 1)) (fib (- n 2))))))
 		      (fib 10))
 	      '89)
+(assert-equal '(begin (define len (lambda (n)
+				    (if (null? n) 0
+				      (+ 1 (len (cdr n))))))
+		      (len (list 1 2 3 4 5 6 7 8 9)))
+	      '9)
+
 
 (assert-equal '((lambda (x y) (+ x y)) 123 456) '579)
 (assert-equal '((lambda (x y z) (* x y z)) (fib 4) (fib 5) (fib 6)) '520)

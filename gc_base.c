@@ -13,13 +13,14 @@ static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //writ
 static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
-#if defined( _DEBUG )
-static void gc_stack_check_default(Cell* obj);
-static int total_malloc_size;
-#endif //_DEBUG
+
 
 Cell* popArg_default();
 void pushArg_default(Cell* cellp);
+
+#if defined( _DEBUG )
+static int total_malloc_size;
+#endif
 
 //definitions of Garbage Collectors' name.
 #define GC_STR_COPYING         "copy"
@@ -70,12 +71,6 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     //option.
     gc_init->gc_popArg = popArg_default;
   }
-
-#if defined( _DEBUG )
-  if(!gc_init->gc_stack_check){
-    gc_init->gc_stack_check = gc_stack_check_default;
-  }
-#endif //_DEBUG
 }
 
 Cell* popArg_default()
@@ -83,26 +78,19 @@ Cell* popArg_default()
   Cell* c = stack[ --stack_top ];
 #if defined( _DEBUG )
   if( stack_top < 0 ){
-    printf( "OMG....stack underflow\n" );
+    printError("Stack Underflow");
   }
 #endif //_DEBUG
 
-#if defined( _DEBUG )
-  //  gc_stack_check(c);  
-#endif //_DEBUG
   return c;
 }
 
 void pushArg_default(Cell* cellp)
 {
   if( stack_top >= STACKSIZE ){
-    setParseError( "Stack Overflow" );
+    printError( "Stack Overflow" );
     return;
   }
-#if defined( _DEBUG )
-  //  gc_stack_check(c);
-#endif //_DEBUG
-  
   stack[stack_top++] = cellp;
 }
 
@@ -324,15 +312,16 @@ void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t si
   }
 }
 
+void heap_exhausted_error()
+{
+  printError("Heap Exhausted");
+  exit(-1);
+}
+
 #if defined( _DEBUG )
 size_t get_total_malloc_size()
 {
   return total_malloc_size;
-}
-
-void gc_stack_check_default(Cell* cell)
-{
-  //Do nothing.
 }
 #endif //_DEBUG
 #endif	//!__GC_BASE_H__

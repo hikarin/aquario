@@ -23,10 +23,6 @@ static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
 static void gc_term_reference_count();
 
-#if defined( _DEBUG )
-static void reference_count_stack_check( Cell* cell );
-#endif
-
 static char* heap           = NULL;
 static Free_Chunk* freelist = NULL;
 
@@ -58,9 +54,6 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
   gc_info->gc_term          = gc_term_reference_count;
   gc_info->gc_pushArg       = push_reference_count;
   gc_info->gc_popArg        = pop_reference_count;
-#if defined( _DEBUG )
-  gc_info->gc_stack_check = reference_count_stack_check;
-#endif //_DEBUG
 
   printf("GC: Reference Counting\n");
 }
@@ -84,8 +77,7 @@ void* gc_malloc_reference_count( size_t size )
   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
   Free_Chunk* chunk = get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
-    printf("Heap Exhausted.\n");
-    exit(-1);
+    heap_exhausted_error();
   }else if(chunk->chunk_size > allocate_size){
     //size of chunk might be larger than it is required.
     allocate_size = chunk->chunk_size;
@@ -156,15 +148,6 @@ void reclaim_obj( Cell obj )
     obj_top->chunk_size = obj_size;
   }
 }
-
-#if defined( _DEBUG )
-void reference_count_stack_check(Cell* cell)
-{
-  if( !(heap <= (char*)cell && (char*)cell < heap + HEAP_SIZE ) ){
-    printf("[WARNING] cell %p points out of heap\n", cell);
-  }
-}
-#endif //_DEBUG
 
 int get_obj_size( size_t size )
 {
