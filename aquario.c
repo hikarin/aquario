@@ -295,10 +295,7 @@ Cell evalExp(Cell exp)
 	  break;
 	}
       default:
-	if( retReg != UNDEF ){
-	  printError("not a proc");
-	  setReturn(UNDEF);
-	}
+	setReturn(exp);
 	is_loop = FALSE;
       }
     }else{

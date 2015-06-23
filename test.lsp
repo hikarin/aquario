@@ -64,7 +64,7 @@
 	      '89)
 (assert-equal '(begin (define len (lambda (n)
 				    (if (null? n) 0
-				      (+ (len (cdr n))))))
+				      (+ 1 (len (cdr n))))))
 		      (len (list 1 2 3 4 5 6 7 8 9)))
 	      '9)
 
