@@ -1,5 +1,8 @@
 make opt
 
+#mark_sweep
+time ./aquario -GC ms tak.lsp
+
 #copying
 time ./aquario -GC copy tak.lsp
 

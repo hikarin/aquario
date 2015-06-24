@@ -47,7 +47,7 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     gc_init_marksweep(gc_init);
   }else{
     //default.
-    gc_init_generational(gc_init);
+    gc_init_marksweep(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.

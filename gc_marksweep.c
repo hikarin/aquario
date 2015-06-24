@@ -24,9 +24,6 @@ static inline void* gc_malloc_marksweep(size_t size);
 static void gc_term_marksweep();
 
 static int get_obj_size( size_t size );
-#if defined( _DEBUG )
-static void marksweep_gc_stack_check(Cell* cellp);
-#endif //_DEBUG
 
 #define GET_OBJECT_SIZE(obj) (((MarkSweep_GC_Header*)(obj)-1)->obj_size)
 
@@ -68,9 +65,6 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
-#if defined( _DEBUG )
-  gc_info->gc_stack_check   = marksweep_gc_stack_check;
-#endif //_DEBUG
 
   printf("GC: Mark Sweep\n");
 }
@@ -78,10 +72,11 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 //Allocation.
 void* gc_malloc_marksweep( size_t size )
 {
-  Free_Chunk* chunk = get_free_chunk(&freelist, size);
+  int allocate_size = (get_obj_size(size) + 3) / 4 * 4;
+  Free_Chunk* chunk = get_free_chunk(&freelist, allocate_size);
   if( !chunk ){
     gc_start_marksweep();
-    chunk = get_free_chunk(&freelist, size);
+    chunk = get_free_chunk(&freelist, allocate_size);
     if( !chunk ){
       printf("Heap Exhausted.\n");
       exit(-1);
@@ -89,22 +84,10 @@ void* gc_malloc_marksweep( size_t size )
   }
   MarkSweep_GC_Header* new_header = (MarkSweep_GC_Header*)chunk;
   Cell ret = (Cell)(new_header+1);
-  int allocate_size = (get_obj_size(size) + 3) / 4 * 4;
   new_header->obj_size = allocate_size;
+
   return ret;
 }
-
-#if defined( _DEBUG )
-void marksweep_gc_stack_check(Cell* cellp)
-{
-  if( !(*cellp) ){
-    return;
-  }
-  if( !(heap <= (char*)(*cellp) && (char*)(*cellp) < heap + HEAP_SIZE ) ){
-    printf("[WARNING] cell %p points out of heap\n", *cellp);
-  }  
-}
-#endif //_DEBUG
 
 int get_obj_size( size_t size ){
   return sizeof( MarkSweep_GC_Header ) + size;
@@ -127,6 +110,40 @@ void mark()
 
 void sweep()
 {
+  char* scan = heap;
+  size_t chunk_size = 0;
+  Free_Chunk* chunk_top = NULL;
+  freelist = NULL;
+  while(scan < heap + HEAP_SIZE){
+    Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
+    if(IS_MARKED(obj)){
+      if( chunk_size > 0){
+#if defined( _DEBUG )
+	if( !chunk_top ){
+	  printf("chunk_top: NULL\n");
+	  exit(-1);
+	}
+#endif
+	put_chunk_to_freelist(&freelist, chunk_top, chunk_size);
+      }
+      size_t obj_size = GET_OBJECT_SIZE(obj);
+#if defined( _DEBUG )
+      if(obj_size <= 0){
+	printf("obj_size: 0\n");
+	exit(-1);
+      }
+#endif
+      scan += obj_size;
+      chunk_size = 0;
+      chunk_top = NULL;
+    }else{
+      if(!chunk_top){
+	chunk_top = (Free_Chunk*)scan;
+      }
+      scan++;
+      chunk_size++;
+    }
+  }
 }
 
 //Start Garbage Collection.
