@@ -74,6 +74,7 @@ Cell* pop_reference_count()
 //Allocation.
 void* gc_malloc_reference_count( size_t size )
 {
+  size += sizeof(Reference_Count_Header);
   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
   Free_Chunk* chunk = get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
@@ -97,56 +98,7 @@ void reclaim_obj( Cell obj )
   
   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
   size_t obj_size = GET_OBJECT_SIZE( obj );
-
-  if(!freelist){
-    //No object in freelist.
-    freelist             = obj_top;
-    freelist->chunk_size = obj_size;
-    freelist->next       = NULL;
-  }else if( obj_top < freelist ){
-    if( (char*)obj_top + obj_size == (char*)freelist ){
-      //Coalesce.
-      obj_top->next       = freelist->next;
-      obj_top->chunk_size = obj_size + freelist->chunk_size;
-    }else{
-      obj_top->next       = freelist;
-      obj_top->chunk_size = obj_size;
-    }
-    freelist = obj_top;
-  }else{
-    Free_Chunk* tmp = NULL;
-    for( tmp = freelist; tmp->next; tmp = tmp->next ){
-      if( (char*)tmp < (char*)obj_top && (char*)obj_top < (char*)tmp->next ){
-	//Coalesce.
-	if( (char*)tmp + tmp->chunk_size == (char*)obj_top ){
-	  if( (char*)obj_top + obj_size == (char*)tmp->next ){
-	    //Coalesce with previous and next Free_Chunk.
-	    tmp->chunk_size += (obj_size + tmp->next->chunk_size);
-	    tmp->next        = tmp->next->next;
-	  }else{
-	    //Coalesce with previous Free_Chunk.
-	    tmp->chunk_size += obj_size;
-	  }
-	}else if( (char*)obj_top + obj_size == (char*)tmp->next ){
-	  //Coalesce with next Free_Chunk.
-	  size_t new_size      = tmp->next->chunk_size + obj_size;
-	  Free_Chunk* new_next = tmp->next->next;
-	  obj_top->chunk_size  = new_size;
-	  obj_top->next        = new_next;
-	  tmp->next            = obj_top;
-	}else{
-	  //Just put obj into freelist.
-	  obj_top->chunk_size  = obj_size;
-	  obj_top->next        = tmp->next;
-	  tmp->next            = obj_top;
-	}
-	return;
-      }
-    }
-    tmp->next           = obj_top;
-    obj_top->next       = NULL;
-    obj_top->chunk_size = obj_size;
-  }
+  put_chunk_to_freelist(&freelist, obj_top, obj_size);
 }
 
 int get_obj_size( size_t size )
