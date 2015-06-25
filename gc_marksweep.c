@@ -73,6 +73,9 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 void* gc_malloc_marksweep( size_t size )
 {
   int allocate_size = (get_obj_size(size) + 3) / 4 * 4;
+  if( g_GC_stress ){
+    gc_start_marksweep();
+  }
   Free_Chunk* chunk = get_free_chunk(&freelist, allocate_size);
   if( !chunk ){
     gc_start_marksweep();
@@ -117,37 +120,45 @@ void sweep()
   char* scan = heap;
   size_t chunk_size = 0;
   Free_Chunk* chunk_top = NULL;
+  Free_Chunk* chunk_last = NULL;
   freelist = NULL;
+
   while(scan < heap + HEAP_SIZE){
     Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
+    size_t obj_size = GET_OBJECT_SIZE(obj);
     if(IS_MARKED(obj)){
       if( chunk_size > 0){
-#if defined( _DEBUG )
-	if( !chunk_top ){
-	  printf("chunk_top: NULL\n");
-	  exit(-1);
+	//reclaim.
+	if( !freelist ){
+	  freelist = chunk_top;
+	  freelist->next = NULL;
+	  freelist->chunk_size = chunk_size;
+
+	  chunk_last = freelist;
+	}else{
+	  if( (char*)chunk_last + chunk_last->chunk_size == (char*)chunk_top ){
+	    //coalesce.
+	    chunk_last->chunk_size += chunk_size;
+	    chunk_last->next = NULL;
+	  }else{
+	    chunk_top->chunk_size = chunk_size;
+	    chunk_top->next = NULL;
+	    chunk_last->next = chunk_top;
+	    chunk_last = chunk_top;
+	  }
 	}
-#endif
-	put_chunk_to_freelist(&freelist, chunk_top, chunk_size);
       }
-      size_t obj_size = GET_OBJECT_SIZE(obj);
-#if defined( _DEBUG )
-      //infinite loop check.
-      if(obj_size <= 0){
-	printf("obj_size: 0\n");
-	exit(-1);
-      }
-#endif
       scan += obj_size;
       chunk_size = 0;
       chunk_top = NULL;
     }else{
+      //skip chunk.
       if(!chunk_top){
 	chunk_top = (Free_Chunk*)scan;
       }
-      scan++;
-      chunk_size++;
-    }
+      scan += obj_size;
+      chunk_size += obj_size;
+    }    
   }
 }
 
