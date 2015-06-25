@@ -82,6 +82,10 @@ void* gc_malloc_marksweep( size_t size )
       exit(-1);
     }
   }
+  if(chunk->chunk_size > allocate_size){
+    allocate_size = chunk->chunk_size;
+  }
+
   MarkSweep_GC_Header* new_header = (MarkSweep_GC_Header*)chunk;
   Cell ret = (Cell)(new_header+1);
   new_header->obj_size = allocate_size;
@@ -128,6 +132,7 @@ void sweep()
       }
       size_t obj_size = GET_OBJECT_SIZE(obj);
 #if defined( _DEBUG )
+      //infinite loop check.
       if(obj_size <= 0){
 	printf("obj_size: 0\n");
 	exit(-1);
