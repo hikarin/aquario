@@ -22,7 +22,6 @@ test: $(CSOURCES)
 	./aquario -GC copy do_test.lsp
 	./aquario -GC mc   do_test.lsp
 	./aquario -GC ref  do_test.lsp
-	./aquario -GC ms   do_test.lsp
 
 debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g
