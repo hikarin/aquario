@@ -278,6 +278,9 @@ Cell evalExp(Cell exp)
 		tmps = getReturn();
 		letParam(tmps, params, args);
 		tmps = pairCell(symbolCell("begin"), tmps);
+
+		//TODO
+
 		type(exp) = type(tmps);
 		gc_write_barrier( exp, &car(exp), car(tmps) );
 		gc_write_barrier( exp, &cdr(exp), cdr(tmps) );
@@ -374,11 +377,6 @@ int notp(Cell c)
   return c==F?1:0;
 }
 
-int zerop(Cell c)
-{
-  return ivalue(c)==0?1:0;
-}
-
 int length(Cell ls)
 {
   int length = 0;
@@ -426,15 +424,6 @@ Cell setAppendList(Cell ls, Cell append)
   }
   gc_write_barrier( cdr, &cdr(cdr), append );
   return ls;
-}
-
-Cell reverseList(Cell ls)
-{
-  Cell reverse = NIL;
-  for(;!nullp(ls);ls=cdr(ls)){
-    reverse = pairCell(car(ls), reverse);
-  }
-  return reverse;
 }
 
 void applyList(Cell ls)
@@ -1090,13 +1079,19 @@ void op_eval()
 void op_print()
 {
   Cell args = *popArg();
-  for(;!nullp(args);args=cdr(args)){
+  while( !nullp(args) && CELL_P(args) ){
     Cell c = car(args);
     if(isString(c)){
       fputs(strvalue(c), stdout);
     }
     else{
       printCell(c);
+    }
+
+    if( CELL_P(args) ){
+      args = cdr(args);
+    }else{
+      break;
     }
   }
   setReturn((Cell)AQ_UNDEF);
@@ -1238,19 +1233,6 @@ void syntax_set()
   setReturn(dst);
 
   POP_ARGS2();
-}
-
-void syntax_begin()
-{
-  Cell* args = getStackTop();
-  for(;!nullp(cdr(*args));gc_write_barrier_root(stack[stack_top-1]/*args*/,cdr(*args))){
-    evalExp(car(*args));
-  }
-
-  Cell evalCell = evalExp(car(*args));
-  setReturn( evalCell );
-
-  popArg();
 }
 
 int repl()
