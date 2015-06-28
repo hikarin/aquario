@@ -7,6 +7,7 @@ Aquario is a GC-oriented Lisp interpreter.
 * Supports for Implementing GC Algorithms
   (ex. root scan, object traverse, write barriers, etc.)
 * Multiple and Selectable Garbage Collectors:
+   - Mark-Sweep collector <= New!
    - Cheney's Copying collector
    - Mark-Compact collector
    - Reference Counting
