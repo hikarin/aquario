@@ -33,6 +33,12 @@ static Cell* getStackTop();
 static void init();
 static void term();
 
+#define UNDEF_RETURN(x)         \
+  if( UNDEF_P(x) ){             \
+    setReturn((Cell)AQ_UNDEF);  \
+    return;                     \
+  }
+
 inline int getCellSize(Cell cell)
 {
   switch( type(cell) ){
@@ -945,6 +951,11 @@ void set_gc(char* gc_char)
 void op_eqdigitp()
 {
   Cell* args = getStackTop();
+  if( UNDEF_P( *args ) ){
+    setReturn( (Cell)AQ_UNDEF );
+    popArg();
+    return;
+  }
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if(i1==i2){
@@ -975,6 +986,8 @@ void op_lessdigitp()
 void op_car()
 {
   Cell* args = popArg();
+  UNDEF_RETURN( *args );
+
   Cell* c1 = &car(*args);
   int argNum = length( *args );
   if( argNum > 1 ){
@@ -1011,10 +1024,8 @@ void op_cdr()
 void op_cons()
 {
   Cell* args = popArg();
-  if( UNDEF_P(*args) ){
-    setReturn((Cell)AQ_UNDEF);
-    return;
-  }
+  UNDEF_RETURN( *args );
+
   Cell c1 = car(*args);
   Cell c2 = cadr(*args);
   int argNum = length( *args );
@@ -1034,11 +1045,9 @@ void op_cons()
 void op_add()
 {
   Cell* args = popArg();
+  UNDEF_RETURN( *args );
+
   int ans = 0;
-  if( !CELL_P(*args) ){
-    setReturn((Cell)AQ_UNDEF);
-    return;
-  }
   while(!nullp(*args)){
     ans += ivalue(car(*args));
     args = &cdr(*args);
@@ -1049,6 +1058,8 @@ void op_add()
 void op_sub()
 {
   Cell* args = popArg();
+  UNDEF_RETURN( *args );
+
   int ans = ivalue(car(*args));;
   args = &cdr(*args);
   while(*args != NIL){
@@ -1126,13 +1137,15 @@ void op_load()
 
 void op_eqp()
 {
-  Cell args = *popArg();
-  int argNum = length(args);
+  Cell* args = popArg();  
+  UNDEF_RETURN( *args );
+
+  int argNum = length(*args);
   if( argNum != 2 ){
     setParseError("wrong number of arguments for eq?");
     return;
   }
-  else if(car(args) == cadr(args)){
+  else if(car(*args) == cadr(*args)){
     setReturn(T);
   }
   else{
@@ -1142,9 +1155,9 @@ void op_eqp()
 
 void syntax_define()
 {
-  Cell args = *popArg();
+  Cell* args = popArg();
 
-  int argNum = length(args);
+  int argNum = length(*args);
   if( argNum > 2 ){
     setParseError( "too many parameters for specital from DEFINE " );
     return;
@@ -1152,17 +1165,17 @@ void syntax_define()
     setParseError( "too few parameter for special from DEFINE " );
     return;
   }
-  Cell symbol = car(args);
+  Cell symbol = car(*args);
   if( type( symbol ) != T_SYMBOL ){
     setParseError( "not a symbol: " );
     return;
   }
   pushArg(&symbol);
-  pushArg(&args);
-  Cell obj = cadr(args);
+  pushArg(args);
+  Cell obj = cadr(*args);
   obj = evalExp(obj);
   if(!UNDEF_P(obj)){
-    gc_write_barrier_root(stack[stack_top-2]/*symbol*/, car(args));
+    gc_write_barrier_root(stack[stack_top-2]/*symbol*/, car(*args));
     setVarCell(symbol, obj);
   }
 
@@ -1247,11 +1260,7 @@ int repl()
     if(EOF_P(ret)) break;
     Cell pair = pairCell(ret, NIL);
     pushArg(&pair);
-    dupArg();                       // => [... (ret) (ret)]
 
-    callProc("eof?");
-    ret = getReturn();
-    if(truep(ret)) break;
     callProc("eval");
     printLineCell(getReturn());
   }
