@@ -39,6 +39,13 @@ static void term();
     return;                     \
   }
 
+#define WRONG_NUMBER_ARGUMENTS_ERROR(num, proc)            \
+  if(argNum != num){                                       \
+    printError("wrong number of arguments for %s", proc);  \
+    setReturn(UNDEF);                                      \
+    return;                                                \
+  }
+
 inline int getCellSize(Cell cell)
 {
   switch( type(cell) ){
