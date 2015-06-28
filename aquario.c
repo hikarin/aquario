@@ -1048,7 +1048,15 @@ void op_add()
   UNDEF_RETURN( *args );
 
   int ans = 0;
-  while(!nullp(*args)){
+  while( !nullp(*args) && CELL_P(*args)  ){
+    if( UNDEF_P( car( *args ) ) ){
+      setReturn((Cell)AQ_UNDEF);
+      return;
+    }else if( type( car( *args ) ) != T_INTEGER ){
+      setParseError("not a number given\n");
+      setReturn((Cell)AQ_UNDEF);
+      return;
+    }
     ans += ivalue(car(*args));
     args = &cdr(*args);
   }
@@ -1059,12 +1067,33 @@ void op_sub()
 {
   Cell* args = popArg();
   UNDEF_RETURN( *args );
+  int len = length ( * args );
+  if( len <= 0 ){
+    setParseError("procedure '-' requires at least one argument\n");
+    setReturn((Cell)AQ_UNDEF);
+    return;
+  }
 
-  int ans = ivalue(car(*args));;
-  args = &cdr(*args);
-  while(*args != NIL){
-    ans -= ivalue(car(*args));
+  int ans = 0;
+  if( len == 1 ){
+    //(- 1) => -1.
+    ans = -ivalue(car(*args));
+  }else{
+    //(- 1 2 3) => -4.
+    ans = ivalue(car(*args));
     args = &cdr(*args);
+    while( !nullp(*args) && CELL_P(*args) ){
+      if( UNDEF_P( car( *args ) ) ){
+	setReturn((Cell)AQ_UNDEF);
+	return;
+      }else if( type( car( *args ) ) != T_INTEGER ){
+	setParseError("not a number given\n");
+	setReturn((Cell)AQ_UNDEF);
+	return;
+      }
+      ans -= ivalue(car(*args));
+      args = &cdr(*args);
+    }
   }
   setReturn(intCell(ans));
 }
