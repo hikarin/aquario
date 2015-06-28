@@ -30,7 +30,7 @@ Aquario is a GC-oriented Lisp interpreter.
 
     $ ./aquario -GC copy
 
-  So far, Aquario receives "copy", "mc", "ref" and "gen" with -GC option.
+  So far, Aquario accepts "ms", "copy", "mc", "ref" and "gen" with -GC option.
 
 ## Future work
 
