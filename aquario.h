@@ -110,6 +110,7 @@ Cell readElem();
 Cell evalExp(Cell exp);
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
+void printError(char *fmt, ...);
 
 #define ENVSIZE 3000
 Cell env[ENVSIZE];

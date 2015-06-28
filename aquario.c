@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #include "aquario.h"
 #include "gc_base.h"
@@ -39,10 +40,11 @@ static void term();
     return;                     \
   }
 
-#define WRONG_NUMBER_ARGUMENTS_ERROR(num, proc)            \
+#define WRONG_NUMBER_ARGUMENTS_ERROR(num, args, proc)	   \
+  int argNum = length( args );                             \
   if(argNum != num){                                       \
-    printError("wrong number of arguments for %s", proc);  \
-    setReturn(UNDEF);                                      \
+    printError("wrong number of arguments for %s: should be %d but giben %d", proc, num, argNum); \
+    setReturn((Cell)AQ_UNDEF);				   \
     return;                                                \
   }
 
@@ -994,16 +996,10 @@ void op_car()
 {
   Cell* args = popArg();
   UNDEF_RETURN( *args );
+  WRONG_NUMBER_ARGUMENTS_ERROR(1, *args, "op_car");
 
   Cell* c1 = &car(*args);
-  int argNum = length( *args );
-  if( argNum > 1 ){
-    setParseError( "too many arguments given to car" );
-    return;
-  }else if( argNum < 1 ){
-    setParseError( "too few arguments given to car" );
-    return;
-  }else if( type( *c1 ) != T_PAIR ){
+  if( type( *c1 ) != T_PAIR ){
     setParseError( "not a list given" );
     return;
   }
@@ -1013,15 +1009,10 @@ void op_car()
 void op_cdr()
 {
   Cell* args = popArg();
+  WRONG_NUMBER_ARGUMENTS_ERROR(1, *args, "op_cdr");
+
   Cell* c1 = &car(*args);
-  int argNum = length( *args );
-  if( argNum > 1 ){
-    setParseError( "too many arguments given to cdr" );
-    return;
-  }else if( argNum < 1 ){
-    setParseError( "too few arguments given to cdr" );
-    return;
-  }else if( type( *c1 ) != T_PAIR ){
+  if( type( *c1 ) != T_PAIR ){
     setParseError( "not a list given" );
     return;
   }
@@ -1032,17 +1023,11 @@ void op_cons()
 {
   Cell* args = popArg();
   UNDEF_RETURN( *args );
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, "op_cons");
 
   Cell c1 = car(*args);
   Cell c2 = cadr(*args);
-  int argNum = length( *args );
-  if( argNum > 2 ){
-    setParseError( "too many arguments given to cons" );
-    return;
-  }else if( argNum < 2 ){
-    setParseError( "too few arguments given to cons" );
-    return;
-  }else if( UNDEF_P(c1) || UNDEF_P(c2) ){
+  if( UNDEF_P(c1) || UNDEF_P(c2) ){
     setReturn( (Cell)AQ_UNDEF );
     return;
   }
@@ -1289,6 +1274,15 @@ void syntax_set()
   setReturn(dst);
 
   POP_ARGS2();
+}
+
+void printError(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  fprintf(stderr, "[ERROR]");
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  va_end(ap);
 }
 
 int repl()
