@@ -1154,8 +1154,15 @@ void load_file( const char* filename )
 
 void op_load()
 {
-  Cell args = *popArg();
-  Cell cell = car(args);
+  Cell* args = popArg();
+  UNDEF_RETURN(*args);
+  int argNum = length(*args);
+  if( argNum != 1 ){
+    setParseError("wrong number of arguments for load");
+    return;
+  }
+
+  Cell cell = car(*args);
   if( type(cell) == T_STRING ){
     load_file(strvalue(cell));
   }else{
