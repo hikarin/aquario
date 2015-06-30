@@ -751,7 +751,7 @@ Cell getVar(char* name)
   int key = hash(name)%ENVSIZE;
   Cell chain = env[key];
   if(chain==NULL || nullp(chain)){
-    setParseError("undefined symbol\n");
+    printError("undefined symbol: %s\n", name);
     return (Cell)AQ_UNDEF;
   }
   while(strcmp(name, strvalue(caar(chain)))!=0){
@@ -1195,7 +1195,7 @@ void syntax_define()
   }
   Cell symbol = car(*args);
   if( type( symbol ) != T_SYMBOL ){
-    setParseError( "not a symbol: " );
+    setParseError( "not a symbol given" );
     return;
   }
   pushArg(&symbol);
@@ -1205,9 +1205,10 @@ void syntax_define()
   if(!UNDEF_P(obj)){
     gc_write_barrier_root(stack[stack_top-2]/*symbol*/, car(*args));
     setVarCell(symbol, obj);
+    setReturn(symbol);
+  }else{
+    setReturn((Cell)AQ_UNDEF);
   }
-
-  setReturn(symbol);
 
   POP_ARGS2();
 }
