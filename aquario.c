@@ -720,6 +720,10 @@ Cell readElem(FILE* fp)
   else if(token[0]=='\''){
     elem = readQuot(fp);
   }
+  else if(token[0]==')'){
+    printError("extra close parensis");
+    elem = (Cell)AQ_UNDEF;
+  }
   else{
     elem = tokenToCell(token);
   }
@@ -1134,7 +1138,10 @@ void load_file( const char* filename )
   FILE* fp = fopen(filename, "r");
   if( fp ){
     Cell cell = NULL;
-    while(!EOF_P(cell = readElem(fp))){
+    while( !EOF_P(cell = readElem(fp)) ){
+      if(UNDEF_P(cell)){
+	break;
+      }
       evalExp(cell);
     }
     fclose(fp);
@@ -1296,6 +1303,7 @@ int repl()
     callProc("read");
     ret = getReturn();
     if(EOF_P(ret)) break;
+    if(UNDEF_P(ret)) continue;
     Cell pair = pairCell(ret, NIL);
     pushArg(&pair);
 
