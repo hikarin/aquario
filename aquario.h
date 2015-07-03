@@ -108,6 +108,7 @@ Cell tokenToCell();
 Cell readElem();
 
 Cell evalExp(Cell exp);
+Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_loop);
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 void printError(char *fmt, ...);
