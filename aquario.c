@@ -230,88 +230,11 @@ Cell evalExp(Cell exp)
 	setReturn( getVar(symbolname(exp)) );
       }
     }else if( type(exp) == T_PAIR ){
-      gc_write_barrier_root(stack[stack_top-3]/*proc*/, evalExp(car(exp)));
-      Cell args = cdr(exp);
-      opType operator;
-      if( !CELL_P(proc) ){
-	setParseError("not proc");
-	setReturn((Cell)AQ_UNDEF);
-	is_loop = FALSE;
-      }else{
-	switch(type(proc)){
-	case T_PROC:
-	  operator = procvalue(proc);
-	  applyList(args);
-	  args = getReturn();
-	  pushArg(&args);                                   //=> [....exps args]
-	  operator();                                       //=> [....exps]
-	  break;
-	case T_SYNTAX:
-	  operator = syntaxvalue(proc);
-	  pushArg(&args);                                   //=> [....exps args]
-	  operator();                                       //=> [....exps]
-	  break;
-	case T_LAMBDA:
-	  {
-	    pushArg(&args);
-	    // => [... exp proc params exps args]
-	    gc_write_barrier_root(stack[stack_top-3]/*params*/, lambdaparam(proc));
-	    if( !is_loop ){
-	      is_loop = TRUE;
-	      gc_write_barrier_root(stack[stack_top-2]/*exps*/, lambdaexp(proc));
-	      if(length(args) != length(params)){
-		printf("wrong number arguments\n");
-		setReturn((Cell)AQ_UNDEF);
-		is_loop = FALSE;
-	      }else{
-		cloneTree(args);
-		gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-		applyList(args);
-		gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-		cloneSymbolTree(exps);
-		gc_write_barrier_root(stack[stack_top-2]/*exps*/, getReturn());
-		letParam(exps, params, args);
-		gc_write_barrier_root(stack[stack_top-2]/*exps*/, pairCell(NIL, exps));
-		popArg();
-		// => [... exp proc params exps]
-		
-		continue;
-	      }
-	    }else{
-	      if(length(args) != length(params)){
-		printf("wrong number arguments\n");
-		setReturn((Cell)AQ_UNDEF);
-		is_loop = FALSE;
-	      }else{
-		cloneTree(args);
-		gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-		applyList(args);
-		gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-		
-		Cell tmps = lambdaexp(proc);
-		cloneSymbolTree(tmps);
-		tmps = getReturn();
-		letParam(tmps, params, args);
-		tmps = pairCell(symbolCell("begin"), tmps);
-
-		//TODO
-
-		type(exp) = type(tmps);
-		gc_write_barrier( exp, &car(exp), car(tmps) );
-		gc_write_barrier( exp, &cdr(exp), cdr(tmps) );
-		evalExp(exp);
-	      }
-	    }
-	    popArg();
-	    // => [... exp proc params exps]
-	    break;
-	  }
-	default:
-	  setParseError("not proc");
-	  setReturn((Cell)AQ_UNDEF);
-	  is_loop = FALSE;
-	}
-      }
+      gc_write_barrier_root(stack[stack_top-2], evalExp(car(exp)));
+      is_loop = evalPair(stack[stack_top-4],
+			 stack[stack_top-3],
+			 stack[stack_top-2],
+			 stack[stack_top-1], is_loop);
     }else{
       if( !is_loop ){
 	setReturn(exp);
@@ -321,6 +244,91 @@ Cell evalExp(Cell exp)
   POP_ARGS4();
 
   return getReturn();
+}
+
+Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_loop)
+{
+  // => [... exp proc params exps]
+  gc_write_barrier_root(pProc, evalExp(car(*pExp)));
+  Cell args = cdr(*pExp);
+  opType operator;
+  if( !CELL_P(*pProc) ){
+    setParseError("not proc");
+    setReturn((Cell)AQ_UNDEF);
+    is_loop = FALSE;
+  }else{
+    switch(type(*pProc)){
+    case T_PROC:
+      operator = procvalue(*pProc);
+      applyList(args);
+      args = getReturn();
+      pushArg(&args);                                   //=> [....exps args]
+      operator();                                       //=> [....exps]
+      break;
+    case T_SYNTAX:
+      operator = syntaxvalue(*pProc);
+      pushArg(&args);                                   //=> [....exps args]
+      operator();                                       //=> [....exps]
+      break;
+    case T_LAMBDA:
+      {
+	pushArg(&args);
+	// => [... exp proc params exps args]
+	gc_write_barrier_root(pParams, lambdaparam(*pProc));
+	if( !is_loop ){
+	  is_loop = TRUE;
+	  gc_write_barrier_root(pExps, lambdaexp(*pProc));
+	  if(length(args) != length(*pParams)){
+	    printf("wrong number arguments\n");
+	    setReturn((Cell)AQ_UNDEF);
+	    is_loop = FALSE;
+	  }else{
+	    cloneTree(args);
+	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+	    applyList(args);
+	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+	    cloneSymbolTree(*pExps);
+	    gc_write_barrier_root(pExps, getReturn());
+	    letParam(*pExps, *pParams, args);
+	    gc_write_barrier_root(pExps, pairCell(NIL, *pExps));
+	    popArg();
+	    // => [... exp proc params exps]
+	    return is_loop;
+	  }
+	}else{
+	  if(length(args) != length(*pParams)){
+	    printf("wrong number arguments\n");
+	    setReturn((Cell)AQ_UNDEF);
+	    is_loop = FALSE;
+	  }else{
+	    cloneTree(args);
+	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+	    applyList(args);
+	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+	    
+	    Cell tmps = lambdaexp(*pProc);
+	    cloneSymbolTree(tmps);
+	    tmps = getReturn();
+	    letParam(tmps, *pParams, args);
+
+	    type(*pExp) = type(tmps);
+	    gc_write_barrier( *pExp, &car(*pExp), car(tmps) );
+	    gc_write_barrier( *pExp, &cdr(*pExp), cdr(tmps) );
+	    evalExp(*pExp);
+	  }
+	}
+	popArg();
+	// => [... exp proc params exps]
+	break;
+      }
+    default:
+      setParseError("not proc");
+      setReturn((Cell)AQ_UNDEF);
+      is_loop = FALSE;
+    }
+  }
+
+  return is_loop;
 }
 
 void letParam(Cell exp, Cell dummyParams, Cell realParams)
@@ -999,7 +1007,7 @@ void op_lessdigitp()
 void op_car()
 {
   Cell* args = popArg();
-  UNDEF_RETURN( *args );
+  UNDEF_RETURN(*args);
   WRONG_NUMBER_ARGUMENTS_ERROR(1, *args, "op_car");
 
   Cell* c1 = &car(*args);
@@ -1026,7 +1034,7 @@ void op_cdr()
 void op_cons()
 {
   Cell* args = popArg();
-  UNDEF_RETURN( *args );
+  UNDEF_RETURN(*args);
   WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, "op_cons");
 
   Cell c1 = car(*args);
@@ -1041,7 +1049,7 @@ void op_cons()
 void op_add()
 {
   Cell* args = popArg();
-  UNDEF_RETURN( *args );
+  UNDEF_RETURN(*args);
 
   int ans = 0;
   while( !nullp(*args) && CELL_P(*args)  ){
@@ -1062,7 +1070,7 @@ void op_add()
 void op_sub()
 {
   Cell* args = popArg();
-  UNDEF_RETURN( *args );
+  UNDEF_RETURN(*args);
   int len = length ( * args );
   if( len <= 0 ){
     setParseError("procedure '-' requires at least one argument\n");
@@ -1173,7 +1181,7 @@ void op_load()
 void op_eqp()
 {
   Cell* args = popArg();  
-  UNDEF_RETURN( *args );
+  UNDEF_RETURN(*args);
 
   int argNum = length(*args);
   if( argNum != 2 ){
