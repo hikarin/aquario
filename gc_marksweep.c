@@ -156,8 +156,9 @@ void sweep()
       if(!chunk_top){
 	chunk_top = (Free_Chunk*)scan;
       }
-      scan += obj_size;
-      chunk_size += obj_size;
+      Free_Chunk* tmp = (Free_Chunk*)scan;
+      scan += tmp->chunk_size;
+      chunk_size += tmp->chunk_size;
     }    
   }
 }
