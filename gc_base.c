@@ -234,7 +234,7 @@ void  aq_free(void* p)
   free(p);
 }
 
-Free_Chunk* get_free_chunk( Free_Chunk** freelistp, size_t size )
+Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
 {
   //returns a chunk which size is larger than required size.
   Free_Chunk** chunk = freelistp;
