@@ -5,17 +5,17 @@
 #include <stdint.h>
 
 typedef struct marksweep_gc_header{
-  Boolean mark_bit;
   int obj_size;
+  int seg_index;
 }MarkSweep_GC_Header;
 
 //mark table: a bit per WORD
-#define BIT_WIDTH          (64)
+#define BIT_WIDTH          (32)
 #define MEMORY_ALIGNMENT   (4)
 
-#define MULTI_THREAD
+//#define MULTI_THREAD
 #if defined( MULTI_THREAD )
-//for multi-threading..
+//for multi-threading.
 #include <pthread.h>
 #define THREAD_NUM        (4)
 #define SEGMENT_SIZE      ((HEAP_SIZE/THREAD_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
@@ -26,9 +26,12 @@ static int            mark_tbl[THREAD_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
 
 static void*          sweep_thread(void* pArg);
 
-static int            get_index(Cell obj);
-static Boolean        is_marked(Cell obj);
-static void           set_mark(Cell obj);
+#define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
+#define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
+#define set_mark(obj)            (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] |= (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
+#define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
+Free_Chunk* get_free_chunk(int* index, size_t size);
+
 #else
 
 static Free_Chunk*    freelist = NULL;
@@ -37,9 +40,9 @@ static int            mark_tbl[HEAP_SIZE/BIT_WIDTH+1];
 
 #define is_marked(obj)   (mark_tbl[(((char*)(obj)-heap)/BIT_WIDTH )] & (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
 #define set_mark(obj)    (mark_tbl[(((char*)(obj)-heap)/BIT_WIDTH )] |= (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
+Free_Chunk* get_free_chunk(size_t size);
 #endif
 
-Free_Chunk* get_free_chunk(size_t size);
 static void gc_start_marksweep();
 static inline void* gc_malloc_marksweep(size_t size);
 static void gc_term_marksweep();
@@ -105,10 +108,19 @@ void* gc_malloc_marksweep( size_t size )
     gc_start_marksweep();
   }
   Free_Chunk* chunk = NULL;
+#if defined(MULTI_THREAD)
+  int index = 0;
+  chunk = get_free_chunk(&index, allocate_size);
+#else
   chunk = get_free_chunk(allocate_size);
+#endif
   if( !chunk ){
     gc_start_marksweep();
+#if defined(MULTI_THREAD)
+    chunk = get_free_chunk(&index, allocate_size);
+#else
     chunk = get_free_chunk(allocate_size);
+#endif
     if( !chunk ){
       printf("Heap Exhausted.\n");
       exit(-1);
@@ -119,8 +131,11 @@ void* gc_malloc_marksweep( size_t size )
   }
 
   MarkSweep_GC_Header* new_header = (MarkSweep_GC_Header*)chunk;
-  Cell ret = (Cell)(new_header+1);
-  new_header->obj_size = allocate_size;
+  Cell ret                 = (Cell)(new_header+1);
+  new_header->obj_size     = allocate_size;
+#if defined(MULTI_THREAD)
+  new_header->seg_index    = index;
+#endif
 
   return ret;
 }
@@ -140,7 +155,11 @@ void mark()
   }
 }
 
+#if defined(MULTI_THREAD)
+Free_Chunk* get_free_chunk(int* index, size_t size)
+#else
 Free_Chunk* get_free_chunk(size_t size)
+#endif
 {
 #if defined( MULTI_THREAD )
   int i;
@@ -148,6 +167,7 @@ Free_Chunk* get_free_chunk(size_t size)
   for(i=0; i<THREAD_NUM; i++){
     chunk = aq_get_free_chunk(&freelists[i], size);
     if( chunk ){
+      *index = i;
       break;
     }
   }
@@ -176,7 +196,7 @@ void* sweep_thread(void* pArg)
 
   while(scan < scan_end){
     Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
-    if(is_marked(obj)){
+    if(is_marked_seg(index, obj)){
       if( chunk_size > 0){
 	//reclaim.
 	if( !freelists[index] ){
@@ -233,34 +253,6 @@ void sweep()
   for(j=0; j<THREAD_NUM; ++j){
     pthread_join(tHandles[j], NULL);
   }
-}
-
-Boolean is_marked(Cell obj)
-{
-  int index = get_index(obj);
-  if(mark_tbl[index][(((char*)(obj)-heaps[index])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[index])%BIT_WIDTH))){
-    return TRUE;
-  }else{
-    return FALSE;
-  }
-}
-
-void set_mark(Cell obj)
-{
-  int index = get_index(obj);
-  mark_tbl[index][(((char*)(obj)-heaps[index])/BIT_WIDTH )] |= (1 << (((char*)(obj)-heaps[index])%BIT_WIDTH));
-}
-
-int get_index(Cell obj)
-{
-  int i;
-  for(i=0; i<THREAD_NUM; i++){
-    if(heaps[i] <= (char*)obj && (char*)obj < heaps[i]+SEGMENT_SIZE){
-      return i;
-    }
-  }
-
-  return -1;
 }
 
 #else
@@ -321,13 +313,7 @@ void sweep()
 //Start Garbage Collection.
 void gc_start_marksweep()
 {
-  //initialization.
-  mark_stack_top = 0;
-
-  //mark phase.
   mark();
-
-  //sweep phase.
   sweep();
 }
 

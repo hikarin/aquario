@@ -76,7 +76,7 @@ void* gc_malloc_reference_count( size_t size )
 {
   size += sizeof(Reference_Count_Header);
   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
-  Free_Chunk* chunk = get_free_chunk( &freelist, allocate_size );
+  Free_Chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
     heap_exhausted_error();
   }else if(chunk->chunk_size > allocate_size){
