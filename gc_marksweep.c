@@ -13,7 +13,7 @@ typedef struct marksweep_gc_header{
 #define BIT_WIDTH          (32)
 #define MEMORY_ALIGNMENT   (4)
 
-//#define MULTI_THREAD
+#define MULTI_THREAD
 #if defined( MULTI_THREAD )
 //for multi-threading.
 #include <pthread.h>
@@ -25,12 +25,18 @@ static char*          heaps[THREAD_NUM];
 static int            mark_tbl[THREAD_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
 
 static void*          sweep_thread(void* pArg);
+static void           sweep_segment(int index);
 
 #define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
 #define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
 #define set_mark(obj)            (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] |= (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
 #define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
 Free_Chunk* get_free_chunk(int* index, size_t size);
+
+static Boolean is_sweep_end[THREAD_NUM];
+static Boolean thread_end[THREAD_NUM];
+static pthread_t tHandles[THREAD_NUM];
+static int tNum[THREAD_NUM];
 
 #else
 
@@ -82,6 +88,12 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
     freelists[i]             = (Free_Chunk*)heaps[i];
     freelists[i]->chunk_size = SEGMENT_SIZE;
     freelists[i]->next       = NULL;
+
+    is_sweep_end[i]          = TRUE;
+    thread_end[i]            = FALSE;
+
+    tNum[i] = i;
+    pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
   }
 #else
   heap                 = (char*)aq_malloc( HEAP_SIZE );
@@ -184,7 +196,19 @@ int get_obj_size( size_t size ){
 #if defined( MULTI_THREAD )
 void* sweep_thread(void* pArg)
 {
-  int index        = *(int*)pArg;
+  int index = *(int*)pArg;
+  while(!thread_end[index]){
+    if(!is_sweep_end[index]){
+      sweep_segment(index);
+      is_sweep_end[index] = TRUE;
+    }
+  }
+
+  return NULL;
+}
+
+void sweep_segment(int index)
+{
   char* scan_start = heaps[index];
   char* scan_end   = scan_start + SEGMENT_SIZE;
   char* scan       = scan_start;
@@ -232,26 +256,25 @@ void* sweep_thread(void* pArg)
       chunk_size += tmp->chunk_size;
     }    
   }
-
-  return NULL;
 }
 
 void sweep()
 {
-  memset(freelists, 0, sizeof(freelists));
-
-  pthread_t tHandles[THREAD_NUM];
-  int tNum[THREAD_NUM];
-  
-  int i=0;
+  int i;
   for(i=0; i<THREAD_NUM; i++){
-    tNum[i] = i;
-    pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
+    is_sweep_end[i] = FALSE;
   }
 
-  int j=0;
-  for(j=0; j<THREAD_NUM; ++j){
-    pthread_join(tHandles[j], NULL);
+  Boolean loop_end = FALSE;
+
+  while(!loop_end){
+    loop_end = TRUE;
+    for(i=0; i<THREAD_NUM; i++){
+      if( !is_sweep_end[i] ){
+	loop_end = FALSE;
+	break;
+      }
+    }
   }
 }
 
@@ -268,9 +291,6 @@ void sweep()
   while(scan < heap + HEAP_SIZE){
     Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
     size_t obj_size = GET_OBJECT_SIZE(obj);
-    if( obj_size <= 0 ){
-      printf("size 0\n");
-    }
     if(is_marked(obj)){
       if( chunk_size > 0){
 	//reclaim.
@@ -324,6 +344,12 @@ void gc_term_marksweep()
   int i;
   for(i=0; i<THREAD_NUM; i++){
     aq_free( heaps[i] );
+    thread_end[i] = TRUE;
+  }
+
+  int j=0;
+  for(j=0; j<THREAD_NUM; ++j){
+    pthread_join(tHandles[j], NULL);
   }
 #else
   aq_free( heap );
