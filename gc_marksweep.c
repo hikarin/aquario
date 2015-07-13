@@ -17,7 +17,7 @@ typedef struct marksweep_gc_header{
 #if defined( MULTI_THREAD )
 //for multi-threading.
 #include <pthread.h>
-#define THREAD_NUM        (4)
+#define THREAD_NUM        (3)
 #define SEGMENT_SIZE      ((HEAP_SIZE/THREAD_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
 
 static Free_Chunk*    freelists[THREAD_NUM];
@@ -91,8 +91,7 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 
     is_sweep_end[i]          = TRUE;
     thread_end[i]            = FALSE;
-
-    tNum[i] = i;
+    tNum[i]                  = i;
     pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
   }
 #else
@@ -220,6 +219,7 @@ void sweep_segment(int index)
 
   while(scan < scan_end){
     Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
+
     if(is_marked_seg(index, obj)){
       if( chunk_size > 0){
 	//reclaim.
@@ -265,16 +265,8 @@ void sweep()
     is_sweep_end[i] = FALSE;
   }
 
-  Boolean loop_end = FALSE;
-
-  while(!loop_end){
-    loop_end = TRUE;
-    for(i=0; i<THREAD_NUM; i++){
-      if( !is_sweep_end[i] ){
-	loop_end = FALSE;
-	break;
-      }
-    }
+  for(i=0; i<THREAD_NUM; i++){
+    while(!is_sweep_end[i]){}
   }
 }
 
