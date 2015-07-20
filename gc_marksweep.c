@@ -13,16 +13,17 @@ typedef struct marksweep_gc_header{
 #define BIT_WIDTH          (32)
 #define MEMORY_ALIGNMENT   (4)
 
-#define MULTI_THREAD
+//#define MULTI_THREAD
 #if defined( MULTI_THREAD )
 //for multi-threading.
 #include <pthread.h>
 #define THREAD_NUM        (3)
-#define SEGMENT_SIZE      ((HEAP_SIZE/THREAD_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
+#define SEGMENT_NUM       (THREAD_NUM+1)
+#define SEGMENT_SIZE      ((HEAP_SIZE/SEGMENT_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
 
-static Free_Chunk*    freelists[THREAD_NUM];
-static char*          heaps[THREAD_NUM];
-static int            mark_tbl[THREAD_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
+static Free_Chunk*    freelists[SEGMENT_NUM];
+static char*          heaps[SEGMENT_NUM];
+static int            mark_tbl[SEGMENT_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
 
 static void*          sweep_thread(void* pArg);
 static void           sweep_segment(int index);
@@ -33,10 +34,10 @@ static void           sweep_segment(int index);
 #define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
 Free_Chunk* get_free_chunk(int* index, size_t size);
 
-static Boolean is_sweep_end[THREAD_NUM];
-static Boolean thread_end[THREAD_NUM];
+static Boolean   is_sweep_end[THREAD_NUM];
+static Boolean   thread_end[THREAD_NUM];
 static pthread_t tHandles[THREAD_NUM];
-static int tNum[THREAD_NUM];
+static int       tNum[THREAD_NUM];
 
 #else
 
@@ -83,12 +84,14 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 {
 #if defined( MULTI_THREAD )
   int i;
-  for(i=0; i<THREAD_NUM; i++){
+  for(i=0; i<SEGMENT_NUM; i++){
     heaps[i]                 = (char*)aq_malloc( SEGMENT_SIZE );
     freelists[i]             = (Free_Chunk*)heaps[i];
     freelists[i]->chunk_size = SEGMENT_SIZE;
     freelists[i]->next       = NULL;
+  }
 
+  for(i=0; i<THREAD_NUM; i++){
     is_sweep_end[i]          = TRUE;
     thread_end[i]            = FALSE;
     tNum[i]                  = i;
@@ -175,7 +178,7 @@ Free_Chunk* get_free_chunk(size_t size)
 #if defined( MULTI_THREAD )
   int i;
   Free_Chunk* chunk = NULL;
-  for(i=0; i<THREAD_NUM; i++){
+  for(i=0; i<SEGMENT_NUM; i++){
     chunk = aq_get_free_chunk(&freelists[i], size);
     if( chunk ){
       *index = i;
@@ -265,8 +268,16 @@ void sweep()
     is_sweep_end[i] = FALSE;
   }
 
-  for(i=0; i<THREAD_NUM; i++){
-    while(!is_sweep_end[i]){}
+  sweep_segment(THREAD_NUM);
+  Boolean loop = TRUE;
+  while(loop){
+    loop = FALSE;
+    for(i=0; i<THREAD_NUM; i++){
+      if(!is_sweep_end[i]){
+	loop = TRUE;
+	break;
+      }
+    }
   }
 }
 
@@ -338,6 +349,8 @@ void gc_term_marksweep()
     aq_free( heaps[i] );
     thread_end[i] = TRUE;
   }
+
+  aq_free( heaps[THREAD_NUM] );
 
   int j=0;
   for(j=0; j<THREAD_NUM; ++j){
