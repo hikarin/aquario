@@ -1153,7 +1153,14 @@ void op_mul()
 void op_sub()
 {
   Cell* args = popArg();
-  int ans = ivalue(car(*args));;
+  int argNum = length( *args );
+  if(argNum < 1){
+    printError("number of arguments should be at least one for '-'");
+    setReturn(UNDEF);
+    return;
+  }
+
+  int ans = ivalue(car(*args));
   args = &cdr(*args);
   while(*args != NIL){
     ans -= ivalue(car(*args));
