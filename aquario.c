@@ -5,9 +5,9 @@
 #include <stdarg.h>
 
 #include "aquario.h"
-#include "gc_base.h"
-#include "gc_copy.h"
-#include "gc_markcompact.h"
+#include "gc/base.h"
+#include "gc/copy.h"
+#include "gc/markcompact.h"
 
 static void set_gc(char*);
 
