@@ -2,13 +2,13 @@
 #define __GC_BASE_H__
 
 #include <stdlib.h>
-#include "aquario.h"
-#include "gc_base.h"
-#include "gc_copy.h"
-#include "gc_markcompact.h"
-#include "gc_reference_count.h"
-#include "gc_generational.h"
-#include "gc_marksweep.h"
+#include "../aquario.h"
+#include "base.h"
+#include "copy.h"
+#include "markcompact.h"
+#include "reference_count.h"
+#include "generational.h"
+#include "marksweep.h"
 
 static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //write barrier;
 static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
@@ -103,18 +103,20 @@ void trace_roots(void (*trace) (Cell* cellp)){
   int scan = stack_top;
   while( scan > 0 ){
     Cell* cellp = stack[ --scan ];
-    trace( cellp );
+    if(CELL_P(*cellp)){
+      trace( cellp );
+    }
   }
 
   //trace global variable.
   trace( &NIL );
   trace( &T );
   trace( &F );
-  trace( &UNDEF );
-  trace( &EOFobj );
 
   //trace return value.
-  trace( &retReg );
+  if(CELL_P(retReg)){
+    trace( &retReg );
+  }
 
   //trace env.
   int i;
@@ -137,8 +139,12 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
     case T_INTEGER:
       break;
     case T_PAIR:
-      trace(&(car(cell)));
-      trace(&(cdr(cell)));
+      if( CELL_P(car(cell)) ){
+	trace(&(car(cell)));
+      }
+      if( CELL_P(cdr(cell)) ){
+	trace(&(cdr(cell)));
+      }
       break;
     case T_PROC:
       break;
@@ -170,10 +176,10 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
     case T_INTEGER:
       break;
     case T_PAIR:
-      if(trace(&(car(cell)))){
+      if( CELL_P(car(cell)) && trace(&(car(cell))) ){
 	return TRUE;
       }
-      if(trace(&(cdr(cell)))){
+      if( CELL_P(cdr(cell)) && trace(&(cdr(cell))) ){
 	return TRUE;
       }
       break;

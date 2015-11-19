@@ -1,4 +1,4 @@
-#include "types.h"
+#include "../types.h"
 #include <string.h>
 
 void gc_init_markcompact();

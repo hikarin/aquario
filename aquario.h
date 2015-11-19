@@ -72,11 +72,7 @@ Cell newCell(Type t, size_t size);
   POP_ARGS2()                             \
   POP_ARGS3()
 
-void setString(Cell c, char* str);
-void printError(char *fmt, ...);
-
 void clone(Cell c);
-
 Cell charCell(char ch);
 Cell stringCell(char* str);
 Cell intCell(int val);
@@ -91,7 +87,6 @@ int isdigitstr(char* str);
 int nullp(Cell c);
 int truep(Cell c);
 int notp(Cell c);
-int eofp(Cell c);
 int zerop(Cell c);
 int eqdigitp(Cell c);
 int length(Cell ls);
@@ -113,11 +108,12 @@ Cell tokenToCell();
 Cell readElem();
 
 Cell evalExp(Cell exp);
+Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_loop);
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
+void printError(char *fmt, ...);
 
-//Cell retReg;
-#define ENVSIZE 30000
+#define ENVSIZE 3000
 Cell env[ENVSIZE];
 #define LINESIZE 1024
 
@@ -135,33 +131,18 @@ void callProc(char* name);
 Cell getReturn();
 void setReturn(Cell c);
 
-void op_nullp();
-void op_notp();
-void op_eofp();
-void op_zerop();
 void op_eqdigitp();
-void op_largerdigitp();
-void op_largeroreqdigitp();
 void op_lessdigitp();
-void op_lessoreqdigitp();
 void op_car();
 void op_cdr();
 void op_cons();
-void op_list();
 void op_add();
 void op_sub();
-void op_mul();
-void op_div();
-void op_append();
-void op_reverse();
 void op_eval();
 void op_read();
 void op_print();
-void op_display();
 void op_load();
 void op_eqp();
-void op_equalp();
-void op_undefp();
 void op_gc();
 void op_gc_stress();
 

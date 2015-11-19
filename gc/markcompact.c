@@ -1,12 +1,8 @@
-#include "gc_base.h"
-#include "gc_markcompact.h"
+#include "base.h"
+#include "markcompact.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-#if defined( _DEBUG )
-#include "aquario.h"
-#endif //_DEBUG
 
 typedef struct markcompact_gc_header{
   int obj_size;

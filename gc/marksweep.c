@@ -1,5 +1,5 @@
-#include "gc_base.h"
-#include "gc_marksweep.h"
+#include "base.h"
+#include "marksweep.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

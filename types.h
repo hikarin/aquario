@@ -15,12 +15,28 @@ typedef enum type{
   T_SYMBOL,	//7.
   T_LAMBDA,	//8.
 } Type;
-struct cell;
+
+#define AQ_FALSE  ((VALUE)0)
+#define AQ_TRUE   ((VALUE)2)
+#define AQ_NIL    ((VALUE)4)
+#define AQ_UNDEF  ((VALUE)6)
+#define AQ_EOF    ((VALUE)10)
+
+typedef unsigned long VALUE;
+
+#define AQ_IMMEDIATE_MASK    0x03
+#define NIL_P(v)      ((VALUE)(v) == AQ_NIL)
+#define TRUE_P(v)     ((VALUE)(v) == AQ_TRUE)
+#define FALSE_P(v)    ((VALUE)(v) == AQ_FALSE)
+#define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
+#define EOF_P(v)      ((VALUE)(v) == AQ_EOF)
+
+#define CELL_P(v)     (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0)
 
 typedef struct cell *Cell;
 typedef union cellUnion
 {
-  char    _char;
+  char   _char;
   char   _string[1];
   int     _integer;
   struct{
@@ -34,8 +50,9 @@ struct cell{
   CellUnion _object;
 };
 
-Cell T, F, NIL, UNDEF, EOFobj;
+//Cell T, F, NIL, UNDEF, EOFobj;
 Cell retReg;
+Cell T, F, NIL;
 
 typedef enum boolean{
   FALSE  = 0,
