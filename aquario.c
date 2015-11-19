@@ -465,7 +465,7 @@ void applyList(Cell ls)
   while( !nullp(cdr(ls)) ){
     Cell exp = evalExp(car(cdr(ls)));
     if(UNDEF_P(exp)){
-      gc_write_barrier_root(stack[stack_top-2]/*top*/, AQ_UNDEF);
+      gc_write_barrier_root(stack[stack_top-2]/*top*/, (Cell)AQ_UNDEF);
       break;
     }
 
@@ -717,7 +717,7 @@ Cell readElem(FILE* fp)
   char* token = readToken(buf, sizeof(buf), fp);
   Cell elem = NIL;
   if(token==NULL){
-    return AQ_EOF;
+    return (Cell)AQ_EOF;
   }
   else if(token[0]=='('){
     return readList(fp);
@@ -732,7 +732,7 @@ Cell readElem(FILE* fp)
   else{
     elem = tokenToCell(token);
   }
-
+#if defined( NOT_YET )
   if(elem==NULL){
     ErrorNo err = errorNumber;
     clearError();
@@ -743,6 +743,9 @@ Cell readElem(FILE* fp)
       return NULL;
     }
   }
+#else
+  return (Cell)AQ_EOF;
+#endif
 }
 
 int hash(char* key)
@@ -852,6 +855,10 @@ Cell getReturn()
 void setReturn(Cell c)
 {
     gc_write_barrier_root( &retReg, c );
+}
+
+void setParseError(char* str)
+{
 }
 
 void init()
@@ -1069,6 +1076,7 @@ void op_read()
 
 void op_eval()
 {
+#if defined( NOT_YET )
   Cell* args = getStackTop();
   setReturn(evalExp(car(*args)));
   if(errorNumber==PARSE_ERR){
@@ -1076,7 +1084,7 @@ void op_eval()
     setReturn((Cell)AQ_UNDEF);
   }
   clearError();
-
+#endif
   popArg();
 }
 
@@ -1116,7 +1124,7 @@ void load_file( const char* filename )
     setReturn(T);
   }else{
     printError("load: failed\n");
-    setReturn(AQ_UNDEF);
+    setReturn((Cell)AQ_UNDEF);
   }
 }
 
@@ -1196,7 +1204,7 @@ void syntax_ifelse()
   int argNum = length(*args);
   if( argNum < 2 || 3 < argNum ){
     printError("wrong number of arguments for if");
-    setReturn(AQ_UNDEF);
+    setReturn((Cell)AQ_UNDEF);
   }else{
     Cell cond = evalExp(car(*args));
     if(truep(cond)){
@@ -1237,7 +1245,7 @@ void syntax_set()
   Cell c1 = car(*args);
   if( type(c1) != T_SYMBOL ){
     printError("not a variable given.");
-    setReturn(AQ_UNDEF);
+    setReturn((Cell)AQ_UNDEF);
     return;
   }
   

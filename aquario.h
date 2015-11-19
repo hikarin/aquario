@@ -112,6 +112,7 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 void printError(char *fmt, ...);
+void setParseError(char* str);
 
 #define ENVSIZE 3000
 Cell env[ENVSIZE];
