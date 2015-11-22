@@ -1,7 +1,7 @@
 make opt
 
 #copying
-time ./aquario -GC copy fib.lsp
+time ./aquario -GC copy test/fib.lsp
 echo =======================
 #mark_compact
 time ./aquario -GC mc fib.lsp
