@@ -2,7 +2,7 @@
 #
 CFLAGS = -Wall
 CC = gcc
-CSOURCES = aquario.c gc/base.c gc/copy.c gc/markcompact.c gc/reference_count.c gc/generational.c
+CSOURCES = aquario.c gc/base.c gc/copy.c gc/markcompact.c gc/reference_count.c gc/generational.c gc/marksweep.c
 
 TARGET = aquario
 SOURCES = $(CSOURCES)
@@ -17,10 +17,11 @@ clean:
 
 test: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_TEST
-	./aquario -GC gen  minitest.lsp
-	./aquario -GC copy minitest.lsp
-	./aquario -GC mc   minitest.lsp
-	./aquario -GC ref  minitest.lsp
+	./aquario -GC ms   test/do_test.lsp
+	./aquario -GC gen  test/do_test.lsp
+	./aquario -GC copy test/do_test.lsp
+	./aquario -GC mc   test/do_test.lsp
+	./aquario -GC ref  test/do_test.lsp
 
 debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g

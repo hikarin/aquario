@@ -112,18 +112,11 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 void printError(char *fmt, ...);
+void setParseError(char* str);
 
 #define ENVSIZE 3000
 Cell env[ENVSIZE];
 #define LINESIZE 1024
-char errorString[LINESIZE];
-typedef enum {
-  NONE_ERR,
-  PARSE_ERR,
-  EOF_ERR,
-}ErrorNo;
-
-ErrorNo errorNumber;
 
 #define STACKSIZE 1024
 Cell* stack[ STACKSIZE ];
@@ -138,9 +131,6 @@ void clearArgs();
 void callProc(char* name);
 Cell getReturn();
 void setReturn(Cell c);
-void setParseError(char* errorStr);
-void setEOFException(char* str);
-void clearError();
 
 void op_eqdigitp();
 void op_lessdigitp();

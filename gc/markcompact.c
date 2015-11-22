@@ -15,9 +15,6 @@ static inline void* gc_malloc_markcompact(size_t size);
 static void gc_term_markcompact();
 
 static int get_obj_size( size_t size );
-#if defined( _DEBUG )
-static void markcompact_gc_stack_check(Cell* cellp);
-#endif //_DEBUG
 
 #define IS_ALLOCATABLE( size ) (top + sizeof( MarkCompact_GC_Header ) + (size) < heap + HEAP_SIZE )
 #define GET_OBJECT_SIZE(obj) (((MarkCompact_GC_Header*)(obj)-1)->obj_size)
@@ -80,9 +77,6 @@ void gc_init_markcompact(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_markcompact;
-#if defined( _DEBUG )
-  gc_info->gc_stack_check   = markcompact_gc_stack_check;
-#endif //_DEBUG
 
   printf("GC: Mark Compact\n");
 }
@@ -93,8 +87,7 @@ void* gc_malloc_markcompact( size_t size )
   if( g_GC_stress || !IS_ALLOCATABLE( size ) ){
     gc_start_markcompact();
     if( !IS_ALLOCATABLE( size ) ){
-      printf("Heap Exhausted.\n");
-      exit(-1);
+      heap_exhausted_error();
     }
   }
   MarkCompact_GC_Header* new_header = (MarkCompact_GC_Header*)top;
@@ -106,18 +99,6 @@ void* gc_malloc_markcompact( size_t size )
   new_header->obj_size = allocate_size;
   return ret;
 }
-
-#if defined( _DEBUG )
-void markcompact_gc_stack_check(Cell* cellp)
-{
-  if( !(*cellp) ){
-    return;
-  }
-  if( !(heap <= (char*)(*cellp) && (char*)(*cellp) < heap + HEAP_SIZE ) ){
-    printf("[WARNING] cell %p points out of heap\n", *cellp);
-  }  
-}
-#endif //_DEBUG
 
 int get_obj_size( size_t size ){
   return sizeof( MarkCompact_GC_Header ) + size;

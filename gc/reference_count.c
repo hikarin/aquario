@@ -23,10 +23,6 @@ static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
 static void gc_term_reference_count();
 
-#if defined( _DEBUG )
-static void reference_count_stack_check( Cell* cell );
-#endif
-
 static char* heap           = NULL;
 static Free_Chunk* freelist = NULL;
 
@@ -58,9 +54,6 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
   gc_info->gc_term          = gc_term_reference_count;
   gc_info->gc_pushArg       = push_reference_count;
   gc_info->gc_popArg        = pop_reference_count;
-#if defined( _DEBUG )
-  gc_info->gc_stack_check = reference_count_stack_check;
-#endif //_DEBUG
 
   printf("GC: Reference Counting\n");
 }
@@ -81,11 +74,11 @@ Cell* pop_reference_count()
 //Allocation.
 void* gc_malloc_reference_count( size_t size )
 {
+  size += sizeof(Reference_Count_Header);
   int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
-  Free_Chunk* chunk = get_free_chunk( &freelist, allocate_size );
+  Free_Chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
-    printf("Heap Exhausted.\n");
-    exit(-1);
+    heap_exhausted_error();
   }else if(chunk->chunk_size > allocate_size){
     //size of chunk might be larger than it is required.
     allocate_size = chunk->chunk_size;
@@ -105,66 +98,8 @@ void reclaim_obj( Cell obj )
   
   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
   size_t obj_size = GET_OBJECT_SIZE( obj );
-
-  if(!freelist){
-    //No object in freelist.
-    freelist             = obj_top;
-    freelist->chunk_size = obj_size;
-    freelist->next       = NULL;
-  }else if( obj_top < freelist ){
-    if( (char*)obj_top + obj_size == (char*)freelist ){
-      //Coalesce.
-      obj_top->next       = freelist->next;
-      obj_top->chunk_size = obj_size + freelist->chunk_size;
-    }else{
-      obj_top->next       = freelist;
-      obj_top->chunk_size = obj_size;
-    }
-    freelist = obj_top;
-  }else{
-    Free_Chunk* tmp = NULL;
-    for( tmp = freelist; tmp->next; tmp = tmp->next ){
-      if( (char*)tmp < (char*)obj_top && (char*)obj_top < (char*)tmp->next ){
-	//Coalesce.
-	if( (char*)tmp + tmp->chunk_size == (char*)obj_top ){
-	  if( (char*)obj_top + obj_size == (char*)tmp->next ){
-	    //Coalesce with previous and next Free_Chunk.
-	    tmp->chunk_size += (obj_size + tmp->next->chunk_size);
-	    tmp->next        = tmp->next->next;
-	  }else{
-	    //Coalesce with previous Free_Chunk.
-	    tmp->chunk_size += obj_size;
-	  }
-	}else if( (char*)obj_top + obj_size == (char*)tmp->next ){
-	  //Coalesce with next Free_Chunk.
-	  size_t new_size      = tmp->next->chunk_size + obj_size;
-	  Free_Chunk* new_next = tmp->next->next;
-	  obj_top->chunk_size  = new_size;
-	  obj_top->next        = new_next;
-	  tmp->next            = obj_top;
-	}else{
-	  //Just put obj into freelist.
-	  obj_top->chunk_size  = obj_size;
-	  obj_top->next        = tmp->next;
-	  tmp->next            = obj_top;
-	}
-	return;
-      }
-    }
-    tmp->next           = obj_top;
-    obj_top->next       = NULL;
-    obj_top->chunk_size = obj_size;
-  }
+  put_chunk_to_freelist(&freelist, obj_top, obj_size);
 }
-
-#if defined( _DEBUG )
-void reference_count_stack_check(Cell* cell)
-{
-  if( !(heap <= (char*)cell && (char*)cell < heap + HEAP_SIZE ) ){
-    printf("[WARNING] cell %p points out of heap\n", cell);
-  }
-}
-#endif //_DEBUG
 
 int get_obj_size( size_t size )
 {

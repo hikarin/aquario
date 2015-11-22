@@ -59,7 +59,6 @@ static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 static Boolean is_nersary_obj(Cell* objp);
 #if defined( _DEBUG )
-static void generational_gc_stack_check(Cell* cellp);
 static void remembered_set_check();
 #endif //_DEBUG
 
@@ -119,15 +118,9 @@ void gc_init_generational(GC_Init_Info* gc_info)
   gc_info->gc_write_barrier = gc_write_barrier_generational;
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
-#if defined( _DEBUG )
-  gc_info->gc_stack_check   = generational_gc_stack_check;
-#endif //_DEBUG
 
   memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
   memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
-#if defined( _DEBUG )
-  printf("sizeof tenured_mark_tbl: %ld\n", sizeof(tenured_mark_tbl));
-#endif
 
   printf("GC: Generational\n");
 }
@@ -138,8 +131,7 @@ void* gc_malloc_generational( size_t size )
   if( g_GC_stress || !IS_ALLOCATABLE_NERSARY(size) ){
     gc_start_generational();
     if( !IS_ALLOCATABLE_NERSARY( size ) ){
-      printf("gc_malloc_generational: Heap Exhausted.\n ");
-      exit(-1);
+      heap_exhausted_error();
     }
   }
   Generational_GC_Header* new_header = (Generational_GC_Header*)nersary_top;
@@ -163,11 +155,6 @@ void gc_term_generational()
 }
 
 #if defined( _DEBUG )
-void generational_gc_stack_check(Cell* cellp)
-{
-  //Do Nothing.
-}
-
 void remembered_set_check()
 {
   char* scan = tenured_space;
@@ -200,8 +187,7 @@ void gc_start_generational()
   if( !IS_ALLOCATABLE_TENURED() ){
     major_gc();
     if( !IS_ALLOCATABLE_TENURED() ){
-      printf("Heap Exhausted!\n");
-      exit(-1);
+      heap_exhausted_error();
     }
   }
 }
@@ -281,7 +267,7 @@ void add_remembered_set(Cell obj)
   if( remembered_set_top >= REMEMBERED_SET_SIZE ){
     clean_remembered_set();
     if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-      printf("remembered set full.\n");
+      printError("remembered set full");
       exit(-1);
     }
   }
@@ -350,15 +336,9 @@ void mark_object(Cell* objp)
 {
   Cell obj = *objp;
   if( obj && !IS_MARKED(obj) ){
-    if( !(from_space <= (char*)obj && (char*)obj < nersary_top) &&
-	!(tenured_space <= (char*)obj && (char*)obj < tenured_top) ){
-
-      printf("mark corrupted obj\n");
-      exit(-1);
-    }
     SET_MARK(obj);
     if(mark_stack_top >= MARK_STACK_SIZE){
-      printf("[GC] mark stack overflow.\n");
+      printError("[GC] mark stack overflow.");
       exit(-1);
     }
     mark_stack[mark_stack_top++] = obj;
@@ -419,7 +399,7 @@ void update_pointer()
       trace_object(cell, update_forwarding);
       if( trace_object_bool(cell, is_nersary_obj) ){
 	if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-	  printf("remembered set full.\n");
+	  printError("remembered set full.\n");
 	  exit(-1);
 	}
 	SET_REMEMBERED(cell);
@@ -488,10 +468,6 @@ void compact()
 
 void major_gc()
 {
-#if defined( _DEBUG )
-  printf("major GC start ...");
-  remembered_set_check();
-#endif
   //initialization.
   mark_stack_top = 0;
   remembered_set_top = 0;

@@ -17,8 +17,9 @@ void pushArg_default(Cell* cellp);
 
 void* aq_malloc(size_t size);
 void  aq_free(void* p);
-Free_Chunk* get_free_chunk( Free_Chunk** freelistp, size_t size );
+Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size );
 void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size );
+void heap_exhausted_error();
 
 #if defined( _DEBUG )
 size_t get_total_malloc_size();
