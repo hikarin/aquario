@@ -715,7 +715,6 @@ Cell readElem(FILE* fp)
 {
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
-  Cell elem = NIL;
   if(token==NULL){
     return (Cell)AQ_EOF;
   }
@@ -728,9 +727,9 @@ Cell readElem(FILE* fp)
   else if(token[0]==')'){
     printError("extra close parensis");
     return NULL;
+  }else{
+    return tokenToCell(token);
   }
-
-  return elem;
 }
 
 int hash(char* key)
@@ -1065,15 +1064,8 @@ void op_read()
 
 void op_eval()
 {
-#if defined( NOT_YET )
   Cell* args = getStackTop();
   setReturn(evalExp(car(*args)));
-  if(errorNumber==PARSE_ERR){
-    fprintf(stderr, "%s\n", errorString);
-    setReturn((Cell)AQ_UNDEF);
-  }
-  clearError();
-#endif
   popArg();
 }
 
