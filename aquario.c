@@ -864,6 +864,9 @@ void init()
   
   setVar("=",       procCell(op_eqdigitp));
   setVar("<",       procCell(op_lessdigitp));
+  setVar("<=",      procCell(op_lessoreqdigitp));
+  setVar(">",       procCell(op_greaterdigitp));
+  setVar(">=",      procCell(op_greateroreqdigitp));
   setVar("car",     procCell(op_car));
   setVar("cdr",     procCell(op_cdr));
   setVar("cons",    procCell(op_cons));
@@ -957,6 +960,52 @@ void op_lessdigitp()
 
   popArg();
 }
+
+//less than or equal to.
+void op_lessoreqdigitp()
+{
+  Cell* args = getStackTop();
+  int i1 = ivalue(evalExp(car(*args)));
+  int i2 = ivalue(evalExp(cadr(*args)));
+  if( i1 <= i2 ){
+    setReturn(T);
+  }else{
+    setReturn(F);
+  }
+
+  popArg();
+}
+
+//greater than.
+void op_greaterdigitp()
+{
+  Cell* args = getStackTop();
+  int i1 = ivalue(evalExp(car(*args)));
+  int i2 = ivalue(evalExp(cadr(*args)));
+  if( i1 > i2 ){
+    setReturn(T);
+  }else{
+    setReturn(F);
+  }
+
+  popArg();
+}
+
+//greater than or equal to.
+void op_greateroreqdigitp()
+{
+  Cell* args = getStackTop();
+  int i1 = ivalue(evalExp(car(*args)));
+  int i2 = ivalue(evalExp(cadr(*args)));
+  if( i1 >= i2 ){
+    setReturn(T);
+  }else{
+    setReturn(F);
+  }
+
+  popArg();
+}
+
 
 void op_car()
 {
