@@ -1,6 +1,6 @@
-#include "types.h"
+#include "../types.h"
 
-#define HEAP_SIZE (10*1024*1024)
+#define HEAP_SIZE (260*1024*1024)
 
 struct free_chunk;
 typedef struct free_chunk{
@@ -17,7 +17,7 @@ void pushArg_default(Cell* cellp);
 
 void* aq_malloc(size_t size);
 void  aq_free(void* p);
-Free_Chunk* get_free_chunk( Free_Chunk** freelistp, size_t size );
+Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size );
 void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size );
 void heap_exhausted_error();
 

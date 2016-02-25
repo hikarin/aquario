@@ -1,11 +1,11 @@
-#include "gc_base.h"
-#include "gc_copy.h"
+#include "base.h"
+#include "copy.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #if defined( _DEBUG )
-#include "aquario.h"
+#include "../aquario.h"
 #endif //_DEBUG
 
 typedef struct copy_gc_header{
