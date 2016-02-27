@@ -1,6 +1,6 @@
 make opt
 
-SCRIPT=test/tak.lsp
+SCRIPT=test/fib.lsp
 
 #mark_sweep
 time ./aquario -GC ms $SCRIPT
