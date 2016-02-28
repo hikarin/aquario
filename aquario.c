@@ -462,7 +462,8 @@ void applyList(Cell ls)
   Cell last = top;
 
   PUSH_ARGS2(&top, &last);
-  while( !nullp(cdr(ls)) ){
+  //  while( !nullp(cdr(ls)) ){
+  while( !FALSE_P( car(cdr(ls)))){
     Cell exp = evalExp(car(cdr(ls)));
     if(UNDEF_P(exp)){
       gc_write_barrier_root(stack[stack_top-2]/*top*/, (Cell)AQ_UNDEF);
@@ -950,6 +951,10 @@ void op_eqdigitp()
 void op_lessdigitp()
 {
   Cell* args = getStackTop();
+
+  UNDEF_RETURN(*args);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, "<");
+
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 < i2 ){
@@ -965,6 +970,10 @@ void op_lessdigitp()
 void op_lessoreqdigitp()
 {
   Cell* args = getStackTop();
+
+  UNDEF_RETURN(*args);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, "<=");
+
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 <= i2 ){
@@ -980,6 +989,9 @@ void op_lessoreqdigitp()
 void op_greaterdigitp()
 {
   Cell* args = getStackTop();
+  UNDEF_RETURN(*args);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, ">");
+
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 > i2 ){
@@ -995,6 +1007,10 @@ void op_greaterdigitp()
 void op_greateroreqdigitp()
 {
   Cell* args = getStackTop();
+
+  UNDEF_RETURN(*args);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, ">=");
+
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 >= i2 ){
