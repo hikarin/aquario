@@ -1,6 +1,6 @@
 #include "../types.h"
 
-#define HEAP_SIZE (260*1024*1024)
+#define HEAP_SIZE (1*1024*1024)
 
 struct free_chunk;
 typedef struct free_chunk{
