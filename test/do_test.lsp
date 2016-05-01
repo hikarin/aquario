@@ -1,5 +1,7 @@
 (define test-result '())
 (define total 0)
+(define null?
+  (lambda (x) (eq? x nil)))
 
 (define assert-equal
   (lambda (exp1 exp2)
@@ -32,14 +34,14 @@
         (print "All tests succeeded!")
       (show-result-sub test-result))))
 
-(load "test.lsp")
+(load "test/test.lsp")
 
 (print "")
 (show-result)
 (print "")
 
 (gc-stress)
-(load "test.lsp")
+(load "test/test.lsp")
 (print "")
 (show-result)
 (print "")
