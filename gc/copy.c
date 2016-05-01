@@ -17,8 +17,6 @@ static void gc_start_copy();
 static inline void* gc_malloc_copy(size_t size);
 static void gc_term_copy();
 
-static int get_obj_size( size_t size );
-
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 
@@ -90,15 +88,11 @@ void* gc_malloc_copy( size_t size )
   }
   Copy_GC_Header* new_header = (Copy_GC_Header*)top;
   Cell ret = (Cell)(new_header+1);
-  int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
+  int allocate_size = ( sizeof(Copy_GC_Header) + size + 3 ) / 4 * 4;
   top += allocate_size;
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
   return ret;
-}
-
-int get_obj_size( size_t size ){
-  return sizeof( Copy_GC_Header ) + size;
 }
 
 //Start Garbage Collection.

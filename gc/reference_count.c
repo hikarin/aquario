@@ -17,7 +17,6 @@ static void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell
 static void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell);
 static void gc_init_ptr_reference_count(Cell* cellp, Cell newcell);
 static void gc_memcpy_reference_count(char* dst, char* src, size_t size);
-static int get_obj_size( size_t size );
 static void reclaim_obj( Cell obj );
 static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
@@ -75,7 +74,7 @@ Cell* pop_reference_count()
 void* gc_malloc_reference_count( size_t size )
 {
   size += sizeof(Reference_Count_Header);
-  int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
+  int allocate_size = (sizeof( Reference_Count_Header ) + size + 3 ) / 4 * 4;
   Free_Chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
     heap_exhausted_error();
@@ -99,11 +98,6 @@ void reclaim_obj( Cell obj )
   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
   size_t obj_size = GET_OBJECT_SIZE( obj );
   put_chunk_to_freelist(&freelist, obj_top, obj_size);
-}
-
-int get_obj_size( size_t size )
-{
-  return sizeof( Reference_Count_Header ) + size;
 }
 
 //Start Garbage Collection.

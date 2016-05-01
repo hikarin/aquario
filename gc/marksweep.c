@@ -26,8 +26,6 @@ static void gc_start_marksweep();
 static inline void* gc_malloc_marksweep(size_t size);
 static void gc_term_marksweep();
 
-static int get_obj_size( size_t size );
-
 #define GET_HEADER(obj)      ((MarkSweep_GC_Header*)obj-1)
 #define GET_OBJECT_SIZE(obj) (GET_HEADER(obj)->obj_size)
 
@@ -73,7 +71,7 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 //Allocation.
 void* gc_malloc_marksweep( size_t size )
 {
-  int allocate_size = (get_obj_size(size) + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
+  int allocate_size = (sizeof(MarkSweep_GC_Header) + size + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
   if( g_GC_stress ){
     gc_start_marksweep();
   }
@@ -117,11 +115,6 @@ Free_Chunk* get_free_chunk(size_t size)
 {
   Free_Chunk* chunk = aq_get_free_chunk(&freelist, size);
   return chunk;
-}
-
-int get_obj_size( size_t size )
-{
-  return sizeof( MarkSweep_GC_Header ) + size;
 }
 
 void sweep_bitwise(int* tbl_index, int* start, size_t* chunk_size, Free_Chunk** chunk_top, Free_Chunk** chunk_last)
