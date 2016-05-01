@@ -1282,8 +1282,5 @@ int main(int argc, char *argv[])
     load_file( argv[ i ] );
   }
   term();
-#if defined( _DEBUG )
-  printf("Bye-bye\n");
-#endif
   return 0;
 }
