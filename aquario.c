@@ -124,8 +124,7 @@ Cell lambdaCell(Cell param, Cell exp)
   Cell c = newCell(T_LAMBDA, sizeof(struct cell));
   gc_init_ptr( &lambdaexp(c), exp );
   gc_init_ptr( &lambdaparam(c), param );
-  popArg();
-  popArg();
+  POP_ARGS2();
   return c;
 }
 
@@ -1169,8 +1168,7 @@ void syntax_define()
     setParseError( "not a symbol given" );
     return;
   }
-  pushArg(&symbol);
-  pushArg(args);
+  PUSH_ARGS2(&symbol, args);
   Cell obj = cadr(*args);
   obj = evalExp(obj);
   if(!UNDEF_P(obj)){
