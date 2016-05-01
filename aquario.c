@@ -227,6 +227,9 @@ Cell evalExp(Cell exp)
       }
     }else if( type(exp) == T_PAIR ){
       gc_write_barrier_root(stack[stack_top-2], evalExp(car(exp)));
+      if( UNDEF_P( getReturn() ) ){
+	break;
+      }
       is_loop = evalPair(stack[stack_top-4],
 			 stack[stack_top-3],
 			 stack[stack_top-2],
@@ -248,7 +251,10 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
   gc_write_barrier_root(pProc, evalExp(car(*pExp)));
   Cell args = cdr(*pExp);
   opType operator;
-  if( !CELL_P(*pProc) ){
+  if( UNDEF_P( getReturn() ) ){
+    return FALSE;
+  }
+  else if( !CELL_P(*pProc) ){
     setParseError("not proc");
     setReturn((Cell)AQ_UNDEF);
     is_loop = FALSE;
@@ -306,7 +312,6 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	    cloneSymbolTree(tmps);
 	    tmps = getReturn();
 	    letParam(tmps, *pParams, args);
-
 	    type(*pExp) = type(tmps);
 	    gc_write_barrier( *pExp, &car(*pExp), car(tmps) );
 	    gc_write_barrier( *pExp, &cdr(*pExp), cdr(tmps) );
@@ -750,7 +755,7 @@ Cell getVar(char* name)
   int key = hash(name)%ENVSIZE;
   Cell chain = env[key];
   if(chain==NULL || nullp(chain)){
-    printError("undefined symbol: %s\n", name);
+    printError("undefined symbol: %s", name);
     return (Cell)AQ_UNDEF;
   }
   while(strcmp(name, strvalue(caar(chain)))!=0){
@@ -847,6 +852,7 @@ void setReturn(Cell c)
 
 void setParseError(char* str)
 {
+  printError(str);
 }
 
 void init()
