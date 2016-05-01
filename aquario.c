@@ -449,6 +449,9 @@ void applyList(Cell ls)
 {
   if(nullp(ls) || UNDEF_P(ls)){
     setReturn(ls);
+#if defined( _DEBUG )
+    printf("return\n");
+#endif
     return;
   }
   pushArg(&ls);
@@ -468,8 +471,8 @@ void applyList(Cell ls)
       gc_write_barrier_root(stack[stack_top-2]/*top*/, (Cell)AQ_UNDEF);
       break;
     }
-
-    gc_write_barrier(last, &cdr(last), pairCell(exp, NIL));
+    Cell d = pairCell(exp, NIL);
+    gc_write_barrier(last, &cdr(last), d);
     gc_write_barrier_root(stack[stack_top-3]/*ls*/,   cdr(ls));
     gc_write_barrier_root(stack[stack_top-1]/*last*/, cdr(last));
   }
