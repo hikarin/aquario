@@ -984,6 +984,8 @@ void op_car()
     setParseError( "not a list given" );
     return;
   }
+
+  setReturn(car(*c1));
 }
 
 void op_cdr()
@@ -996,6 +998,8 @@ void op_cdr()
     setParseError( "not a list given" );
     return;
   }
+
+  setReturn(cdr(*c1));
 }
 
 void op_cons()
