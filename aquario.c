@@ -280,7 +280,7 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	  is_loop = TRUE;
 	  gc_write_barrier_root(pExps, lambdaexp(*pProc));
 	  if(length(args) != length(*pParams)){
-	    printf("wrong number arguments\n");
+	    AQ_PRINTF("wrong number arguments\n");
 	    setReturn((Cell)AQ_UNDEF);
 	    is_loop = FALSE;
 	  }else{
@@ -302,7 +302,7 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	  }
 	}else{
 	  if(length(args) != length(*pParams)){
-	    printf("wrong number arguments\n");
+	    AQ_PRINTF("wrong number arguments\n");
 	    setReturn((Cell)AQ_UNDEF);
 	    is_loop = FALSE;
 	  }else{
@@ -457,9 +457,6 @@ void applyList(Cell ls)
 {
   if(nullp(ls) || UNDEF_P(ls)){
     setReturn(ls);
-#if defined( _DEBUG )
-    printf("return\n");
-#endif
     return;
   }
   pushArg(&ls);
@@ -491,46 +488,46 @@ void applyList(Cell ls)
 
 void printCons(Cell c)
 {
-  printf("(");
+  AQ_PRINTF("(");
   while(isPair(cdr(c))){
     printCell(car(c));
     c = cdr(c);
     if( isPair(c) && !nullp(car(c)) ){
-      printf(" ");
+      AQ_PRINTF(" ");
     }
   }
 
   printCell(car(c));
   if(!nullp(cdr(c))){
-    printf(" . ");
+    AQ_PRINTF(" . ");
     printCell(cdr(c));
   }
-  printf(")");
+  AQ_PRINTF(")");
 }
 
 void printLineCell(Cell c)
 {
   printCell(c);
-  putchar('\n');
+  AQ_PRINTF("\n");
 }
 
 void printCell(Cell c)
 {
   if(!CELL_P(c)){
     if(UNDEF_P(c)){
-      printf("#undef");
+      AQ_PRINTF("#undef");
     }
     else if(EOF_P(c)){
-      printf("#<eof>");
+      AQ_PRINTF("#<eof>");
     }    
   }else{
     switch(type(c)){
     case T_NONE:
       if(c==T){
-	printf("#t");
+	AQ_PRINTF("#t");
       }
       else if(c==F){
-	printf("#f");
+	AQ_PRINTF("#f");
       }
       else if(c==NIL){
       }
@@ -539,31 +536,31 @@ void printCell(Cell c)
       }
       break;
     case T_CHAR:
-      printf("#\\%c", chvalue(c));
+      AQ_PRINTF("#\\%c", chvalue(c));
       break;
     case T_STRING:
-      printf("\"%s\"", strvalue(c));
+      AQ_PRINTF("\"%s\"", strvalue(c));
       break;
     case T_INTEGER:
-      printf("%d", ivalue(c));
+      AQ_PRINTF("%d", ivalue(c));
       break;
     case T_PROC:
-      printf("#proc");
+      AQ_PRINTF("#proc");
       break;
     case T_SYNTAX:
-      printf("#syntax");
+      AQ_PRINTF("#syntax");
       break;
     case T_SYMBOL:
-      printf("%s", symbolname(c));
+      AQ_PRINTF("%s", symbolname(c));
       break;
     case T_PAIR:
       printCons(c);
       break;
     case T_LAMBDA:
-      printf("#closure");
+      AQ_PRINTF("#closure");
       break;
     default:
-      fputs("\nunknown cell", stderr);
+      AQ_FPRINTF(stderr, "\nunknown cell");
       break;
     }
   }
@@ -1090,7 +1087,7 @@ void op_print()
   while( !nullp(args) && CELL_P(args) ){
     Cell c = car(args);
     if(isString(c)){
-      fputs(strvalue(c), stdout);
+      AQ_FPRINTF(stdout, "%s", strvalue(c));
     }
     else{
       printCell(c);
@@ -1267,7 +1264,7 @@ int repl()
 {
   while(1){
     Cell ret;
-    fputs("> ", stderr);
+    AQ_FPRINTF(stderr, ">");
     clearArgs();
     callProc("read");
     ret = getReturn();
@@ -1279,7 +1276,6 @@ int repl()
     callProc("eval");
     printLineCell(getReturn());
   }
-  fputs("Good-bye\n", stdout);
   return 0;
 }
 

@@ -122,8 +122,4 @@ void gc_term_copy()
 {
   aq_free( from_space );
   aq_free( to_space );
-
-#if defined( _DEBUG )
-  printf("used memory: %ld\n", get_total_malloc_size());
-#endif
 }

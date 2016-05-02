@@ -65,7 +65,7 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
 
-  printf("GC: Mark Sweep\n");
+  //  printf("GC: Mark Sweep\n");
 }
 
 //Allocation.
@@ -204,8 +204,4 @@ void gc_start_marksweep()
 void gc_term_marksweep()
 {
   aq_free( heap );
-
-#if defined( _DEBUG )
-  printf("used memory: %ld\n", get_total_malloc_size());
-#endif
 }

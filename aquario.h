@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include "types.h"
 
+#define AQ_PRINTF       printf
+#define AQ_FPRINTF      fprintf
+
 #define type(p)         ((p)->_type)
 #define car(p)          ((p)->_object._cons._car)
 #define cdr(p)          ((p)->_object._cons._cdr)

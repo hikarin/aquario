@@ -149,9 +149,6 @@ void gc_term_generational()
   aq_free(from_space);
   aq_free(to_space);
   aq_free(tenured_space);
-#if defined( _DEBUG )
-  printf("used memory: %ld\n", get_total_malloc_size());
-#endif
 }
 
 #if defined( _DEBUG )

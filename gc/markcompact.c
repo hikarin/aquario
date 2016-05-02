@@ -202,8 +202,4 @@ void gc_start_markcompact()
 void gc_term_markcompact()
 {
   aq_free( heap );
-
-#if defined( _DEBUG )
-  printf("used memory: %ld\n", get_total_malloc_size());
-#endif
 }
