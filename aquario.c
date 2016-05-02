@@ -291,6 +291,10 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	    cloneSymbolTree(*pExps);
 	    gc_write_barrier_root(pExps, getReturn());
 	    letParam(*pExps, *pParams, args);
+	    if( UNDEF_P(args) ){
+	      setReturn((Cell)AQ_UNDEF);
+	      return FALSE;
+	    }
 	    gc_write_barrier_root(pExps, pairCell(NIL, *pExps));
 	    popArg();
 	    // => [... exp proc params exps]
@@ -362,7 +366,7 @@ void letParam(Cell exp, Cell dummyParams, Cell realParams)
 Cell findParam(Cell exp, Cell dummyParams, Cell realParams)
 {
   char *var = symbolname(exp);
-  while(!nullp(dummyParams)){
+  while(!nullp(dummyParams) && !UNDEF_P(realParams)){
     char *key = strvalue(car(dummyParams));
     if(strcmp(var, key)==0){
       return car(realParams);
