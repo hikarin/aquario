@@ -1,7 +1,6 @@
 #include "base.h"
 #include "markcompact.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 typedef struct markcompact_gc_header{
@@ -66,7 +65,7 @@ void move_object(Cell obj)
 //Initialization.
 void gc_init_markcompact(GC_Init_Info* gc_info)
 {
-  heap = (char*)aq_malloc(HEAP_SIZE);
+  heap = (char*)AQ_MALLOC(HEAP_SIZE);
   top = heap;
 
   gc_info->gc_malloc        = gc_malloc_markcompact;
@@ -153,9 +152,6 @@ void slide()
     scanned += obj_size;
   }
   top = new_top;
-#if defined( _DEBUG )
-  memset(top, 0, heap+HEAP_SIZE-top);
-#endif //_DEBUG
 }
 
 
@@ -181,9 +177,6 @@ void compact()
 
 void gc_start_markcompact()
 {
-#if defined( _DEBUG )
-  printf( "gc start..." );
-#endif //_DBEUG
   //initialization.
   mark_stack_top = 0;
 
@@ -192,14 +185,10 @@ void gc_start_markcompact()
 
   //compaction phase.
   compact();
-
-#if defined( _DEBUG )
-  printf("gc end\n");
-#endif //_DEBUG
 }
 
 //term.
 void gc_term_markcompact()
 {
-  aq_free( heap );
+  AQ_FREE( heap );
 }

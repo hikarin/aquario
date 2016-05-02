@@ -1,7 +1,6 @@
 #include "base.h"
 #include "generational.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include "../aquario.h"
 
@@ -104,12 +103,12 @@ static void compact();
 void gc_init_generational(GC_Init_Info* gc_info)
 {
   //nersary space.
-  from_space  = (char*)aq_malloc(NERSARY_SIZE);
-  to_space    = (char*)aq_malloc(NERSARY_SIZE);
+  from_space  = (char*)AQ_MALLOC(NERSARY_SIZE);
+  to_space    = (char*)AQ_MALLOC(NERSARY_SIZE);
   nersary_top = from_space;
 
   //tenured space.
-  tenured_space   = (char*)aq_malloc(TENURED_SIZE);
+  tenured_space   = (char*)AQ_MALLOC(TENURED_SIZE);
   tenured_top     = tenured_space;
   
   gc_info->gc_malloc        = gc_malloc_generational;
@@ -146,9 +145,9 @@ void* gc_malloc_generational( size_t size )
 
 void gc_term_generational()
 {
-  aq_free(from_space);
-  aq_free(to_space);
-  aq_free(tenured_space);
+  AQ_FREE(from_space);
+  AQ_FREE(to_space);
+  AQ_FREE(tenured_space);
 }
 
 #if defined( _DEBUG )

@@ -1,7 +1,6 @@
 #include "base.h"
 #include "reference_count.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 #include "../aquario.h"
@@ -39,7 +38,7 @@ static Cell* pop_reference_count();
 //Initialization.
 void gc_init_reference_count(GC_Init_Info* gc_info)
 {
-  heap     = (char*)aq_malloc(HEAP_SIZE);
+  heap     = (char*)AQ_MALLOC(HEAP_SIZE);
   freelist = (Free_Chunk*)heap;
   freelist->chunk_size = HEAP_SIZE;
   freelist->next       = NULL;
@@ -125,11 +124,6 @@ void decrement_count(Cell* objp)
   }
   Cell obj = *objp;
   if( obj ){
-#if defined( _DEBUG )
-    if( REF_CNT( obj ) <= 0 ){
-      printf("REF COUNT: %d, minus\n", REF_CNT(obj));
-    }
-#endif
     DEC_REF_CNT( obj );
     if( REF_CNT( obj ) <= 0 ){
       reclaim_obj(obj);
@@ -168,5 +162,5 @@ void gc_memcpy_reference_count(char* dst, char* src, size_t size)
 //term.
 void gc_term_reference_count()
 {
-  aq_free(heap);
+  AQ_FREE(heap);
 }

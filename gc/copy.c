@@ -1,12 +1,7 @@
 #include "base.h"
 #include "copy.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-
-#if defined( _DEBUG )
-#include "../aquario.h"
-#endif //_DEBUG
 
 typedef struct copy_gc_header{
   int obj_size;
@@ -62,8 +57,8 @@ void copy_and_update(Cell* objp)
 //Initialization.
 void gc_init_copy(GC_Init_Info* gc_info)
 {
-  from_space = (char*)aq_malloc(HEAP_SIZE/2);
-  to_space   = (char*)aq_malloc(HEAP_SIZE/2);
+  from_space = (char*)AQ_MALLOC(HEAP_SIZE/2);
+  to_space   = (char*)AQ_MALLOC(HEAP_SIZE/2);
   top        = from_space;
   
   gc_info->gc_malloc        = gc_malloc_copy;
@@ -120,6 +115,6 @@ void gc_start_copy()
 //term.
 void gc_term_copy()
 {
-  aq_free( from_space );
-  aq_free( to_space );
+  AQ_FREE( from_space );
+  AQ_FREE( to_space );
 }

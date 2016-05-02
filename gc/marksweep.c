@@ -1,7 +1,6 @@
 #include "base.h"
 #include "marksweep.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 typedef struct marksweep_gc_header{
@@ -53,7 +52,7 @@ void mark_object(Cell* objp)
 //Initialization.
 void gc_init_marksweep(GC_Init_Info* gc_info)
 {
-  heap                 = (char*)aq_malloc( HEAP_SIZE );
+  heap                 = (char*)AQ_MALLOC( HEAP_SIZE );
   freelist             = (Free_Chunk*)heap;
   freelist->chunk_size = HEAP_SIZE;
   freelist->next       = NULL;
@@ -203,5 +202,5 @@ void gc_start_marksweep()
 //term.
 void gc_term_marksweep()
 {
-  aq_free( heap );
+  AQ_FREE( heap );
 }

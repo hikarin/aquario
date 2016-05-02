@@ -227,19 +227,6 @@ void gc_memcpy_default(char* dst, char* src, size_t size)
   memcpy( dst, src, size );
 }
 
-void* aq_malloc(size_t size)
-{
-#if defined( _DEBUG )
-  total_malloc_size += size;
-#endif
-  return malloc(size);
-}
-
-void  aq_free(void* p)
-{
-  free(p);
-}
-
 Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
 {
   //returns a chunk which size is larger than required size.
