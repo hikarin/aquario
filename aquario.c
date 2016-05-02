@@ -494,9 +494,12 @@ void printCons(Cell c)
   printf("(");
   while(isPair(cdr(c))){
     printCell(car(c));
-    printf(" ");
     c = cdr(c);
+    if( isPair(c) && !nullp(car(c)) ){
+      printf(" ");
+    }
   }
+
   printCell(car(c));
   if(!nullp(cdr(c))){
     printf(" . ");
@@ -530,7 +533,6 @@ void printCell(Cell c)
 	printf("#f");
       }
       else if(c==NIL){
-	printf("()");
       }
       else{
 	setParseError("unknown cell");
