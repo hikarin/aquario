@@ -1011,6 +1011,8 @@ void op_cons()
     setReturn( (Cell)AQ_UNDEF );
     return;
   }
+
+  setReturn( pairCell( c1, c2 ) );
 }
 
 void op_add()
