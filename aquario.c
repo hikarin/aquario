@@ -603,6 +603,12 @@ char* readToken(char *buf, int len, FILE* fp)
   for(;(token-buf)<len-1;){
     int c = fgetc(fp);
     switch(c){
+    case ';':
+      while(c != '\n' && c != EOF ){
+	c = fgetc(fp);
+      }
+      ungetc(c, fp);
+      break;
     case '(':
     case ')':
     case '\'':
