@@ -1264,7 +1264,7 @@ int repl()
 {
   while(1){
     Cell ret;
-    AQ_FPRINTF(stderr, ">");
+    AQ_PRINTF_GUIDE(">");
     clearArgs();
     callProc("read");
     ret = getReturn();

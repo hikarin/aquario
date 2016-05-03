@@ -4,8 +4,13 @@
 #include <stddef.h>
 #include "types.h"
 
-#define AQ_PRINTF       printf
-#define AQ_FPRINTF      fprintf
+#if defined( _TEST )
+#define AQ_PRINTF_GUIDE(x) (void)0
+#else
+#define AQ_PRINTF_GUIDE(x) printf(x)
+#endif
+#define AQ_PRINTF          printf
+#define AQ_FPRINTF         fprintf
 
 #define type(p)         ((p)->_type)
 #define car(p)          ((p)->_object._cons._car)
