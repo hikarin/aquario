@@ -985,6 +985,7 @@ void op_car()
   Cell* c1 = &car(*args);
   if( type( *c1 ) != T_PAIR ){
     setParseError( "not a list given" );
+    setReturn( (Cell)AQ_UNDEF );
     return;
   }
 
@@ -999,6 +1000,7 @@ void op_cdr()
   Cell* c1 = &car(*args);
   if( type( *c1 ) != T_PAIR ){
     setParseError( "not a list given" );
+    setReturn( (Cell)AQ_UNDEF );
     return;
   }
 
