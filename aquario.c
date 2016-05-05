@@ -286,8 +286,6 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	  }else{
 	    cloneTree(args);
 	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-	    applyList(args);
-	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	    cloneSymbolTree(*pExps);
 	    gc_write_barrier_root(pExps, getReturn());
 	    letParam(*pExps, *pParams, args);
