@@ -15,13 +15,14 @@ all: $(CSOURCES)
 clean:
 	rm -f core *.o $(TARGET)
 
-test: $(CSOURCES)
+tests: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_TEST
-	./aquario -GC ms   test/do_test.lsp
-	./aquario -GC gen  test/do_test.lsp
-	./aquario -GC copy test/do_test.lsp
-	./aquario -GC mc   test/do_test.lsp
-	./aquario -GC ref  test/do_test.lsp
+	@test/test.sh ms
+	@test/test.sh mc
+	@test/test.sh copy
+	@test/test.sh ref
+	@test/test.sh gen
+
 
 debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g
