@@ -29,7 +29,6 @@ function verify(){
 verify 1 1
 verify -2 -2
 verify "'63" 63
-
 verify "(+ 1 2)" 3
 verify '(+ 1 -3)' -2
 verify '(- 3)' -3
@@ -39,17 +38,21 @@ verify '(< 2 3)' \#t
 verify '(< 3 3)' \#f
 verify '(< 4 3)' \#f
 verify "(+ (+ 1 2) (+ 3 4) (+ 5 6) (+ 7 8) (+ 9 10))" 55
-verify "(+ (+ 1 2) (+ 3 4) (+ 5 6) (+ 7 8) (+ 9 10))" 55
-verify "(+ (* 1 2 3 4 5 6 7 8 9 10) (* 1 2 3 4 5 6 7 8 9 10))" 7257600
+verify "(+ (* 1 2 3 4 5) (* 6 7 8 9 10))" 30360
 
 #list
 verify "'(a b c)" '(a b c)'
 verify "'(a b . c)" '(a b . c)'
+verify "(define lst '(a b c)) (car (car lst))" \#undef
 
 #define
 verify "(define m 100) (cons m m)" '(100 . 100)'
 verify "(define x 999)" x
+
+#lambda
 verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 10)" 89
+verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
+verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4 5))" 5
 
 #string
 verify "(define str \"hoge\") str" \"hoge\"
