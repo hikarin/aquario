@@ -147,6 +147,8 @@ void op_cdr();
 void op_cons();
 void op_add();
 void op_sub();
+void op_mul();
+void op_div();
 void op_eval();
 void op_read();
 void op_print();

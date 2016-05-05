@@ -887,6 +887,8 @@ void init()
   setVar("cons",    procCell(op_cons));
   setVar("+",       procCell(op_add));
   setVar("-",       procCell(op_sub));
+  setVar("*",       procCell(op_mul));
+  setVar("/",       procCell(op_div));
   setVar("eval",    procCell(op_eval));
   setVar("read",    procCell(op_read));
   setVar("print",   procCell(op_print));
@@ -1075,6 +1077,63 @@ void op_sub()
     }
   }
   setReturn(intCell(ans));
+}
+
+void op_mul()
+{
+  Cell* args = popArg();
+  UNDEF_RETURN(*args);
+
+  int ans = 1;
+  while( !nullp(*args) && CELL_P(*args)  ){
+    if( UNDEF_P( car( *args ) ) ){
+      setReturn((Cell)AQ_UNDEF);
+      return;
+    }else if( type( car( *args ) ) != T_INTEGER ){
+      setParseError("not a number given\n");
+      setReturn((Cell)AQ_UNDEF);
+      return;
+    }
+    ans *= ivalue(car(*args));
+    args = &cdr(*args);
+  }
+  setReturn(intCell(ans));
+}
+
+void op_div()
+{
+  Cell* args = popArg();
+  UNDEF_RETURN(*args);
+  int argNum = length( *args );
+  if( argNum <= 0 ){
+    setParseError("procedure '/' requires at least one argument\n");
+    setReturn((Cell)AQ_UNDEF);
+    return;
+  }else if( argNum == 1 ){
+    if( CELL_P(*args) && type( car( *args ) ) != T_INTEGER ){
+      setParseError("not a number given\n");
+      setReturn((Cell)AQ_UNDEF);
+      return;
+    }
+    int ans = 1 / ivalue(car(*args));
+    setReturn(intCell(ans));
+  }else{
+    int ans = ivalue(car(*args));
+    args = &cdr(*args);
+    while( !nullp(*args) && CELL_P(*args)  ){
+      if( UNDEF_P( car( *args ) ) ){
+	setReturn((Cell)AQ_UNDEF);
+	return;
+      }else if( type( car( *args ) ) != T_INTEGER ){
+	setParseError("not a number given\n");
+	setReturn((Cell)AQ_UNDEF);
+	return;
+      }
+      ans /= ivalue(car(*args));
+      args = &cdr(*args);
+    }
+    setReturn(intCell(ans));
+  }
 }
 
 void op_read()
