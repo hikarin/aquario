@@ -117,8 +117,6 @@ void gc_init_generational(GC_Init_Info* gc_info)
 
   memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
   memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
-
-  printf("GC: Generational\n");
 }
 
 //Allocation.
@@ -162,6 +160,8 @@ void gc_start_generational()
 /**** for Minor GC ****/
 void minor_gc()
 {
+  static int gc_count = 0;
+  printf("start!: %d\n", gc_count++);
   nersary_top = to_space;
   char* prev_nersary_top = nersary_top;
   char* prev_tenured_top = tenured_top;
@@ -210,7 +210,6 @@ void minor_gc()
 
 void clean_remembered_set()
 {
-  printf("clean\n");
   int rem_index;
   int remembered_set_top_new = 0;
   for(rem_index = 0; rem_index < remembered_set_top; rem_index++){
@@ -227,7 +226,7 @@ void clean_remembered_set()
   remembered_set_top = remembered_set_top_new;
 }
 
-void add_remembered_set(Cell obj)
+inline void add_remembered_set(Cell obj)
 {
   if( remembered_set_top >= REMEMBERED_SET_SIZE ){
     clean_remembered_set();
@@ -427,6 +426,7 @@ void compact()
 
 void major_gc()
 {
+  printf("major GC\n");
   //initialization.
   mark_stack_top = 0;
   remembered_set_top = 0;
