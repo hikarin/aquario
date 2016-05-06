@@ -63,8 +63,6 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
-
-  //  printf("GC: Mark Sweep\n");
 }
 
 //Allocation.

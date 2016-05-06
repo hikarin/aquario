@@ -52,8 +52,6 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
   gc_info->gc_term          = gc_term_reference_count;
   gc_info->gc_pushArg       = push_reference_count;
   gc_info->gc_popArg        = pop_reference_count;
-
-  printf("GC: Reference Counting\n");
 }
 
 void push_reference_count(Cell* cellp)

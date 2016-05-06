@@ -74,8 +74,6 @@ void gc_init_markcompact(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_markcompact;
-
-  printf("GC: Mark Compact\n");
 }
 
 //Allocation.
