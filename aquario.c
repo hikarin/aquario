@@ -389,17 +389,17 @@ int isdigitstr(char* str)
 
 int nullp(Cell c)
 {
-  return c==NIL?1:0;
+  return c==NIL?TRUE:FALSE;
 }
 
 int truep(Cell c)
 {
-  return !( nullp(c) || notp(c) )?1:0;
+  return !( nullp(c) || notp(c) )?TRUE:FALSE;
 }
 
 int notp(Cell c)
 {
-  return c==F?1:0;
+  return c==F?TRUE:FALSE;
 }
 
 int length(Cell ls)
