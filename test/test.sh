@@ -66,6 +66,7 @@ verify "(define x 999)" x
 #string
 verify "(define str \"hoge\") str" \"hoge\"
 verify "(define str \"hoge\") (set! str \"fuga\") str" \"fuga\"
+verify "(define str \"hoge\") (eq? str str)" \#t
 verify "(define str \"hoge\") (eq? str \"fuga\")" \#f
 
 #symbol
