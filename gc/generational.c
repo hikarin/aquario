@@ -160,8 +160,6 @@ void gc_start_generational()
 /**** for Minor GC ****/
 void minor_gc()
 {
-  static int gc_count = 0;
-  printf("start!: %d\n", gc_count++);
   nersary_top = to_space;
   char* prev_nersary_top = nersary_top;
   char* prev_tenured_top = tenured_top;
@@ -426,7 +424,6 @@ void compact()
 
 void major_gc()
 {
-  printf("major GC\n");
   //initialization.
   mark_stack_top = 0;
   remembered_set_top = 0;
