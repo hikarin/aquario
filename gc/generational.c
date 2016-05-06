@@ -57,9 +57,6 @@ static void gc_term_generational();
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 static Boolean is_nersary_obj(Cell* objp);
-#if defined( _DEBUG )
-static void remembered_set_check();
-#endif //_DEBUG
 
 //nersary space.
 static char* from_space    = NULL;
@@ -150,32 +147,6 @@ void gc_term_generational()
   AQ_FREE(tenured_space);
 }
 
-#if defined( _DEBUG )
-void remembered_set_check()
-{
-  char* scan = tenured_space;
-  while(scan < tenured_top){
-    Cell obj = (Cell)((Generational_GC_Header*)scan + 1);
-    int obj_size = GET_OBJECT_SIZE(obj);
-    if(trace_object_bool(obj, is_nersary_obj)){
-      int rems_index = 0;
-      Boolean found = FALSE;
-      for(rems_index=0; rems_index < remembered_set_top; rems_index++){
-	Cell check_obj = remembered_set[rems_index];
-	if(check_obj){
-	  found = TRUE;
-	  break;
-	}
-      }
-      if( !found ){
-	printf("remembered_set_check: NOT REGISTERED!\n");
-      }
-    }
-    scan += obj_size;
-  }
-}
-#endif //_DEBUG
-
 //Start Garbage Collection.
 void gc_start_generational()
 {
@@ -195,9 +166,6 @@ void minor_gc()
   char* prev_nersary_top = nersary_top;
   char* prev_tenured_top = tenured_top;
 
-#if defined( _DEBUG )
-    remembered_set_check();
-#endif
   //copy all objects that are reachable from roots.
   trace_roots(copy_and_update);
 
@@ -242,6 +210,7 @@ void minor_gc()
 
 void clean_remembered_set()
 {
+  printf("clean\n");
   int rem_index;
   int remembered_set_top_new = 0;
   for(rem_index = 0; rem_index < remembered_set_top; rem_index++){
@@ -276,9 +245,6 @@ void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell)
 {
   if( IS_TENURED(obj) && IS_NERSARY(newcell) && !IS_REMEMBERED(obj) ){
     add_remembered_set(obj);
-#if defined( _DEBUG )
-    remembered_set_check();
-#endif
   }
   *cellp = newcell;
 }
@@ -433,9 +399,6 @@ void slide()
     scanned += obj_size;
   }
   tenured_top = tenured_new_top;
-#if defined( _DEBUG )
-  remembered_set_check();
-#endif
 
   //clear mark bit in young objects.
   memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
@@ -473,7 +436,4 @@ void major_gc()
 
   //compaction phase.
   compact();
-#if defined( _DEBUG )
-  remembered_set_check();
-#endif
 }
