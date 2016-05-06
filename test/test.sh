@@ -50,7 +50,18 @@ verify "(define m 100) (cons m m)" '(100 . 100)'
 verify "(define x 999)" x
 
 #lambda
-verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 10)" 89
+verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15)" 987
+verify "
+  (define <= (lambda (x y)
+	  (if (< x y) #t
+	      (= x y))))
+  (define tak (lambda (x y z)
+	  (if (<= x y) z
+	      (tak (tak (- x 1) y z)
+		  (tak (- y 1) z x)
+		  (tak (- z 1) x y)))))
+  (tak 4 2 0)" 1
+		  
 verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
 verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4 5))" 5
 

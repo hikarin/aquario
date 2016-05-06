@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #if defined( _TEST )
-#define HEAP_SIZE (200*1024)
+#define HEAP_SIZE (500*1024)
 #else
 #define HEAP_SIZE (500*1024*1024)
 #endif

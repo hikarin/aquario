@@ -308,7 +308,6 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	    applyList(args);
 	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-	    
 	    Cell tmps = lambdaexp(*pProc);
 	    cloneSymbolTree(tmps);
 	    tmps = getReturn();
