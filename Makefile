@@ -23,7 +23,6 @@ tests: $(CSOURCES)
 	@test/test.sh ref
 	@test/test.sh gen
 
-
 debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g
 

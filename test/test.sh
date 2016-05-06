@@ -30,40 +30,38 @@ verify 1 1
 verify -2 -2
 verify "'63" 63
 verify "(+ 1 2)" 3
-verify '(+ 1 -3)' -2
-verify '(- 3)' -3
-verify '(- 3 5)' -2
-verify '(- 3 5 7)' -9
-verify '(< 2 3)' \#t
-verify '(< 3 3)' \#f
-verify '(< 4 3)' \#f
+verify "(+ 1 -3)" -2
+verify "(- 3)" -3
+verify "(- 3 5)" -2
+verify "(- 3 5 7)" -9
+verify "(* 2 3 4 5)" 120
 verify "(+ (+ 1 2) (+ 3 4) (+ 5 6) (+ 7 8) (+ 9 10))" 55
 verify "(+ (* 1 2 3 4 5) (* 6 7 8 9 10))" 30360
+verify "(/ 1)" 1
+verify "(/ 2)" 0
+verify "(/ 100 5 4)" 5
+
+#comparison
+verify "(= 3 2)" \#f
+verify "(= 1 2)" \#f
+verify "(= 2 2)" \#t
+verify "(< 2 3)" \#t
+verify "(< 3 3)" \#f
+verify "(< 4 3)" \#f
+verify "(> 2 3)" \#f
+verify "(> 3 3)" \#f
+verify "(> 4 3)" \#t
 
 #list
 verify "'(a b c)" '(a b c)'
 verify "'(a b . c)" '(a b . c)'
+verify "(car '(a . b))" a
+verify "(cdr '(a . b))" b
 verify "(define lst '(a b c)) (car (car lst))" \#undef
 
 #define
 verify "(define m 100) (cons m m)" '(100 . 100)'
 verify "(define x 999)" x
-
-#lambda
-verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15)" 987
-verify "
-  (define <= (lambda (x y)
-	  (if (< x y) #t
-	      (= x y))))
-  (define tak (lambda (x y z)
-	  (if (<= x y) z
-	      (tak (tak (- x 1) y z)
-		  (tak (- y 1) z x)
-		  (tak (- z 1) x y)))))
-  (tak 4 2 0)" 1
-		  
-verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
-verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4 5))" 5
 
 #string
 verify "(define str \"hoge\") str" \"hoge\"
@@ -73,9 +71,24 @@ verify "(define str \"hoge\") (eq? str \"fuga\")" \#f
 #symbol
 verify "'test" test
 verify "(quote a)" a
-verify "'63" 63
+verify "(quote (quote b))" "(quote b)"
+verify "(quote 10)" 10
+verify "(= (quote 1) 1)" \#t
 verify "\'(+ 1 2)" "(+ 1 2)"
 verify "(define x 'n) x" n
+
+#lambda
+verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
+verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4))" 4
+verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15)" 987
+verify "
+  (define <= (lambda (x y) (if (< x y) #t (= x y))))
+  (define tak (lambda (x y z)
+	  (if (<= x y) z
+	      (tak (tak (- x 1) y z)
+		  (tak (- y 1) z x)
+		  (tak (- z 1) x y)))))
+  (tak 6 3 0)" 3
 
 echo ""
 if [ -n "$str" ]; then
