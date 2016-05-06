@@ -142,6 +142,7 @@ void setReturn(Cell c);
 
 void op_eqdigitp();
 void op_lessdigitp();
+void op_greaterdigitp();
 void op_car();
 void op_cdr();
 void op_cons();
