@@ -78,6 +78,13 @@ verify "(= (quote 1) 1)" \#t
 verify "\'(+ 1 2)" "(+ 1 2)"
 verify "(define x 'n) x" n
 
+#comment
+verify ";(define m 100)
+  m" \#undef
+verify ";(define m 100) m" ""
+verify "(cons 1 ; 2)
+  2)" "(1 . 2)"
+
 #lambda
 verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
 verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4))" 4
