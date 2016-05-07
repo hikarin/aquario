@@ -220,11 +220,11 @@ Cell evalExp(Cell exp)
     if( nullp(cdr(exps) ) ){
       is_loop = FALSE;
     }
-    if( type(exp) == T_SYMBOL ){
+    if( isSymbol(exp) ){
       if( !is_loop ){
 	setReturn( getVar(symbolname(exp)) );
       }
-    }else if( type(exp) == T_PAIR ){
+    }else if( isPair(exp) ){
       gc_write_barrier_root(stack[stack_top-2], evalExp(car(exp)));
       if( UNDEF_P( getReturn() ) ){
 	break;
@@ -998,7 +998,7 @@ void op_car()
   WRONG_NUMBER_ARGUMENTS_ERROR(1, *args, "op_car");
 
   Cell* c1 = &car(*args);
-  if( type( *c1 ) != T_PAIR ){
+  if( !isPair(*c1) ){
     setParseError( "not a list given" );
     setReturn( (Cell)AQ_UNDEF );
     return;
@@ -1013,7 +1013,7 @@ void op_cdr()
   WRONG_NUMBER_ARGUMENTS_ERROR(1, *args, "op_cdr");
 
   Cell* c1 = &car(*args);
-  if( type( *c1 ) != T_PAIR ){
+  if( !isPair(*c1) ){
     setParseError( "not a list given" );
     setReturn( (Cell)AQ_UNDEF );
     return;
@@ -1048,7 +1048,7 @@ void op_add()
     if( UNDEF_P( car( *args ) ) ){
       setReturn((Cell)AQ_UNDEF);
       return;
-    }else if( type( car( *args ) ) != T_INTEGER ){
+    }else if( !isInteger(car(*args)) ){
       setParseError("not a number given\n");
       setReturn((Cell)AQ_UNDEF);
       return;
@@ -1082,7 +1082,7 @@ void op_sub()
       if( UNDEF_P( car( *args ) ) ){
 	setReturn((Cell)AQ_UNDEF);
 	return;
-      }else if( type( car( *args ) ) != T_INTEGER ){
+      }else if( !isInteger(car(*args)) ){
 	setParseError("not a number given\n");
 	setReturn((Cell)AQ_UNDEF);
 	return;
@@ -1104,7 +1104,7 @@ void op_mul()
     if( UNDEF_P( car( *args ) ) ){
       setReturn((Cell)AQ_UNDEF);
       return;
-    }else if( type( car( *args ) ) != T_INTEGER ){
+    }else if( !isInteger(car(*args)) ){
       setParseError("not a number given\n");
       setReturn((Cell)AQ_UNDEF);
       return;
@@ -1125,7 +1125,7 @@ void op_div()
     setReturn((Cell)AQ_UNDEF);
     return;
   }else if( argNum == 1 ){
-    if( CELL_P(*args) && type( car( *args ) ) != T_INTEGER ){
+    if( CELL_P(*args) && !isInteger(car(*args)) ){
       setParseError("not a number given\n");
       setReturn((Cell)AQ_UNDEF);
       return;
@@ -1139,7 +1139,7 @@ void op_div()
       if( UNDEF_P( car( *args ) ) ){
 	setReturn((Cell)AQ_UNDEF);
 	return;
-      }else if( type( car( *args ) ) != T_INTEGER ){
+      }else if( !isInteger(car(*args)) ){
 	setParseError("not a number given\n");
 	setReturn((Cell)AQ_UNDEF);
 	return;
@@ -1214,7 +1214,7 @@ void op_load()
   }
 
   Cell cell = car(*args);
-  if( type(cell) == T_STRING ){
+  if( isString(cell) ){
     load_file(strvalue(cell));
   }else{
     setParseError("string required.");
@@ -1253,7 +1253,7 @@ void syntax_define()
     return;
   }
   Cell symbol = car(*args);
-  if( type( symbol ) != T_SYMBOL ){
+  if( !isSymbol(symbol) ){
     setParseError( "not a symbol given" );
     return;
   }
@@ -1317,7 +1317,7 @@ void syntax_set()
 {  
   Cell* args = getStackTop();
   Cell c1 = car(*args);
-  if( type(c1) != T_SYMBOL ){
+  if( !isSymbol(c1) ){
     printError("not a variable given.");
     setReturn((Cell)AQ_UNDEF);
     return;
