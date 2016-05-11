@@ -1023,6 +1023,7 @@ void op_car()
 void op_cdr()
 {
   Cell* args = popArg();
+  UNDEF_RETURN(*args);
   WRONG_NUMBER_ARGUMENTS_ERROR(1, *args, "op_cdr");
 
   Cell* c1 = &car(*args);
