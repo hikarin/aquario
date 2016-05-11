@@ -279,7 +279,7 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	if( !is_loop ){
 	  is_loop = TRUE;
 	  gc_write_barrier_root(pExps, lambdaexp(*pProc));
-	  if(length(args) != length(*pParams)){
+	  if( !isSymbol(cdr(*pParams)) && length(args) != length(*pParams) ){
 	    AQ_PRINTF("wrong number arguments\n");
 	    setReturn((Cell)AQ_UNDEF);
 	    is_loop = FALSE;
@@ -364,12 +364,25 @@ Cell findParam(Cell exp, Cell dummyParams, Cell realParams)
 {
   char *var = symbolname(exp);
   while(!nullp(dummyParams) && !UNDEF_P(realParams)){
-    char *key = strvalue(car(dummyParams));
-    if(strcmp(var, key)==0){
-      return car(realParams);
+    if( isPair(dummyParams) ){
+      char *key = strvalue(car(dummyParams));
+      if(strcmp(var, key)==0){
+	return car(realParams);
+      }
+      dummyParams = cdr(dummyParams);
+      realParams = cdr(realParams);
+    }else{
+      char *key = strvalue(dummyParams);
+      if(strcmp(var, key)==0){
+	applyList(realParams);
+	realParams = getReturn();
+	Cell ret = pairCell(symbolCell("quote"),
+		 pairCell(realParams, NIL));
+	return ret;
+      }else{
+	break;
+      }
     }
-    dummyParams = cdr(dummyParams);
-    realParams = cdr(realParams);
   }
   return (Cell)AQ_UNDEF;
 }

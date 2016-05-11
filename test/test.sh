@@ -77,6 +77,7 @@ verify "(quote 10)" 10
 verify "(= (quote 1) 1)" \#t
 verify "\'(+ 1 2)" "(+ 1 2)"
 verify "(define x 'n) x" n
+verify "(define x 100) (define y x) y" 100
 
 #comment
 verify ";(define m 100)
@@ -89,6 +90,9 @@ verify "(cons 1 ; 2)
 verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
 verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4))" 4
 verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15)" 987
+verify "(define list (lambda (x . y) (cons x y))) (list 1 2 3)" "(1 2 3)"
+verify "(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst)" "(1 2 (3 4 5))"
+verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) . 1)"
 verify "
   (define <= (lambda (x y) (if (< x y) #t (= x y))))
   (define tak (lambda (x y z)
@@ -96,7 +100,7 @@ verify "
 	      (tak (tak (- x 1) y z)
 		  (tak (- y 1) z x)
 		  (tak (- z 1) x y)))))
-  (tak 6 3 0)" 3
+  (tak 4 2 0)" 1
 
 echo ""
 if [ -n "$str" ]; then
