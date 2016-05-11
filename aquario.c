@@ -540,6 +540,7 @@ void printCell(Cell c)
 	AQ_PRINTF("#f");
       }
       else if(c==NIL){
+	AQ_PRINTF("()");
       }
       else{
 	setParseError("unknown cell");
