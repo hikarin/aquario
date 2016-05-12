@@ -481,6 +481,10 @@ void applyList(Cell ls)
 
   PUSH_ARGS2(&top, &last);
   while( !nullp(cdr(ls)) ){
+    if(!isPair(cdr(ls))){
+      gc_write_barrier_root(stack[stack_top-2]/*top*/, (Cell)AQ_UNDEF);
+      break;
+    }
     Cell exp = evalExp(car(cdr(ls)));
     if(UNDEF_P(exp)){
       gc_write_barrier_root(stack[stack_top-2]/*top*/, (Cell)AQ_UNDEF);
