@@ -411,7 +411,7 @@ int truep(Cell c)
 
 int notp(Cell c)
 {
-  return c==F?TRUE:FALSE;
+  return FALSE_P(c)?TRUE:FALSE;
 }
 
 int length(Cell ls)
@@ -533,17 +533,17 @@ void printCell(Cell c)
     }
     else if(EOF_P(c)){
       AQ_PRINTF("#<eof>");
-    }    
+    }
+    else if(TRUE_P(c)){
+      AQ_PRINTF("#t");
+    }
+    else if(FALSE_P(c)){
+      AQ_PRINTF("#f");
+    }  
   }else{
     switch(type(c)){
     case T_NONE:
-      if(c==T){
-	AQ_PRINTF("#t");
-      }
-      else if(c==F){
-	AQ_PRINTF("#f");
-      }
-      else if(c==NIL){
+      if(c==NIL){
 	AQ_PRINTF("()");
       }
       else{
@@ -881,9 +881,6 @@ void setParseError(char* str)
 void init()
 {
   gc_init_ptr( &NIL, noneCell() );
-  gc_init_ptr( &T, noneCell() );
-  gc_init_ptr( &F, noneCell() );
-  
   gc_init_ptr( &retReg, NIL );
 
   memset(env, 0, ENVSIZE);
@@ -892,9 +889,8 @@ void init()
   stack_top = 0;
 
   setVar("nil", NIL);
-  setVar("#t", T);
-  setVar("#f", F);
-  
+  setVar("#t",      (Cell)AQ_TRUE);
+  setVar("#f",      (Cell)AQ_FALSE);
   setVar("=",       procCell(op_eqdigitp));
   setVar("<",       procCell(op_lessdigitp));
   setVar(">",       procCell(op_greaterdigitp));
@@ -929,14 +925,14 @@ void op_gc()
 {
   popArg();
   gc_start();
-  setReturn(T);
+  setReturn((Cell)AQ_TRUE);
 }
 
 void op_gc_stress()
 {
   popArg();
   g_GC_stress = TRUE;
-  setReturn(T);
+  setReturn((Cell)AQ_TRUE);
 }
 
 void set_gc(char* gc_char)
@@ -970,10 +966,10 @@ void op_eqdigitp()
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if(i1==i2){
-    setReturn(T);
+    setReturn((Cell)AQ_TRUE);
   }
   else{
-    setReturn(F);
+    setReturn((Cell)AQ_FALSE);
   }
 
   popArg();
@@ -986,9 +982,9 @@ void op_lessdigitp()
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 < i2 ){
-    setReturn(T);
+    setReturn((Cell)AQ_TRUE);
   }else{
-    setReturn(F);
+    setReturn((Cell)AQ_FALSE);
   }
 
   popArg();
@@ -1001,9 +997,9 @@ void op_greaterdigitp()
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 > i2 ){
-    setReturn(T);
+    setReturn((Cell)AQ_TRUE);
   }else{
-    setReturn(F);
+    setReturn((Cell)AQ_FALSE);
   }
 
   popArg();
@@ -1215,7 +1211,7 @@ void load_file( const char* filename )
       evalExp(cell);
     }
     fclose(fp);
-    setReturn(T);
+    setReturn((Cell)AQ_TRUE);
   }else{
     printError("load: failed\n");
     setReturn((Cell)AQ_UNDEF);
@@ -1252,10 +1248,10 @@ void op_eqp()
     return;
   }
   else if(car(*args) == cadr(*args)){
-    setReturn(T);
+    setReturn((Cell)AQ_TRUE);
   }
   else{
-    setReturn(F);
+    setReturn((Cell)AQ_FALSE);
   }
 }
 

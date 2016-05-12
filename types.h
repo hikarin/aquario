@@ -31,7 +31,7 @@ typedef unsigned long VALUE;
 #define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
 #define EOF_P(v)      ((VALUE)(v) == AQ_EOF)
 
-#define CELL_P(v)     (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0)
+#define CELL_P(v)     ((v) != NULL && (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0))
 
 typedef struct cell *Cell;
 typedef union cellUnion
@@ -50,9 +50,8 @@ struct cell{
   CellUnion _object;
 };
 
-//Cell T, F, NIL, UNDEF, EOFobj;
 Cell retReg;
-Cell T, F, NIL;
+Cell NIL;
 
 typedef enum boolean{
   FALSE  = 0,
