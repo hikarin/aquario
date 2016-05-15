@@ -1197,7 +1197,7 @@ void load_file( const char* filename )
     fclose(fp);
     setReturn((Cell)AQ_TRUE);
   }else{
-    printError("load: failed\n");
+    printError("load failed: %s\n", filename);
     setReturn((Cell)AQ_UNDEF);
   }
 }
