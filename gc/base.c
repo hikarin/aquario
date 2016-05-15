@@ -108,11 +108,6 @@ void trace_roots(void (*trace) (Cell* cellp)){
     }
   }
 
-  //trace global variable.
-  trace( &NIL );
-  trace( &T );
-  trace( &F );
-
   //trace return value.
   if(CELL_P(retReg)){
     trace( &retReg );
@@ -130,8 +125,6 @@ void trace_roots(void (*trace) (Cell* cellp)){
 void trace_object( Cell cell, void (*trace) (Cell* cellp)){
   if( cell ){
     switch(type(cell)){
-    case T_NONE:
-      break;
     case T_CHAR:
       break;
     case T_STRING:
@@ -167,8 +160,6 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
 Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
   if( cell ){
     switch(type(cell)){
-    case T_NONE:
-      break;
     case T_CHAR:
       break;
     case T_STRING:

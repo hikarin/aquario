@@ -36,15 +36,14 @@
 
 Cell newCell(Type t, size_t size);
 
-#define isNone(p)       ((p)->_type==T_NONE)
-#define isChar(p)       ((p)->_type==T_CHAR)
-#define isString(p)     ((p)->_type==T_STRING)
-#define isInteger(p)    ((p)->_type==T_INTEGER)
-#define isPair(p)       ((p)->_type==T_PAIR)
-#define isSymbol(p)     ((p)->_type==T_SYMBOL)
-#define isProc(p)       ((p)->_type==T_PROC)
-#define isSyntax(p)     ((p)->_type==T_SYNTAX)
-#define isLambda(p)     ((p)->_type==T_LAMBDA)
+#define isChar(p)       (CELL_P(p) && (p)->_type==T_CHAR)
+#define isString(p)     (CELL_P(p) && (p)->_type==T_STRING)
+#define isInteger(p)    (CELL_P(p) && (p)->_type==T_INTEGER)
+#define isPair(p)       (CELL_P(p) && (p)->_type==T_PAIR)
+#define isSymbol(p)     (CELL_P(p) && (p)->_type==T_SYMBOL)
+#define isProc(p)       (CELL_P(p) && (p)->_type==T_PROC)
+#define isSyntax(p)     (CELL_P(p) && (p)->_type==T_SYNTAX)
+#define isLambda(p)     (CELL_P(p) && (p)->_type==T_LAMBDA)
 
 #define PUSH_ARGS2(c1, c2)                \
   pushArg(c1);                            \
@@ -89,7 +88,6 @@ Cell procCell(opType proc);
 Cell syntaxCell(opType syn);
 Cell symbolCell(char* name);
 Cell lambdaCell(Cell param, Cell exp);
-Cell noneCell();
 
 int isdigitstr(char* str);
 int nullp(Cell c);
@@ -98,11 +96,9 @@ int notp(Cell c);
 int zerop(Cell c);
 int eqdigitp(Cell c);
 int length(Cell ls);
-//Cell setAppendCell(Cell ls, Cell c);
 void setAppendCell(Cell ls, Cell c);
 Cell setAppendList(Cell ls, Cell append);
 Cell reverseList(Cell ls);
-//Cell applyList(Cell ls);
 void applyList(Cell ls);
 
 void printPair(Cell c);
