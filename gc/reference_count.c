@@ -38,9 +38,9 @@ static Cell* pop_reference_count();
 //Initialization.
 void gc_init_reference_count(GC_Init_Info* gc_info)
 {
-  heap     = (char*)AQ_MALLOC(HEAP_SIZE);
+  heap     = (char*)aq_heap;
   freelist = (Free_Chunk*)heap;
-  freelist->chunk_size = HEAP_SIZE;
+  freelist->chunk_size = get_heap_size();
   freelist->next       = NULL;
 
   gc_info->gc_malloc        = gc_malloc_reference_count;
@@ -158,7 +158,4 @@ void gc_memcpy_reference_count(char* dst, char* src, size_t size)
 }
 
 //term.
-void gc_term_reference_count()
-{
-  AQ_FREE(heap);
-}
+void gc_term_reference_count(){}

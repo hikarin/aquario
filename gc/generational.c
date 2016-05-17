@@ -10,8 +10,6 @@ typedef struct generational_gc_header{
   int flags;
 }Generational_GC_Header;
 
-#define NERSARY_SIZE (HEAP_SIZE/5)
-#define TENURED_SIZE (HEAP_SIZE-(NERSARY_SIZE*2))
 #define TENURING_THRESHOLD  (15)
 
 #define MASK_OBJ_AGE        (0x000000FF)
@@ -35,9 +33,9 @@ typedef struct generational_gc_header{
 #define INC_AGE(obj) (OBJ_FLAGS(obj)++)
 
 //mark table: a bit per WORD
-#define BIT_WIDTH    32
-static int nersary_mark_tbl[NERSARY_SIZE/BIT_WIDTH+1];
-static int tenured_mark_tbl[TENURED_SIZE/BIT_WIDTH+1];
+#define BIT_WIDTH    (32)
+static int* nersary_mark_tbl = NULL;
+static int* tenured_mark_tbl = NULL;
 
 #define IS_MARKED_TENURED(obj) (tenured_mark_tbl[( ((char*)(obj)-tenured_space)/BIT_WIDTH )] & (1 << (((char*)(obj)-tenured_space)%BIT_WIDTH) ) )
 #define IS_MARKED_NERSARY(obj) (nersary_mark_tbl[( ((char*)(obj)-from_space)/BIT_WIDTH )]    & (1 << (((char*)(obj)-from_space)%BIT_WIDTH) ) )
@@ -69,19 +67,28 @@ static char* tenured_top     = NULL;
 
 //remembered set.
 #define REMEMBERED_SET_SIZE 100
-static Cell remembered_set[ REMEMBERED_SET_SIZE ];
+//static Cell remembered_set[ REMEMBERED_SET_SIZE ];
+static Cell* remembered_set = NULL;
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
 static void clean_remembered_set();
 static void gc_write_barrier_generational(Cell obj, Cell* cellp, Cell newcell);
 
-#define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + NERSARY_SIZE )
+//size of each heap.
+static int nersary_size = 0;
+static int nersary_heap_size = 0;
+static int nersary_tbl_size = 0;
+static int tenured_size = 0;
+static int tenured_heap_size = 0;
+static int tenured_tbl_size = 0;
+
+#define IS_ALLOCATABLE_NERSARY( size ) (nersary_top + sizeof( Generational_GC_Header ) + (size) < from_space + nersary_heap_size )
 #define GET_OBJECT_SIZE(obj) (((Generational_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Generational_GC_Header*)(obj)-1)->forwarding)
 
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj))
-#define IS_ALLOCATABLE_TENURED() (tenured_top + NERSARY_SIZE < tenured_space + TENURED_SIZE)
+#define IS_ALLOCATABLE_TENURED() (tenured_top + nersary_heap_size < tenured_space + tenured_heap_size)
 
 #define MARK_STACK_SIZE 1000
 static int mark_stack_top;
@@ -99,24 +106,45 @@ static void compact();
 //Initialization.
 void gc_init_generational(GC_Init_Info* gc_info)
 {
-  //nersary space.
-  from_space  = (char*)AQ_MALLOC(NERSARY_SIZE);
-  to_space    = (char*)AQ_MALLOC(NERSARY_SIZE);
-  nersary_top = from_space;
+  int size_int   = sizeof(int);
+  int rest_size  = get_heap_size();
+  int byte_count = BIT_WIDTH/size_int;
 
-  //tenured space.
-  tenured_space   = (char*)AQ_MALLOC(TENURED_SIZE);
-  tenured_top     = tenured_space;
+  //remembered set.
+  int remembered_set_size = sizeof(Cell) * REMEMBERED_SET_SIZE;
+  remembered_set = (Cell*)aq_heap;
+  rest_size -= remembered_set_size;
+
+  //nersary space.
+  nersary_size      = rest_size/5;
+  nersary_tbl_size  = (nersary_size * 2)/(byte_count + 2);
+  nersary_tbl_size  = (((nersary_tbl_size + size_int - 1) / size_int) * size_int);
+  nersary_heap_size = (nersary_size - nersary_tbl_size)/2;
+  from_space        = aq_heap + remembered_set_size;
+  to_space          = from_space + nersary_heap_size;
+  nersary_top       = from_space;
+
+  nersary_mark_tbl  = (int*)(to_space + nersary_heap_size);
+  rest_size -= nersary_size;
   
+  //tenured space.
+  tenured_size      = rest_size;
+  tenured_tbl_size  = tenured_size/(byte_count + 1);
+  tenured_tbl_size  = (((tenured_tbl_size + size_int - 1) / size_int) * size_int);
+  tenured_heap_size = tenured_size - tenured_tbl_size;
+  tenured_space     = (char*)nersary_mark_tbl + nersary_tbl_size;
+  tenured_top       = tenured_space;
+  tenured_mark_tbl  = (int*)(tenured_space + tenured_heap_size);
+
+  memset( nersary_mark_tbl, 0, nersary_tbl_size );
+  memset( tenured_mark_tbl, 0, tenured_tbl_size );
+
   gc_info->gc_malloc        = gc_malloc_generational;
   gc_info->gc_start         = gc_start_generational;
   gc_info->gc_term          = gc_term_generational;
   gc_info->gc_write_barrier = gc_write_barrier_generational;
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
-
-  memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
-  memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
 }
 
 //Allocation.
@@ -136,13 +164,6 @@ void* gc_malloc_generational( size_t size )
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
   return ret;
-}
-
-void gc_term_generational()
-{
-  AQ_FREE(from_space);
-  AQ_FREE(to_space);
-  AQ_FREE(tenured_space);
 }
 
 //Start Garbage Collection.
@@ -398,8 +419,8 @@ void slide()
   tenured_top = tenured_new_top;
 
   //clear mark bit in young objects.
-  memset( nersary_mark_tbl, 0, sizeof(nersary_mark_tbl) );
-  memset( tenured_mark_tbl, 0, sizeof(tenured_mark_tbl) );
+  memset( nersary_mark_tbl, 0, sizeof(int)*nersary_tbl_size );
+  memset( tenured_mark_tbl, 0, sizeof(int)*tenured_tbl_size );
 }
 
 //Start Garbage Collection.
@@ -434,3 +455,5 @@ void major_gc()
   //compaction phase.
   compact();
 }
+
+void gc_term_generational(){}

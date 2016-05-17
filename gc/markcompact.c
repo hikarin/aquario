@@ -13,7 +13,9 @@ static void gc_start_markcompact();
 static inline void* gc_malloc_markcompact(size_t size);
 static void gc_term_markcompact();
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( MarkCompact_GC_Header ) + (size) < heap + HEAP_SIZE )
+static int heap_size = 0;
+
+#define IS_ALLOCATABLE( size ) (top + sizeof( MarkCompact_GC_Header ) + (size) < heap + heap_size )
 #define GET_OBJECT_SIZE(obj) (((MarkCompact_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((MarkCompact_GC_Header*)(obj)-1)->forwarding)
@@ -25,9 +27,9 @@ static char* heap        = NULL;
 static char* top         = NULL;
 static char* new_top     = NULL;
 
-#define MARK_STACK_SIZE 1000
-static int mark_stack_top;
-static Cell mark_stack[MARK_STACK_SIZE];
+#define MARK_STACK_SIZE 500
+static int mark_stack_top = 0;
+static Cell* mark_stack = NULL;
 
 static void mark_object(Cell* objp);
 static void move_object(Cell obj);
@@ -65,7 +67,13 @@ void move_object(Cell obj)
 //Initialization.
 void gc_init_markcompact(GC_Init_Info* gc_info)
 {
-  heap = (char*)AQ_MALLOC(HEAP_SIZE);
+  //mark stack.
+  int mark_stack_size = sizeof(Cell) * MARK_STACK_SIZE;
+  mark_stack = (Cell*)aq_heap;
+  heap_size = get_heap_size() - mark_stack_size;
+
+  //heap.
+  heap = aq_heap + mark_stack_size;
   top = heap;
 
   gc_info->gc_malloc        = gc_malloc_markcompact;
@@ -186,7 +194,4 @@ void gc_start_markcompact()
 }
 
 //term.
-void gc_term_markcompact()
-{
-  AQ_FREE( heap );
-}
+void gc_term_markcompact(){}

@@ -30,6 +30,8 @@ static Cell* getStackTop();
 static void init();
 static void term();
 
+static int heap_size = HEAP_SIZE;
+
 #define UNDEF_RETURN(x)         \
   if( UNDEF_P(x) ){             \
     setReturn((Cell)AQ_UNDEF);  \
@@ -59,6 +61,7 @@ inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
   new_cell->_type = t;
+
   return new_cell;
 }
 
@@ -904,6 +907,7 @@ void init()
 void term()
 {
   gc_term();
+  gc_term_base();
 }
 
 void op_gc()
@@ -924,7 +928,7 @@ void set_gc(char* gc_char)
 {
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
-  gc_init( gc_char, &gc_info );
+  gc_init( gc_char, heap_size, &gc_info );
   
   gc_malloc        = gc_info.gc_malloc;
   gc_start         = gc_info.gc_start;
@@ -1360,7 +1364,7 @@ int repl()
   return 0;
 }
 
-int main(int argc, char *argv[])
+int handle_option(int argc, char *argv[])
 {
   int i = 1;
   if( argc >= 3 && strcmp(argv[ 1 ], "-GC" ) == 0 ){
@@ -1369,6 +1373,13 @@ int main(int argc, char *argv[])
   }else{
     set_gc("");
   }
+
+  return i;
+}
+
+int main(int argc, char *argv[])
+{
+  int i = handle_option(argc, argv);
   init();
   if( i >= argc ){
     repl();

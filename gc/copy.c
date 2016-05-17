@@ -15,15 +15,17 @@ static void gc_term_copy();
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
+#define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + heap_size/2 )
 #define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Copy_GC_Header*)(obj)-1)->forwarding)
-#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+HEAP_SIZE/2))
+#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+heap_size/2))
 
 static char* from_space  = NULL;
 static char* to_space    = NULL;
 static char* top         = NULL;
+
+static int heap_size = 0;
 
 void* copy_object(Cell obj)
 {
@@ -57,8 +59,10 @@ void copy_and_update(Cell* objp)
 //Initialization.
 void gc_init_copy(GC_Init_Info* gc_info)
 {
-  from_space = (char*)AQ_MALLOC(HEAP_SIZE/2);
-  to_space   = (char*)AQ_MALLOC(HEAP_SIZE/2);
+  heap_size = get_heap_size();
+
+  from_space = aq_heap;
+  to_space   = aq_heap + heap_size/2;
   top        = from_space;
   
   gc_info->gc_malloc        = gc_malloc_copy;
@@ -111,8 +115,4 @@ void gc_start_copy()
 }
 
 //term.
-void gc_term_copy()
-{
-  AQ_FREE( from_space );
-  AQ_FREE( to_space );
-}
+void gc_term_copy(){}

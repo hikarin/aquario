@@ -15,7 +15,6 @@ static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //writ
 static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
 
-
 Cell* popArg_default();
 void pushArg_default(Cell* cellp);
 
@@ -30,11 +29,20 @@ static int total_malloc_size;
 #define GC_STR_REFERENCE_COUNT "ref"
 #define GC_STR_MARK_SWEEP      "ms"
 
-void gc_init(const char* gc_char, GC_Init_Info* gc_init)
+static int heap_size = 0;
+
+int get_heap_size()
+{
+  return heap_size;
+}
+
+void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
 {
 #if defined( _DEBUG )
   total_malloc_size = 0;
 #endif
+  heap_size = h_size;
+  aq_heap = AQ_MALLOC(heap_size);
   if( strcmp( gc_char, GC_STR_COPYING ) == 0 ){
     gc_init_copy(gc_init);
   }else if( strcmp( gc_char, GC_STR_MARKCOMPACT ) == 0 ){
@@ -75,6 +83,11 @@ void gc_init(const char* gc_char, GC_Init_Info* gc_init)
     //option.
     gc_init->gc_popArg = popArg_default;
   }
+}
+
+void gc_term_base()
+{
+  AQ_FREE(aq_heap);
 }
 
 Cell* popArg_default()
