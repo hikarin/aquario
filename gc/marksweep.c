@@ -1,7 +1,6 @@
 #include "base.h"
 #include "marksweep.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 typedef struct marksweep_gc_header{
@@ -15,8 +14,8 @@ typedef struct marksweep_gc_header{
 
 static Free_Chunk*    freelist = NULL;
 static char*          heap = NULL;
-#define MARK_TBL_SIZE (HEAP_SIZE/BIT_WIDTH+1)
-static int            mark_tbl[MARK_TBL_SIZE];
+static int* mark_tbl       = NULL;
+static int mark_tbl_size   = 0;
 
 #define is_marked(obj)   (mark_tbl[(((char*)(GET_HEADER(obj))-heap)/BIT_WIDTH)] & (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
 #define set_mark(obj)    (mark_tbl[(((char*)(GET_HEADER(obj))-heap)/BIT_WIDTH)] |= (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
@@ -26,14 +25,12 @@ static void gc_start_marksweep();
 static inline void* gc_malloc_marksweep(size_t size);
 static void gc_term_marksweep();
 
-static int get_obj_size( size_t size );
-
 #define GET_HEADER(obj)      ((MarkSweep_GC_Header*)obj-1)
 #define GET_OBJECT_SIZE(obj) (GET_HEADER(obj)->obj_size)
 
-#define MARK_STACK_SIZE 1000
-static int mark_stack_top;
-static Cell mark_stack[MARK_STACK_SIZE];
+#define MARK_STACK_SIZE 500
+static int mark_stack_top = 0;
+static Cell* mark_stack = NULL;
 
 static void mark_object(Cell* objp);
 static void mark();
@@ -55,9 +52,27 @@ void mark_object(Cell* objp)
 //Initialization.
 void gc_init_marksweep(GC_Init_Info* gc_info)
 {
-  heap                 = (char*)aq_malloc( HEAP_SIZE );
+  int int_size         = sizeof(int);
+  int total_heap_size  = get_heap_size();
+  int byte_count       = BIT_WIDTH/int_size;
+
+  //mark stack.
+  int mark_stack_size  = sizeof(Cell)*MARK_STACK_SIZE;
+  mark_stack           = (Cell*)aq_heap;
+  total_heap_size      -= mark_stack_size;
+
+  //mark table.
+  mark_tbl_size        = total_heap_size / ( byte_count + 1 );
+  mark_tbl_size        = (((mark_tbl_size + 3) / 4) * 4);
+  mark_tbl             = (int*)(aq_heap+mark_stack_size);
+
+  //heap.
+  int heap_size        = total_heap_size - mark_tbl_size;
+  heap                 = (char*)mark_tbl + mark_tbl_size;
+
+  //freelist.
   freelist             = (Free_Chunk*)heap;
-  freelist->chunk_size = HEAP_SIZE;
+  freelist->chunk_size = heap_size;
   freelist->next       = NULL;
 
   gc_info->gc_malloc        = gc_malloc_marksweep;
@@ -66,14 +81,12 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
-
-  printf("GC: Mark Sweep\n");
 }
 
 //Allocation.
 void* gc_malloc_marksweep( size_t size )
 {
-  int allocate_size = (get_obj_size(size) + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
+  int allocate_size = (sizeof(MarkSweep_GC_Header) + size + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
   if( g_GC_stress ){
     gc_start_marksweep();
   }
@@ -101,7 +114,7 @@ void* gc_malloc_marksweep( size_t size )
 void mark()
 {
   mark_stack_top = 0;
-  memset(mark_tbl, 0, sizeof(mark_tbl));
+  memset(mark_tbl, 0, sizeof(char)*mark_tbl_size);
 
   //mark root objects.
   trace_roots(mark_object);
@@ -117,11 +130,6 @@ Free_Chunk* get_free_chunk(size_t size)
 {
   Free_Chunk* chunk = aq_get_free_chunk(&freelist, size);
   return chunk;
-}
-
-int get_obj_size( size_t size )
-{
-  return sizeof( MarkSweep_GC_Header ) + size;
 }
 
 void sweep_bitwise(int* tbl_index, int* start, size_t* chunk_size, Free_Chunk** chunk_top, Free_Chunk** chunk_last)
@@ -185,7 +193,8 @@ void sweep()
   int tbl_index = 0;
   int tbl_offset = 0;
 
-  while(tbl_index < MARK_TBL_SIZE){
+  int mark_tbl_count = mark_tbl_size/sizeof(int);
+  while(tbl_index < mark_tbl_count){
     if( tbl_offset == 0 && mark_tbl[tbl_index] == 0){
       scan = heap + tbl_index * BIT_WIDTH;
       if(!chunk_top){
@@ -208,11 +217,4 @@ void gc_start_marksweep()
 }
 
 //term.
-void gc_term_marksweep()
-{
-  aq_free( heap );
-
-#if defined( _DEBUG )
-  printf("used memory: %ld\n", get_total_malloc_size());
-#endif
-}
+void gc_term_marksweep() {}

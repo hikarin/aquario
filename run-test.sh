@@ -1,19 +1,18 @@
 make opt
-
+#SCRIPT=test/tak.lsp
 SCRIPT=test/fib.lsp
 
-#mark_sweep
-time ./aquario -GC ms $SCRIPT
-echo =======================
-#copying
+echo GC: copy
 time ./aquario -GC copy $SCRIPT
-echo =======================
-#mark_compact
+
+echo GC: gen
+time ./aquario -GC gen $SCRIPT
+
+echo GC: ms
+time ./aquario -GC ms $SCRIPT
+
+echo GC: mc
 time ./aquario -GC mc $SCRIPT
-echo =======================
-#generational
-time ./aquario -GC gen $SCRIPT 
-echo =======================
-#reference_count
+
+echo GC: ref
 time ./aquario -GC ref $SCRIPT
-echo =======================

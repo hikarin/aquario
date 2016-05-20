@@ -7,18 +7,17 @@ typedef void (*opType)();
 typedef enum type{
   T_CHAR,	//0.
   T_STRING,	//1.
-  T_NONE,       //2
-  T_INTEGER,	//3.
-  T_PAIR,	//4.
-  T_PROC,	//5.
-  T_SYNTAX,	//6.
-  T_SYMBOL,	//7.
-  T_LAMBDA,	//8.
+  T_INTEGER,	//2.
+  T_PAIR,	//3.
+  T_PROC,	//4.
+  T_SYNTAX,	//5.
+  T_SYMBOL,	//6.
+  T_LAMBDA,	//7.
 } Type;
 
 #define AQ_FALSE  ((VALUE)0)
 #define AQ_TRUE   ((VALUE)2)
-#define AQ_NIL    ((VALUE)4)
+#define AQ_NIL    ((VALUE)14)
 #define AQ_UNDEF  ((VALUE)6)
 #define AQ_EOF    ((VALUE)10)
 
@@ -31,7 +30,7 @@ typedef unsigned long VALUE;
 #define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
 #define EOF_P(v)      ((VALUE)(v) == AQ_EOF)
 
-#define CELL_P(v)     (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0)
+#define CELL_P(v)     ((v) != NULL && (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0))
 
 typedef struct cell *Cell;
 typedef union cellUnion
@@ -50,9 +49,7 @@ struct cell{
   CellUnion _object;
 };
 
-//Cell T, F, NIL, UNDEF, EOFobj;
 Cell retReg;
-Cell T, F, NIL;
 
 typedef enum boolean{
   FALSE  = 0,

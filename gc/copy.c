@@ -1,12 +1,7 @@
 #include "base.h"
 #include "copy.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-
-#if defined( _DEBUG )
-#include "../aquario.h"
-#endif //_DEBUG
 
 typedef struct copy_gc_header{
   int obj_size;
@@ -17,20 +12,20 @@ static void gc_start_copy();
 static inline void* gc_malloc_copy(size_t size);
 static void gc_term_copy();
 
-static int get_obj_size( size_t size );
-
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + HEAP_SIZE/2 )
+#define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + heap_size/2 )
 #define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
 
 #define FORWARDING(obj) (((Copy_GC_Header*)(obj)-1)->forwarding)
-#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+HEAP_SIZE/2))
+#define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+heap_size/2))
 
 static char* from_space  = NULL;
 static char* to_space    = NULL;
 static char* top         = NULL;
+
+static int heap_size = 0;
 
 void* copy_object(Cell obj)
 {
@@ -64,8 +59,10 @@ void copy_and_update(Cell* objp)
 //Initialization.
 void gc_init_copy(GC_Init_Info* gc_info)
 {
-  from_space = (char*)aq_malloc(HEAP_SIZE/2);
-  to_space   = (char*)aq_malloc(HEAP_SIZE/2);
+  heap_size = get_heap_size();
+
+  from_space = aq_heap;
+  to_space   = aq_heap + heap_size/2;
   top        = from_space;
   
   gc_info->gc_malloc        = gc_malloc_copy;
@@ -74,8 +71,6 @@ void gc_init_copy(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_copy;
-
-  printf("GC: Copying\n");
 }
 
 //Allocation.
@@ -90,15 +85,11 @@ void* gc_malloc_copy( size_t size )
   }
   Copy_GC_Header* new_header = (Copy_GC_Header*)top;
   Cell ret = (Cell)(new_header+1);
-  int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
+  int allocate_size = ( sizeof(Copy_GC_Header) + size + 3 ) / 4 * 4;
   top += allocate_size;
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
   return ret;
-}
-
-int get_obj_size( size_t size ){
-  return sizeof( Copy_GC_Header ) + size;
 }
 
 //Start Garbage Collection.
@@ -124,12 +115,4 @@ void gc_start_copy()
 }
 
 //term.
-void gc_term_copy()
-{
-  aq_free( from_space );
-  aq_free( to_space );
-
-#if defined( _DEBUG )
-  printf("used memory: %ld\n", get_total_malloc_size());
-#endif
-}
+void gc_term_copy(){}

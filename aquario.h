@@ -4,6 +4,14 @@
 #include <stddef.h>
 #include "types.h"
 
+#if defined( _TEST )
+#define AQ_PRINTF_GUIDE(x) (void)0
+#else
+#define AQ_PRINTF_GUIDE(x) printf(x)
+#endif
+#define AQ_PRINTF          printf
+#define AQ_FPRINTF         fprintf
+
 #define type(p)         ((p)->_type)
 #define car(p)          ((p)->_object._cons._car)
 #define cdr(p)          ((p)->_object._cons._cdr)
@@ -28,15 +36,14 @@
 
 Cell newCell(Type t, size_t size);
 
-#define isNone(p)       ((p)->_type==T_NONE)
-#define isChar(p)       ((p)->_type==T_CHAR)
-#define isString(p)     ((p)->_type==T_STRING)
-#define isInteger(p)    ((p)->_type==T_INTEGER)
-#define isPair(p)       ((p)->_type==T_PAIR)
-#define isSymbol(p)     ((p)->_type==T_SYMBOL)
-#define isProc(p)       ((p)->_type==T_PROC)
-#define isSyntax(p)     ((p)->_type==T_SYNTAX)
-#define isLambda(p)     ((p)->_type==T_LAMBDA)
+#define isChar(p)       (CELL_P(p) && (p)->_type==T_CHAR)
+#define isString(p)     (CELL_P(p) && (p)->_type==T_STRING)
+#define isInteger(p)    (CELL_P(p) && (p)->_type==T_INTEGER)
+#define isPair(p)       (CELL_P(p) && (p)->_type==T_PAIR)
+#define isSymbol(p)     (CELL_P(p) && (p)->_type==T_SYMBOL)
+#define isProc(p)       (CELL_P(p) && (p)->_type==T_PROC)
+#define isSyntax(p)     (CELL_P(p) && (p)->_type==T_SYNTAX)
+#define isLambda(p)     (CELL_P(p) && (p)->_type==T_LAMBDA)
 
 #define PUSH_ARGS2(c1, c2)                \
   pushArg(c1);                            \
@@ -81,7 +88,6 @@ Cell procCell(opType proc);
 Cell syntaxCell(opType syn);
 Cell symbolCell(char* name);
 Cell lambdaCell(Cell param, Cell exp);
-Cell noneCell();
 
 int isdigitstr(char* str);
 int nullp(Cell c);
@@ -90,11 +96,9 @@ int notp(Cell c);
 int zerop(Cell c);
 int eqdigitp(Cell c);
 int length(Cell ls);
-//Cell setAppendCell(Cell ls, Cell c);
 void setAppendCell(Cell ls, Cell c);
 Cell setAppendList(Cell ls, Cell append);
 Cell reverseList(Cell ls);
-//Cell applyList(Cell ls);
 void applyList(Cell ls);
 
 void printPair(Cell c);
@@ -138,14 +142,14 @@ void op_eofp();
 void op_zerop();
 void op_eqdigitp();
 void op_lessdigitp();
-void op_lessoreqdigitp();
 void op_greaterdigitp();
-void op_greateroreqdigitp();
 void op_car();
 void op_cdr();
 void op_cons();
 void op_add();
 void op_sub();
+void op_mul();
+void op_div();
 void op_eval();
 void op_read();
 void op_print();

@@ -1,7 +1,6 @@
 #include "base.h"
 #include "reference_count.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 #include "../aquario.h"
@@ -17,7 +16,6 @@ static void gc_write_barrier_reference_count(Cell obj, Cell* cellp, Cell newcell
 static void gc_write_barrier_root_reference_count(Cell* cellp, Cell newcell);
 static void gc_init_ptr_reference_count(Cell* cellp, Cell newcell);
 static void gc_memcpy_reference_count(char* dst, char* src, size_t size);
-static int get_obj_size( size_t size );
 static void reclaim_obj( Cell obj );
 static void increment_count(Cell* objp);
 static void decrement_count(Cell* objp);
@@ -40,9 +38,9 @@ static Cell* pop_reference_count();
 //Initialization.
 void gc_init_reference_count(GC_Init_Info* gc_info)
 {
-  heap     = (char*)aq_malloc(HEAP_SIZE);
+  heap     = (char*)aq_heap;
   freelist = (Free_Chunk*)heap;
-  freelist->chunk_size = HEAP_SIZE;
+  freelist->chunk_size = get_heap_size();
   freelist->next       = NULL;
 
   gc_info->gc_malloc        = gc_malloc_reference_count;
@@ -54,8 +52,6 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
   gc_info->gc_term          = gc_term_reference_count;
   gc_info->gc_pushArg       = push_reference_count;
   gc_info->gc_popArg        = pop_reference_count;
-
-  printf("GC: Reference Counting\n");
 }
 
 void push_reference_count(Cell* cellp)
@@ -75,7 +71,7 @@ Cell* pop_reference_count()
 void* gc_malloc_reference_count( size_t size )
 {
   size += sizeof(Reference_Count_Header);
-  int allocate_size = ( get_obj_size(size) + 3 ) / 4 * 4;
+  int allocate_size = (sizeof( Reference_Count_Header ) + size + 3 ) / 4 * 4;
   Free_Chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
     heap_exhausted_error();
@@ -99,11 +95,6 @@ void reclaim_obj( Cell obj )
   Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
   size_t obj_size = GET_OBJECT_SIZE( obj );
   put_chunk_to_freelist(&freelist, obj_top, obj_size);
-}
-
-int get_obj_size( size_t size )
-{
-  return sizeof( Reference_Count_Header ) + size;
 }
 
 //Start Garbage Collection.
@@ -131,11 +122,6 @@ void decrement_count(Cell* objp)
   }
   Cell obj = *objp;
   if( obj ){
-#if defined( _DEBUG )
-    if( REF_CNT( obj ) <= 0 ){
-      printf("REF COUNT: %d, minus\n", REF_CNT(obj));
-    }
-#endif
     DEC_REF_CNT( obj );
     if( REF_CNT( obj ) <= 0 ){
       reclaim_obj(obj);
@@ -172,7 +158,4 @@ void gc_memcpy_reference_count(char* dst, char* src, size_t size)
 }
 
 //term.
-void gc_term_reference_count()
-{
-  aq_free(heap);
-}
+void gc_term_reference_count(){}
