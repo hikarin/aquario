@@ -10,4 +10,4 @@
 		      (tak (- z 1) x y)))))
 
 
-(print (tak 16 8 0))
+(print (tak 8 4 0))
