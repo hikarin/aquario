@@ -966,6 +966,9 @@ void op_eqdigitp()
 void op_lessdigitp()
 {
   Cell* args = getStackTop();
+  UNDEF_RETURN(*args);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, "<");
+
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 < i2 ){
@@ -981,6 +984,9 @@ void op_lessdigitp()
 void op_greaterdigitp()
 {
   Cell* args = getStackTop();
+  UNDEF_RETURN(*args);
+  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, ">");
+
   int i1 = ivalue(evalExp(car(*args)));
   int i2 = ivalue(evalExp(cadr(*args)));
   if( i1 > i2 ){
