@@ -12,25 +12,41 @@ typedef struct marksweep_gc_header{
 #define BIT_WIDTH          (32)
 #define MEMORY_ALIGNMENT   (4)
 
-static Free_Chunk*    freelist = NULL;
-static char*          heap = NULL;
-static int* mark_tbl       = NULL;
-static int mark_tbl_size   = 0;
+//for multi-threading.
+#include <pthread.h>
+#define THREAD_NUM        (3)
+#define SEGMENT_NUM       (THREAD_NUM+1)
+#define SEGMENT_SIZE      ((HEAP_SIZE/SEGMENT_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
 
-#define is_marked(obj)   (mark_tbl[(((char*)(GET_HEADER(obj))-heap)/BIT_WIDTH)] & (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
-#define set_mark(obj)    (mark_tbl[(((char*)(GET_HEADER(obj))-heap)/BIT_WIDTH)] |= (1 << (((char*)(obj)-heap)%BIT_WIDTH)))
-Free_Chunk* get_free_chunk(size_t size);
+static Free_Chunk*    freelists[SEGMENT_NUM];
+static char*          heaps[SEGMENT_NUM];
+static int            mark_tbl[SEGMENT_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
+
+static void*          sweep_thread(void* pArg);
+static void           sweep_segment(int index);
+
+#define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
+#define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
+#define set_mark(obj)            (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] |= (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
+#define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
+Free_Chunk* get_free_chunk(int* index, size_t size);
+
+static Boolean   is_sweep_end[THREAD_NUM];
+static Boolean   thread_end[THREAD_NUM];
+static pthread_t tHandles[THREAD_NUM];
+static int       tNum[THREAD_NUM];
 
 static void gc_start_marksweep();
 static inline void* gc_malloc_marksweep(size_t size);
 static void gc_term_marksweep();
 
-#define GET_HEADER(obj)      ((MarkSweep_GC_Header*)obj-1)
-#define GET_OBJECT_SIZE(obj) (GET_HEADER(obj)->obj_size)
+static int get_obj_size( size_t size );
 
-#define MARK_STACK_SIZE 500
-static int mark_stack_top = 0;
-static Cell* mark_stack = NULL;
+#define GET_OBJECT_SIZE(obj) (((MarkSweep_GC_Header*)(obj)-1)->obj_size)
+
+#define MARK_STACK_SIZE 1000
+static int mark_stack_top;
+static Cell mark_stack[MARK_STACK_SIZE];
 
 static void mark_object(Cell* objp);
 static void mark();
@@ -52,28 +68,20 @@ void mark_object(Cell* objp)
 //Initialization.
 void gc_init_marksweep(GC_Init_Info* gc_info)
 {
-  int int_size         = sizeof(int);
-  int total_heap_size  = get_heap_size();
-  int byte_count       = BIT_WIDTH/int_size;
+  int i;
+  for(i=0; i<SEGMENT_NUM; i++){
+    heaps[i]                 = (char*)AQ_MALLOC( SEGMENT_SIZE );
+    freelists[i]             = (Free_Chunk*)heaps[i];
+    freelists[i]->chunk_size = SEGMENT_SIZE;
+    freelists[i]->next       = NULL;
+  }
 
-  //mark stack.
-  int mark_stack_size  = sizeof(Cell)*MARK_STACK_SIZE;
-  mark_stack           = (Cell*)aq_heap;
-  total_heap_size      -= mark_stack_size;
-
-  //mark table.
-  mark_tbl_size        = total_heap_size / ( byte_count + 1 );
-  mark_tbl_size        = (((mark_tbl_size + 3) / 4) * 4);
-  mark_tbl             = (int*)(aq_heap+mark_stack_size);
-
-  //heap.
-  int heap_size        = total_heap_size - mark_tbl_size;
-  heap                 = (char*)mark_tbl + mark_tbl_size;
-
-  //freelist.
-  freelist             = (Free_Chunk*)heap;
-  freelist->chunk_size = heap_size;
-  freelist->next       = NULL;
+  for(i=0; i<THREAD_NUM; i++){
+    is_sweep_end[i]          = TRUE;
+    thread_end[i]            = FALSE;
+    tNum[i]                  = i;
+    pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
+  }
 
   gc_info->gc_malloc        = gc_malloc_marksweep;
   gc_info->gc_start         = gc_start_marksweep;
@@ -86,15 +94,16 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 //Allocation.
 void* gc_malloc_marksweep( size_t size )
 {
-  int allocate_size = (sizeof(MarkSweep_GC_Header) + size + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
+  int allocate_size = (get_obj_size(size) + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
   if( g_GC_stress ){
     gc_start_marksweep();
   }
   Free_Chunk* chunk = NULL;
-  chunk = get_free_chunk(allocate_size);
+  int index = 0;
+  chunk = get_free_chunk(&index, allocate_size);
   if( !chunk ){
     gc_start_marksweep();
-    chunk = get_free_chunk(allocate_size);
+    chunk = get_free_chunk(&index, allocate_size);
     if( !chunk ){
       printf("Heap Exhausted.\n");
       exit(-1);
@@ -107,6 +116,7 @@ void* gc_malloc_marksweep( size_t size )
   MarkSweep_GC_Header* new_header = (MarkSweep_GC_Header*)chunk;
   Cell ret                 = (Cell)(new_header+1);
   new_header->obj_size     = allocate_size;
+  new_header->seg_index    = index;
 
   return ret;
 }
@@ -114,7 +124,7 @@ void* gc_malloc_marksweep( size_t size )
 void mark()
 {
   mark_stack_top = 0;
-  memset(mark_tbl, 0, sizeof(char)*mark_tbl_size);
+  memset(mark_tbl, 0, sizeof(mark_tbl));
 
   //mark root objects.
   trace_roots(mark_object);
@@ -126,89 +136,110 @@ void mark()
   }
 }
 
-Free_Chunk* get_free_chunk(size_t size)
+Free_Chunk* get_free_chunk(int* index, size_t size)
 {
-  Free_Chunk* chunk = aq_get_free_chunk(&freelist, size);
+  int i;
+  Free_Chunk* chunk = NULL;
+  for(i=0; i<SEGMENT_NUM; i++){
+    chunk = aq_get_free_chunk(&freelists[i], size);
+    if( chunk ){
+      *index = i;
+      break;
+    }
+  }
   return chunk;
 }
 
-void sweep_bitwise(int* tbl_index, int* start, size_t* chunk_size, Free_Chunk** chunk_top, Free_Chunk** chunk_last)
+int get_obj_size( size_t size ){
+  return sizeof( MarkSweep_GC_Header ) + size;
+}
+
+void* sweep_thread(void* pArg)
 {
-  int i;
-  for(i=(*start); i<BIT_WIDTH; i++){
-    char* scan = heap + (*tbl_index) * BIT_WIDTH + i;
-    Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
-    if(is_marked(obj)){
-      if( *chunk_size > 0){
-	//reclaim.
-	if( !freelist ){
-	  freelist = *chunk_top;
-	  freelist->next = NULL;
-	  freelist->chunk_size = *chunk_size;
-	      
-	  (*chunk_last) = freelist;
-	}else{
-	  if( (char*)(*chunk_last) + (*chunk_last)->chunk_size == (char*)(*chunk_top) ){
-	    //coalesce.
-	    (*chunk_last)->chunk_size += (*chunk_size);
-	    (*chunk_last)->next = NULL;
-	  }else{
-	    (*chunk_top)->chunk_size = (*chunk_size);
-	    (*chunk_top)->next = NULL;
-	    (*chunk_last)->next = (*chunk_top);
-	    (*chunk_last) = (*chunk_top);
-	  }
-	}
-	(*chunk_size) = 0;
-	(*chunk_top)  = NULL;
-      }
-      size_t obj_size = GET_OBJECT_SIZE(obj);
-      if( i+obj_size >= BIT_WIDTH ){
-	(*start) = (i+obj_size) % BIT_WIDTH;
-	(*tbl_index) += ((i+obj_size) / BIT_WIDTH);
-	return;
-      }else{
-	i += (obj_size-1);
-      }
-    }
-    else{
-      if(!(*chunk_top)){
-	(*chunk_top) = (Free_Chunk*)scan;
-      }
-      (*chunk_size)++;
+  int index = *(int*)pArg;
+  while(!thread_end[index]){
+    if(!is_sweep_end[index]){
+      sweep_segment(index);
+      is_sweep_end[index] = TRUE;
     }
   }
 
-  (*tbl_index)++;
-  (*start) = 0;
+  pthread_exit(NULL);
+  return NULL;
+}
+
+void sweep_segment(int index)
+{
+  char* scan_start = heaps[index];
+  char* scan_end   = scan_start + SEGMENT_SIZE;
+  char* scan       = scan_start;
+
+  size_t chunk_size      = 0;
+  Free_Chunk* chunk_top  = NULL;
+  freelists[index] = NULL;
+
+  while(scan < scan_end){
+    Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
+    if(is_marked_seg(index, obj)){
+      if( chunk_size > 0){
+	//reclaim.
+#if !defined( _CUT )
+	put_chunk_to_freelist( &freelists[index], chunk_top, chunk_size);
+#else
+	if( !freelists[index] ){
+	  freelists[index] = chunk_top;
+	  freelists[index]->next = NULL;
+	  freelists[index]->chunk_size = chunk_size;
+	  chunk_last = freelists[index];
+	}else{
+	  if( (char*)chunk_last + chunk_last->chunk_size == (char*)chunk_top ){
+	    //coalesce.
+	    chunk_last->chunk_size += chunk_size;
+	    chunk_last->next = NULL;
+	  }else{
+	    chunk_top->chunk_size = chunk_size;
+	    chunk_top->next = NULL;
+	    chunk_last->next = chunk_top;
+	    chunk_last = chunk_top;
+	  }
+	}
+#endif
+      }
+      size_t obj_size = GET_OBJECT_SIZE(obj);
+      scan += obj_size;
+      chunk_size = 0;
+      chunk_top = NULL;
+    }else{
+      //skip chunk.
+      if(!chunk_top){
+	chunk_top = (Free_Chunk*)scan;
+      }
+      Free_Chunk* tmp = (Free_Chunk*)scan;
+      scan += tmp->chunk_size;
+      chunk_size += tmp->chunk_size;
+    }    
+  }
 }
 
 void sweep()
 {
-  char* scan = heap;
-  size_t chunk_size = 0;
-  Free_Chunk* chunk_top = NULL;
-  Free_Chunk* chunk_last = NULL;
-  freelist = NULL;
-  int tbl_index = 0;
-  int tbl_offset = 0;
+  int i;
+  for(i=0; i<THREAD_NUM; i++){
+    is_sweep_end[i] = FALSE;
+  }
 
-  int mark_tbl_count = mark_tbl_size/sizeof(int);
-  while(tbl_index < mark_tbl_count){
-    if( tbl_offset == 0 && mark_tbl[tbl_index] == 0){
-      scan = heap + tbl_index * BIT_WIDTH;
-      if(!chunk_top){
-	chunk_top = (Free_Chunk*)scan;
+  sweep_segment(THREAD_NUM);
+  Boolean loop = TRUE;
+  while(loop){
+    loop = FALSE;
+    for(i=0; i<THREAD_NUM; i++){
+      if(!is_sweep_end[i]){
+	loop = TRUE;
+	break;
       }
-      chunk_size += BIT_WIDTH;
-      scan += BIT_WIDTH;
-      tbl_index++;
-    }else{
-      sweep_bitwise(&tbl_index, &tbl_offset, &chunk_size, &chunk_top, &chunk_last);
     }
   }
 }
-
 //Start Garbage Collection.
 void gc_start_marksweep()
 {
@@ -217,4 +248,18 @@ void gc_start_marksweep()
 }
 
 //term.
-void gc_term_marksweep() {}
+void gc_term_marksweep()
+{
+  int i;
+  for(i=0; i<THREAD_NUM; i++){
+    AQ_FREE( heaps[i] );
+    thread_end[i] = TRUE;
+  }
+
+  AQ_FREE( heaps[THREAD_NUM] );
+
+  int j=0;
+  for(j=0; j<THREAD_NUM; ++j){
+    pthread_join(tHandles[j], NULL);
+  }
+}
