@@ -162,6 +162,7 @@ void* sweep_thread(void* pArg)
       sweep_segment(index);
       is_sweep_end[index] = TRUE;
     }
+    __sync_synchronize();
   }
 
   pthread_exit(NULL);
@@ -183,27 +184,7 @@ void sweep_segment(int index)
     if(is_marked_seg(index, obj)){
       if( chunk_size > 0){
 	//reclaim.
-#if !defined( _CUT )
 	put_chunk_to_freelist( &freelists[index], chunk_top, chunk_size);
-#else
-	if( !freelists[index] ){
-	  freelists[index] = chunk_top;
-	  freelists[index]->next = NULL;
-	  freelists[index]->chunk_size = chunk_size;
-	  chunk_last = freelists[index];
-	}else{
-	  if( (char*)chunk_last + chunk_last->chunk_size == (char*)chunk_top ){
-	    //coalesce.
-	    chunk_last->chunk_size += chunk_size;
-	    chunk_last->next = NULL;
-	  }else{
-	    chunk_top->chunk_size = chunk_size;
-	    chunk_top->next = NULL;
-	    chunk_last->next = chunk_top;
-	    chunk_last = chunk_top;
-	  }
-	}
-#endif
       }
       size_t obj_size = GET_OBJECT_SIZE(obj);
       scan += obj_size;
@@ -227,7 +208,6 @@ void sweep()
   for(i=0; i<THREAD_NUM; i++){
     is_sweep_end[i] = FALSE;
   }
-
   sweep_segment(THREAD_NUM);
   Boolean loop = TRUE;
   while(loop){
@@ -240,6 +220,7 @@ void sweep()
     }
   }
 }
+
 //Start Garbage Collection.
 void gc_start_marksweep()
 {
