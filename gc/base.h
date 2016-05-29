@@ -1,7 +1,7 @@
 #include "../types.h"
 #include <stdlib.h>
 
-#define HEAP_SIZE (500*1024*1024)
+#define HEAP_SIZE (80*1024*1024)
 #define AQ_MALLOC  malloc
 #define AQ_FREE    free
 
