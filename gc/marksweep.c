@@ -31,8 +31,6 @@ static void           sweep_segment(int index);
 #define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
 Free_Chunk* get_free_chunk(int* index, size_t size);
 
-static Boolean   is_sweep_end[THREAD_NUM];
-static Boolean   thread_end[THREAD_NUM];
 static pthread_t tHandles[THREAD_NUM];
 static int       tNum[THREAD_NUM];
 
@@ -76,19 +74,16 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
     freelists[i]->next       = NULL;
   }
 
-  for(i=0; i<THREAD_NUM; i++){
-    is_sweep_end[i]          = TRUE;
-    thread_end[i]            = FALSE;
-    tNum[i]                  = i;
-    pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
-  }
-
   gc_info->gc_malloc        = gc_malloc_marksweep;
   gc_info->gc_start         = gc_start_marksweep;
   gc_info->gc_write_barrier = NULL;
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
+
+  for(i=0; i<THREAD_NUM; i++){
+    tNum[i]                  = i;
+  }
 }
 
 //Allocation.
@@ -157,14 +152,7 @@ int get_obj_size( size_t size ){
 void* sweep_thread(void* pArg)
 {
   int index = *(int*)pArg;
-  while(!thread_end[index]){
-    if(!is_sweep_end[index]){
-      sweep_segment(index);
-      is_sweep_end[index] = TRUE;
-    }
-    __sync_synchronize();
-  }
-
+  sweep_segment(index);
   pthread_exit(NULL);
   return NULL;
 }
@@ -177,22 +165,39 @@ void sweep_segment(int index)
 
   size_t chunk_size      = 0;
   Free_Chunk* chunk_top  = NULL;
-  freelists[index] = NULL;
-
+  freelists[index]       = NULL;
+  Free_Chunk* last_chunk = NULL;
+  
   while(scan < scan_end){
     Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
     if(is_marked_seg(index, obj)){
       if( chunk_size > 0){
 	//reclaim.
-	put_chunk_to_freelist( &freelists[index], chunk_top, chunk_size);
+	if( freelists[index] == NULL ){
+	  freelists[index]      = chunk_top;
+	  chunk_top->next       = NULL;
+	  chunk_top->chunk_size = chunk_size;
+	  last_chunk            = chunk_top;
+	}
+	else if( (char*)last_chunk + last_chunk->chunk_size == (char*)chunk_top ){
+	  //Coalesce with previous Free_Chunk.
+	  last_chunk->chunk_size += chunk_size;
+	}else{
+	  //Just put obj into last of freelist.
+	  chunk_top->next        = NULL;
+	  chunk_top->chunk_size  = chunk_size;
+	  last_chunk->next       = chunk_top;
+	  last_chunk             = chunk_top;
+	}
       }
+
       size_t obj_size = GET_OBJECT_SIZE(obj);
       scan += obj_size;
       chunk_size = 0;
       chunk_top = NULL;
     }else{
       //skip chunk.
-      if(!chunk_top){
+      if(chunk_top == NULL){
 	chunk_top = (Free_Chunk*)scan;
       }
       Free_Chunk* tmp = (Free_Chunk*)scan;
@@ -206,18 +211,12 @@ void sweep()
 {
   int i;
   for(i=0; i<THREAD_NUM; i++){
-    is_sweep_end[i] = FALSE;
+    pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
   }
   sweep_segment(THREAD_NUM);
-  Boolean loop = TRUE;
-  while(loop){
-    loop = FALSE;
-    for(i=0; i<THREAD_NUM; i++){
-      if(!is_sweep_end[i]){
-	loop = TRUE;
-	break;
-      }
-    }
+  int j=0;
+  for(j=0; j<THREAD_NUM; ++j){
+    pthread_join(tHandles[j], NULL);
   }
 }
 
@@ -234,13 +233,6 @@ void gc_term_marksweep()
   int i;
   for(i=0; i<THREAD_NUM; i++){
     AQ_FREE( heaps[i] );
-    thread_end[i] = TRUE;
   }
-
   AQ_FREE( heaps[THREAD_NUM] );
-
-  int j=0;
-  for(j=0; j<THREAD_NUM; ++j){
-    pthread_join(tHandles[j], NULL);
-  }
 }
