@@ -11,6 +11,7 @@ typedef struct generational_gc_header{
 }Generational_GC_Header;
 
 #define TENURING_THRESHOLD  (15)
+#define NERSARY_SIZE_RATIO  (5)
 
 #define MASK_OBJ_AGE        (0x000000FF)
 #define MASK_REMEMBERED_BIT (1<<8)
@@ -67,7 +68,6 @@ static char* tenured_top     = NULL;
 
 //remembered set.
 #define REMEMBERED_SET_SIZE 100
-//static Cell remembered_set[ REMEMBERED_SET_SIZE ];
 static Cell* remembered_set = NULL;
 static int remembered_set_top = 0;
 static void add_remembered_set(Cell obj);
@@ -116,8 +116,8 @@ void gc_init_generational(GC_Init_Info* gc_info)
   rest_size -= remembered_set_size;
 
   //nersary space.
-  nersary_size      = rest_size/5;
-  nersary_tbl_size  = (nersary_size * 2)/(byte_count + 2);
+  nersary_size      = rest_size/NERSARY_SIZE_RATIO;
+  nersary_tbl_size  = (nersary_size / 2)/byte_count;
   nersary_tbl_size  = (((nersary_tbl_size + size_int - 1) / size_int) * size_int);
   nersary_heap_size = (nersary_size - nersary_tbl_size)/2;
   from_space        = aq_heap + remembered_set_size;
