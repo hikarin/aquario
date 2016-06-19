@@ -82,7 +82,7 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_term          = gc_term_marksweep;
 
   for(i=0; i<THREAD_NUM; i++){
-    tNum[i]                  = i;
+    tNum[i]                 = i;
   }
 }
 
@@ -159,15 +159,14 @@ void* sweep_thread(void* pArg)
 
 void sweep_segment(int index)
 {
-  char* scan_start = heaps[index];
-  char* scan_end   = scan_start + SEGMENT_SIZE;
-  char* scan       = scan_start;
+  char* scan       = heaps[index];
+  char* scan_end   = heaps[index] + SEGMENT_SIZE;
 
   size_t chunk_size      = 0;
   Free_Chunk* chunk_top  = NULL;
   freelists[index]       = NULL;
   Free_Chunk* last_chunk = NULL;
-  
+
   while(scan < scan_end){
     Cell obj = (Cell)((MarkSweep_GC_Header*)scan+1);
     if(is_marked_seg(index, obj)){
