@@ -90,6 +90,7 @@ verify "(cons 1 ; 2)
 verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
 verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4))" 4
 verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15)" 987
+verify "(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2)" "1(1 . 2)"
 verify "(define list (lambda (x . y) (cons x y))) (list 1 2 3)" "(1 2 3)"
 verify "(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst)" "(1 2 (3 4 5))"
 verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) . 1)"
