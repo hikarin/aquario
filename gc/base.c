@@ -159,8 +159,12 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
     case T_SYMBOL:
       break;
     case T_LAMBDA:
-      trace(&(lambdaparam(cell)));
-      trace(&(lambdaexp(cell)));
+      if( CELL_P(lambdaparam(cell)) ){
+	trace(&(lambdaparam(cell)));
+      }
+      if( CELL_P(lambdaexp(cell)) ){
+	trace(&(lambdaexp(cell)));
+      }
       break;
     default:
       printf("trace_object: Object Corrupted(%p).\n", cell);
@@ -194,10 +198,10 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
     case T_SYMBOL:
       break;
     case T_LAMBDA:
-      if(trace(&(lambdaparam(cell)))){
+      if( CELL_P(lambdaparam(cell)) && trace(&(lambdaparam(cell))) ){
 	return TRUE;
       }
-      if(trace(&(lambdaexp(cell)))){
+      if( CELL_P(lambdaexp(cell)) && trace(&(lambdaexp(cell))) ){
 	return TRUE;
       }
       break;
