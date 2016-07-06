@@ -80,13 +80,6 @@ Cell stringCell(char* str)
   return c;
 }
 
-Cell intCell(int val)
-{
-  Cell c = newCell(T_INTEGER, sizeof(struct cell));
-  ivalue(c) = val;
-  return c;
-}
-
 Cell pairCell(Cell a, Cell d)
 {
   PUSH_ARGS2(&a, &d);
@@ -129,6 +122,12 @@ Cell lambdaCell(Cell param, Cell exp)
   gc_init_ptr( &lambdaparam(c), param );
   POP_ARGS2();
   return c;
+}
+
+Cell makeInteger(int val)
+{
+  long lval = val;
+  return (Cell)((lval << 1) | AQ_INTEGER_MASK);
 }
 
 void clone(Cell src)
@@ -536,7 +535,10 @@ void printCell(Cell c)
     }
     else if(FALSE_P(c)){
       AQ_PRINTF("#f");
-    }  
+    }
+    else if(INTEGER_P(c)){
+      AQ_PRINTF("%d", ivalue(c));
+    }
   }else{
     switch(type(c)){
     case T_CHAR:
@@ -544,9 +546,6 @@ void printCell(Cell c)
       break;
     case T_STRING:
       AQ_PRINTF("\"%s\"", strvalue(c));
-      break;
-    case T_INTEGER:
-      AQ_PRINTF("%d", ivalue(c));
       break;
     case T_PROC:
       AQ_PRINTF("#proc");
@@ -713,7 +712,7 @@ Cell tokenToCell(char* token)
 {
   if(isdigitstr(token)){
     int digit = atoi(token);
-    return intCell(digit);
+    return makeInteger(digit);
   }
   else if(token[0] == '"'){
     return stringCell(token+1);
@@ -1064,7 +1063,7 @@ void op_add()
     ans += ivalue(car(*args));
     args = &cdr(*args);
   }
-  setReturn(intCell(ans));
+  setReturn(makeInteger(ans));
 }
 
 void op_sub()
@@ -1099,7 +1098,7 @@ void op_sub()
       args = &cdr(*args);
     }
   }
-  setReturn(intCell(ans));
+  setReturn(makeInteger(ans));
 }
 
 void op_mul()
@@ -1120,7 +1119,7 @@ void op_mul()
     ans *= ivalue(car(*args));
     args = &cdr(*args);
   }
-  setReturn(intCell(ans));
+  setReturn(makeInteger(ans));
 }
 
 void op_div()
@@ -1139,7 +1138,7 @@ void op_div()
       return;
     }
     int ans = 1 / ivalue(car(*args));
-    setReturn(intCell(ans));
+    setReturn(makeInteger(ans));
   }else{
     int ans = ivalue(car(*args));
     args = &cdr(*args);
@@ -1155,7 +1154,7 @@ void op_div()
       ans /= ivalue(car(*args));
       args = &cdr(*args);
     }
-    setReturn(intCell(ans));
+    setReturn(makeInteger(ans));
   }
 }
 

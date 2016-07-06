@@ -142,8 +142,6 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
       break;
     case T_STRING:
       break;
-    case T_INTEGER:
-      break;
     case T_PAIR:
       if( CELL_P(car(cell)) ){
 	trace(&(car(cell)));
@@ -180,8 +178,6 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
     case T_CHAR:
       break;
     case T_STRING:
-      break;
-    case T_INTEGER:
       break;
     case T_PAIR:
       if( CELL_P(car(cell)) && trace(&(car(cell))) ){
