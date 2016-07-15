@@ -41,7 +41,6 @@ typedef union cellUnion
 {
   char   _char;
   char   _string[1];
-  int     _integer;
   struct{
     Cell  _car;
     Cell  _cdr;
