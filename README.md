@@ -38,3 +38,8 @@ Aquario is a GC-oriented Lisp interpreter.
 * More Garbage Collectors such as Yuasa's Snapshot collector
 * Visualization
 * Profiler
+
+## License
+
+  - NYSL
+    http://www.kmonos.net/nysl/index.en.html
