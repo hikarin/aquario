@@ -263,10 +263,11 @@ void sweep()
     sweep_segment(THREAD_NUM);
     
     Boolean bWaiting = TRUE;
+    int i;
     while ( bWaiting ) {
 	bWaiting = FALSE;
 	pthread_mutex_lock( &g_mutex );
-	for ( int i=0; i<THREAD_NUM; i++ ) {
+	for ( i=0; i<THREAD_NUM; i++ ) {
 	    if ( g_state[i] != SWEEP_DONE ) {
 		bWaiting = TRUE;
 		break;
@@ -277,7 +278,7 @@ void sweep()
     
     pthread_mutex_lock( &g_mutex );
     pthread_cond_init( &g_cond, NULL );    
-    for ( int i=0; i<THREAD_NUM; i++ ) {
+    for ( i=0; i<THREAD_NUM; i++ ) {
 	g_state[i] = SWEEP_WAIT;
     }
     pthread_mutex_unlock( &g_mutex );
@@ -296,17 +297,18 @@ void gc_start_marksweep()
 void gc_term_marksweep()
 {
   pthread_mutex_lock( &g_mutex );
-  for (int i=0; i<THREAD_NUM; i++) {
+  int i;
+  for ( i=0; i<THREAD_NUM; i++) {
       g_state[i] = SWEEP_FINISHED;
   }
   pthread_cond_broadcast( &g_cond );
   pthread_mutex_unlock( &g_mutex );
   
-  for (int i=0; i<THREAD_NUM; i++ ) {
+  for (i=0; i<THREAD_NUM; i++ ) {
       pthread_join(tHandles[i], NULL);
   }
 
-  for(int i=0; i<THREAD_NUM; i++){
+  for( i=0; i<THREAD_NUM; i++){
     AQ_FREE( heaps[i] );
   }  
 }
