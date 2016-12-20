@@ -8,7 +8,7 @@
 #include "markcompact.h"
 #include "reference_count.h"
 #include "generational.h"
-#include "marksweep.h"
+//#include "marksweep.h"
 
 static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //write barrier;
 static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
@@ -52,10 +52,11 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, GC_STR_REFERENCE_COUNT ) == 0 ){
     gc_init_reference_count(gc_init);
   }else if( strcmp( gc_char, GC_STR_MARK_SWEEP ) == 0 ){
-    gc_init_marksweep(gc_init);
+    //gc_init_marksweep(gc_init);
   }else{
     //default.
-    gc_init_marksweep(gc_init);
+    //gc_init_marksweep(gc_init);
+	gc_init_reference_count(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.

@@ -76,7 +76,8 @@ Cell stringCell(char* str)
 {
   int obj_size = sizeof(struct cell) + sizeof(char)*strlen(str) - sizeof(CellUnion)+1;
   Cell c = newCell(T_STRING, obj_size);
-  strcpy(strvalue(c), str);
+  //STRCPY(strvalue(c), str);
+  strcpy_s(strvalue(c), strlen(str), str);
   return c;
 }
 
@@ -117,7 +118,7 @@ Cell symbolCell(char* symbol)
 {
   int obj_size = sizeof(struct cell) + sizeof(char)*strlen(symbol)-sizeof(CellUnion)+1;
   Cell c = newCell(T_SYMBOL, obj_size);
-  strcpy(symbolname(c), symbol);
+  STRCPY(symbolname(c), symbol);
   return c;
 }
 
@@ -1193,7 +1194,12 @@ void op_print()
 
 void load_file( const char* filename )
 {
-  FILE* fp = fopen(filename, "r");
+	FILE* fp = NULL;
+#if defined( _WIN32 ) || defined( _WIN64 )
+	fopen_s( &fp, filename, "r");
+#else
+	fp = fopen(filename, "r");
+#endif
   if( fp ){
     Cell cell = NULL;
     while( !EOF_P(cell = readElem(fp)) ){
@@ -1202,7 +1208,8 @@ void load_file( const char* filename )
       }
       evalExp(cell);
     }
-    fclose(fp);
+	fclose(fp);
+
     setReturn((Cell)AQ_TRUE);
   }else{
     printError("load failed: %s\n", filename);

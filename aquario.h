@@ -169,4 +169,9 @@ int repl();
 
 int getCellSize(Cell cell);
 
+#if defined( _WIN32 ) || defined( _WIN64 )
+#define STRCPY(mem, str)	strcpy_s(mem, strlen(str), str)
+#else
+#define STRCPY(mem, str)	strcpy(mem, str)
+#endif
 #endif	//!defined( __ISTSP_H__ )
