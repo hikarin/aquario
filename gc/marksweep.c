@@ -36,7 +36,7 @@ static void*			sweep_thread(void* pArg);
 static Free_Chunk*		freelists[SEGMENT_NUM];
 static char*			heaps[SEGMENT_NUM];
 static int				mark_tbl[SEGMENT_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
-static void				sweep_segment(int index)
+static void				sweep_segment(int index);
 
 #define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
 #define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
