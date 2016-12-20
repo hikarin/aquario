@@ -170,7 +170,7 @@ int repl();
 int getCellSize(Cell cell);
 
 #if defined( _WIN32 ) || defined( _WIN64 )
-#define STRCPY(mem, str)	strcpy_s(mem, strlen(str), str)
+#define STRCPY(mem, str)	strcpy_s(mem, sizeof(char) * (strlen(str)+1), str)
 #else
 #define STRCPY(mem, str)	strcpy(mem, str)
 #endif

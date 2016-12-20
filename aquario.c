@@ -76,8 +76,7 @@ Cell stringCell(char* str)
 {
   int obj_size = sizeof(struct cell) + sizeof(char)*strlen(str) - sizeof(CellUnion)+1;
   Cell c = newCell(T_STRING, obj_size);
-  //STRCPY(strvalue(c), str);
-  strcpy_s(strvalue(c), strlen(str), str);
+  STRCPY(strvalue(c), str);
   return c;
 }
 
