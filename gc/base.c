@@ -231,29 +231,31 @@ void gc_memcpy_default(char* dst, char* src, size_t size)
   memcpy( dst, src, size );
 }
 
-Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
+inline Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
 {
   //returns a chunk which size is larger than required size.
   Free_Chunk** chunk = freelistp;
   Free_Chunk* ret = NULL;
   while(*chunk){
-    if((*chunk)->chunk_size >= size){
+    Free_Chunk* tmp = *chunk;
+    if(tmp->chunk_size >= size){
       //a chunk found.
-      ret = *chunk;
-      if((*chunk)->chunk_size >= size + sizeof(Free_Chunk)){
-	int chunk_size = (*chunk)->chunk_size - size;
-	Free_Chunk* next = (*chunk)->next;
-	(*chunk)->chunk_size = size;
-
-	*chunk = (Free_Chunk*)((char*)(*chunk)+size);
-	(*chunk)->chunk_size = chunk_size;
-	(*chunk)->next = next;
+      ret = tmp;
+      if(tmp->chunk_size >= size + sizeof(Free_Chunk)){
+	int chunk_size = tmp->chunk_size - size;
+	Free_Chunk* next = tmp->next;
+	tmp->chunk_size = size;
+	
+	tmp = (Free_Chunk*)((char*)tmp+size);
+	tmp->chunk_size = chunk_size;
+	tmp->next = next;
+	*chunk = tmp;
       }else{
-	*chunk = (*chunk)->next;
+	*chunk = tmp->next;
       }
       break;
     }
-    chunk = &((*chunk)->next);
+    chunk = &(tmp->next);
   }
 
   return ret;
