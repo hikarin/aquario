@@ -164,6 +164,8 @@ void syntax_quote();
 void syntax_set();
 void syntax_begin();
 
+Cell last(Cell cell);
+
 int repl();
 
 int getCellSize(Cell cell);
