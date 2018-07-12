@@ -281,19 +281,21 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	      return is_loop;
 	    }
 	  }
-	  else if( isSymbol(last(cdr(*pParams)))) {
-	    // (lambda (a . b) (cons b a)) => cdr(*pParams): b
+	  else {
 	    int paramNum = 1;
 	    Cell tmpParams = cdr(*pParams);
 	    while(isPair(tmpParams)) {
 	      paramNum++;
 	      tmpParams = cdr(tmpParams);
 	    }
-	    if(length(args)-1 >= paramNum) {
+	    if(isSymbol(tmpParams)) {
+	      // (lambda (a . b) (cons b a)) => cdr(*pParams): b
+	      if(length(args)-1 >= paramNum) {
+		return ApplyParams(args, stack_top, pExps, pParams, is_loop);
+	      }
+	    } else if( length(args) == paramNum ) {
 	      return ApplyParams(args, stack_top, pExps, pParams, is_loop);
 	    }
-	  } else if( length(args) == length(*pParams) ) {
-	    return ApplyParams(args, stack_top, pExps, pParams, is_loop);
 	  }
 	  AQ_PRINTF("wrong number arguments\n");
 	  setReturn((Cell)AQ_UNDEF);
