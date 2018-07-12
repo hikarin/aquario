@@ -76,7 +76,14 @@ Cell stringCell(char* str)
 {
   int obj_size = sizeof(struct cell) + sizeof(char)*strlen(str) - sizeof(CellUnion)+1;
   Cell c = newCell(T_STRING, obj_size);
-  strcpy(strvalue(c), str);
+  STRCPY(strvalue(c), str);
+  return c;
+}
+
+Cell intCell(int val)
+{
+  Cell c = newCell(T_INTEGER, sizeof(struct cell));
+  ivalue(c) = val;
   return c;
 }
 
@@ -110,7 +117,7 @@ Cell symbolCell(char* symbol)
 {
   int obj_size = sizeof(struct cell) + sizeof(char)*strlen(symbol)-sizeof(CellUnion)+1;
   Cell c = newCell(T_SYMBOL, obj_size);
-  strcpy(symbolname(c), symbol);
+  STRCPY(symbolname(c), symbol);
   return c;
 }
 
@@ -122,12 +129,6 @@ Cell lambdaCell(Cell param, Cell exp)
   gc_init_ptr( &lambdaparam(c), param );
   POP_ARGS2();
   return c;
-}
-
-Cell makeInteger(int val)
-{
-  long lval = val;
-  return (Cell)((lval << 1) | AQ_INTEGER_MASK);
 }
 
 void clone(Cell src)
@@ -544,10 +545,7 @@ void printCell(Cell c)
     }
     else if(FALSE_P(c)){
       AQ_PRINTF("#f");
-    }
-    else if(INTEGER_P(c)){
-      AQ_PRINTF("%d", ivalue(c));
-    }
+    }  
   }else{
     switch(type(c)){
     case T_CHAR:
@@ -555,6 +553,9 @@ void printCell(Cell c)
       break;
     case T_STRING:
       AQ_PRINTF("\"%s\"", strvalue(c));
+      break;
+    case T_INTEGER:
+      AQ_PRINTF("%d", ivalue(c));
       break;
     case T_PROC:
       AQ_PRINTF("#proc");
@@ -721,7 +722,7 @@ Cell tokenToCell(char* token)
 {
   if(isdigitstr(token)){
     int digit = atoi(token);
-    return makeInteger(digit);
+    return intCell(digit);
   }
   else if(token[0] == '"'){
     return stringCell(token+1);
@@ -1072,7 +1073,7 @@ void op_add()
     ans += ivalue(car(*args));
     args = &cdr(*args);
   }
-  setReturn(makeInteger(ans));
+  setReturn(intCell(ans));
 }
 
 void op_sub()
@@ -1107,7 +1108,7 @@ void op_sub()
       args = &cdr(*args);
     }
   }
-  setReturn(makeInteger(ans));
+  setReturn(intCell(ans));
 }
 
 void op_mul()
@@ -1128,7 +1129,7 @@ void op_mul()
     ans *= ivalue(car(*args));
     args = &cdr(*args);
   }
-  setReturn(makeInteger(ans));
+  setReturn(intCell(ans));
 }
 
 void op_div()
@@ -1147,7 +1148,7 @@ void op_div()
       return;
     }
     int ans = 1 / ivalue(car(*args));
-    setReturn(makeInteger(ans));
+    setReturn(intCell(ans));
   }else{
     int ans = ivalue(car(*args));
     args = &cdr(*args);
@@ -1163,7 +1164,7 @@ void op_div()
       ans /= ivalue(car(*args));
       args = &cdr(*args);
     }
-    setReturn(makeInteger(ans));
+    setReturn(intCell(ans));
   }
 }
 
@@ -1201,7 +1202,12 @@ void op_print()
 
 void load_file( const char* filename )
 {
-  FILE* fp = fopen(filename, "r");
+	FILE* fp = NULL;
+#if defined( _WIN32 ) || defined( _WIN64 )
+	fopen_s( &fp, filename, "r");
+#else
+	fp = fopen(filename, "r");
+#endif
   if( fp ){
     Cell cell = NULL;
     while( !EOF_P(cell = readElem(fp)) ){
@@ -1210,7 +1216,8 @@ void load_file( const char* filename )
       }
       evalExp(cell);
     }
-    fclose(fp);
+	fclose(fp);
+
     setReturn((Cell)AQ_TRUE);
   }else{
     printError("load failed: %s\n", filename);

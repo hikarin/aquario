@@ -52,10 +52,11 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, GC_STR_REFERENCE_COUNT ) == 0 ){
     gc_init_reference_count(gc_init);
   }else if( strcmp( gc_char, GC_STR_MARK_SWEEP ) == 0 ){
-    gc_init_marksweep(gc_init);
+    //gc_init_marksweep(gc_init);
   }else{
     //default.
-    gc_init_marksweep(gc_init);
+    //gc_init_marksweep(gc_init);
+	  gc_init_generational(gc_init);
   }
   if(!gc_init->gc_write_barrier){
     //option.
