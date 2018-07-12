@@ -272,70 +272,38 @@ Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_
 	if( !is_loop ){
 	  is_loop = TRUE;
 	  gc_write_barrier_root(pExps, lambdaexp(*pProc));
-
-	  if( NIL_P(*pParams) )
-	      {
-		  if( length(args) == 0 )
-		      {
-			  gc_write_barrier_root(pExps, pairCell((Cell)AQ_NIL, *pExps));
-			  popArg();
-			  // => [... exp proc params exps]
-			  return is_loop;
-		      }
-	      }
-	  else if( isSymbol(last(cdr(*pParams))))
-	      {
-		  int paramNum = 1;
-		  Cell tmpParams = cdr(*pParams);
-		  while(isPair(tmpParams)) {
-		      paramNum++;
-		      tmpParams = cdr(tmpParams);
-		  }
-		  if(length(args)-1 >= paramNum)
-		      {
-			  cloneTree(args);
-			  gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-			  cloneSymbolTree(*pExps);
-			  gc_write_barrier_root(pExps, getReturn());
-			  letParam(*pExps, *pParams, args);
-			  if( UNDEF_P(args) ){
-			      setReturn((Cell)AQ_UNDEF);
-			      return FALSE;
-			  }
-			  gc_write_barrier_root(pExps, pairCell((Cell)AQ_NIL, *pExps));
-			  popArg();
-			  // => [... exp proc params exps]
-			  return is_loop;
-		      }
-	      }
-	  else if( length(args) == length(*pParams) )
-	      // (lambda (a . b) (cons b a)) => cdr(*pParams): b
-	      {
-		  cloneTree(args);
-		  gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
-		  cloneSymbolTree(*pExps);
-		  gc_write_barrier_root(pExps, getReturn());
-		  letParam(*pExps, *pParams, args);
-		  if( UNDEF_P(args) ){
-		      setReturn((Cell)AQ_UNDEF);
-		      return FALSE;
-		  }
-		  gc_write_barrier_root(pExps, pairCell((Cell)AQ_NIL, *pExps));
-		  popArg();
-		  // => [... exp proc params exps]
-		  return is_loop;
-	      }
-	  {
-	      AQ_PRINTF("wrong number arguments\n");
-	      setReturn((Cell)AQ_UNDEF);
-	      is_loop = FALSE;
+	  
+	  if( NIL_P(*pParams) ) {
+	    if( length(args) == 0 ) {
+	      gc_write_barrier_root(pExps, pairCell((Cell)AQ_NIL, *pExps));
+	      popArg();
+	      // => [... exp proc params exps]
+	      return is_loop;
+	    }
 	  }
-	}else{
-	  if(length(args) != length(*pParams)){
+	  else if( isSymbol(last(cdr(*pParams)))) {
+	    // (lambda (a . b) (cons b a)) => cdr(*pParams): b
+	    int paramNum = 1;
+	    Cell tmpParams = cdr(*pParams);
+	    while(isPair(tmpParams)) {
+	      paramNum++;
+	      tmpParams = cdr(tmpParams);
+	    }
+	    if(length(args)-1 >= paramNum) {
+	      return ApplyParams(args, stack_top, pExps, pParams, is_loop);
+	    }
+	  } else if( length(args) == length(*pParams) ) {
+	    return ApplyParams(args, stack_top, pExps, pParams, is_loop);
+	  }
+	  AQ_PRINTF("wrong number arguments\n");
+	  setReturn((Cell)AQ_UNDEF);
+	  is_loop = FALSE;
+	} else {
+	  if(length(args) != length(*pParams)) {
 	    AQ_PRINTF("wrong number arguments\n");
 	    setReturn((Cell)AQ_UNDEF);
 	    is_loop = FALSE;
-	  }else{
+	  } else {
 	    cloneTree(args);
 	    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
 	    applyList(args);
@@ -1426,6 +1394,23 @@ Cell last(Cell cell)
 	    cell = cdr(cell);
 	}
 	return cell;
+}
+
+Boolean ApplyParams(Cell args, int stack_top, Cell* pExps, Cell* pParams, Boolean is_loop)
+{
+    cloneTree(args);
+    gc_write_barrier_root(stack[stack_top-1]/*args*/, getReturn());
+    cloneSymbolTree(*pExps);
+    gc_write_barrier_root(pExps, getReturn());
+    letParam(*pExps, *pParams, args);
+    if( UNDEF_P(args) ){
+	setReturn((Cell)AQ_UNDEF);
+	return FALSE;
+    }
+    gc_write_barrier_root(pExps, pairCell((Cell)AQ_NIL, *pExps));
+    popArg();
+    // => [... exp proc params exps]
+    return is_loop;
 }
 
 int main(int argc, char *argv[])

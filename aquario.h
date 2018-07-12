@@ -165,6 +165,7 @@ void syntax_set();
 void syntax_begin();
 
 Cell last(Cell cell);
+Boolean ApplyParams(Cell args, int stack_top, Cell* pExps, Cell* pParams, Boolean is_loop);
 
 int repl();
 
