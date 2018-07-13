@@ -27,7 +27,7 @@
 
 #define chvalue(p)      ((p)->_object._char)
 #define strvalue(p)     ((p)->_object._string)
-#define ivalue(p)       ((p)->_object._integer)
+#define ivalue(p)       (((int)(p))>>1)
 #define procvalue(p)    ((p)->_object._proc)
 #define syntaxvalue(p)  ((p)->_object._proc)
 #define symbolname(p)   strvalue(p)
@@ -38,7 +38,7 @@ Cell newCell(Type t, size_t size);
 
 #define isChar(p)       (CELL_P(p) && (p)->_type==T_CHAR)
 #define isString(p)     (CELL_P(p) && (p)->_type==T_STRING)
-#define isInteger(p)    (CELL_P(p) && (p)->_type==T_INTEGER)
+#define isInteger(p)    (INTEGER_P(p))
 #define isPair(p)       (CELL_P(p) && (p)->_type==T_PAIR)
 #define isSymbol(p)     (CELL_P(p) && (p)->_type==T_SYMBOL)
 #define isProc(p)       (CELL_P(p) && (p)->_type==T_PROC)
@@ -82,7 +82,6 @@ Cell newCell(Type t, size_t size);
 void clone(Cell c);
 Cell charCell(char ch);
 Cell stringCell(char* str);
-Cell intCell(int val);
 Cell pairCell(Cell a, Cell d);
 Cell procCell(opType proc);
 Cell syntaxCell(opType syn);
