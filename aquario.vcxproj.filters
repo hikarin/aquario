@@ -42,6 +42,9 @@
     <ClInclude Include="types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="gc\marksweep.h">
+      <Filter>Header Files\gc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gc\base.c">
@@ -61,6 +64,9 @@
     </ClCompile>
     <ClCompile Include="aquario.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gc\marksweep.c">
+      <Filter>Source Files\gc</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
