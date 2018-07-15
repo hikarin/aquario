@@ -18,6 +18,13 @@ typedef struct marksweep_gc_header{
 #define MEMORY_ALIGNMENT   (4)
 
 #if defined( MULTI_THREADING )
+#include <pthread.h>
+
+static pthread_mutex_t  g_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t   g_cond;
+
+#define THREAD_NUM			(3)
+#define SEGMENT_NUM			(4)
 typedef enum {
     SWEEP_WAIT = 0,
     SWEEP_DOING,
@@ -25,6 +32,8 @@ typedef enum {
     SWEEP_FINISHED,
 }SWEEP_STATE;
 static SWEEP_STATE g_state[THREAD_NUM];
+
+Free_Chunk* get_free_chunk(int* index, size_t size);
 
 #define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
 #define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
@@ -34,7 +43,6 @@ static SWEEP_STATE g_state[THREAD_NUM];
 static pthread_t tHandles[THREAD_NUM];
 static int       tNum[THREAD_NUM];
 #else
-Free_Chunk* get_free_chunk(int* index, size_t size);
 #define THREAD_NUM			(0)
 #define SEGMENT_NUM			(1)
 #endif
@@ -44,6 +52,7 @@ Free_Chunk* get_free_chunk(int* index, size_t size);
 static Free_Chunk*		freelists[SEGMENT_NUM];
 static char*			heaps[SEGMENT_NUM];
 static int				mark_tbl[SEGMENT_NUM][SEGMENT_SIZE / BIT_WIDTH + 1];
+static void*          sweep_thread(void* pArg);
 static void				sweep_segment(int index);
 
 #define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
