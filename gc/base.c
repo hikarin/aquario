@@ -272,7 +272,7 @@ void gc_memcpy_default(char* dst, char* src, size_t size)
   memcpy( dst, src, size );
 }
 
-inline Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
+Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
 {
   //returns a chunk which size is larger than required size.
   Free_Chunk** chunk = freelistp;

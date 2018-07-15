@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#if defined( _WIN32 ) || defined( _WIN64 )
+#else
+#define MULTI_THREADING
+#endif
+
 typedef struct marksweep_gc_header{
   int obj_size;
   int seg_index;
@@ -12,22 +17,7 @@ typedef struct marksweep_gc_header{
 #define BIT_WIDTH          (32)
 #define MEMORY_ALIGNMENT   (4)
 
-//for multi-threading.
-#include <pthread.h>
-#define THREAD_NUM        (3)
-#define SEGMENT_NUM       (THREAD_NUM+1)
-#define SEGMENT_SIZE      ((HEAP_SIZE/SEGMENT_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
-
-static Free_Chunk*    freelists[SEGMENT_NUM];
-static char*          heaps[SEGMENT_NUM];
-static int            mark_tbl[SEGMENT_NUM][SEGMENT_SIZE/BIT_WIDTH+1];
-
-static void*          sweep_thread(void* pArg);
-static void           sweep_segment(int index);
-
-static pthread_mutex_t  g_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t   g_cond;
-
+#if defined( MULTI_THREADING )
 typedef enum {
     SWEEP_WAIT = 0,
     SWEEP_DOING,
@@ -40,10 +30,26 @@ static SWEEP_STATE g_state[THREAD_NUM];
 #define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
 #define set_mark(obj)            (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] |= (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
 #define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
-Free_Chunk* get_free_chunk(int* index, size_t size);
 
 static pthread_t tHandles[THREAD_NUM];
 static int       tNum[THREAD_NUM];
+#else
+Free_Chunk* get_free_chunk(int* index, size_t size);
+#define THREAD_NUM			(0)
+#define SEGMENT_NUM			(1)
+#endif
+
+#define SEGMENT_SIZE      ((HEAP_SIZE/SEGMENT_NUM+(MEMORY_ALIGNMENT-1)) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT)
+
+static Free_Chunk*		freelists[SEGMENT_NUM];
+static char*			heaps[SEGMENT_NUM];
+static int				mark_tbl[SEGMENT_NUM][SEGMENT_SIZE / BIT_WIDTH + 1];
+static void				sweep_segment(int index);
+
+#define seg_index(obj)           (((MarkSweep_GC_Header*)(obj)-1)->seg_index)
+#define is_marked(obj)           (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
+#define set_mark(obj)            (mark_tbl[seg_index(obj)][(((char*)(obj)-heaps[seg_index(obj)])/BIT_WIDTH )] |= (1 << (((char*)(obj)-heaps[seg_index(obj)])%BIT_WIDTH)))
+#define is_marked_seg(seg, obj)  (mark_tbl[seg][(((char*)(obj)-heaps[seg])/BIT_WIDTH )] & (1 << (((char*)(obj)-heaps[seg])%BIT_WIDTH)))
 
 static void gc_start_marksweep();
 static inline void* gc_malloc_marksweep(size_t size);
@@ -91,17 +97,17 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
-
+#if defined( MULTI_THREADING )
   for(i=0; i<THREAD_NUM; i++){
     tNum[i]                 = i;
     g_state[i]              = SWEEP_WAIT;
   }
-
   pthread_cond_init( &g_cond, NULL );
 
   for(i=0; i<THREAD_NUM; i++){
       pthread_create(&tHandles[i], NULL, sweep_thread, (void*)&tNum[i]);
   }
+#endif
 }
 
 //Allocation.
@@ -225,6 +231,7 @@ void sweep_segment(int index)
 
 void* sweep_thread(void* pArg)
 {
+#if defined( MULTI_THREADING )
   int index = *(int*)pArg;
   while ( TRUE ) {
       pthread_mutex_lock(&g_mutex);
@@ -252,10 +259,14 @@ void* sweep_thread(void* pArg)
 	  return NULL;
       }
   }
+#else
+	return NULL;
+#endif
 }
 
 void sweep()
 {
+#if defined( MULTI_THREADING )
     pthread_mutex_lock( &g_mutex );
     pthread_cond_broadcast( &g_cond );
     pthread_mutex_unlock( &g_mutex );
@@ -284,6 +295,9 @@ void sweep()
     pthread_mutex_unlock( &g_mutex );
     
     memset(mark_tbl, 0, sizeof(mark_tbl));
+#else
+	sweep_segment(THREAD_NUM);
+#endif
 }
 
 //Start Garbage Collection.
@@ -296,6 +310,7 @@ void gc_start_marksweep()
 //term.
 void gc_term_marksweep()
 {
+#if defined( MULTI_THREADING )
   pthread_mutex_lock( &g_mutex );
   int i;
   for ( i=0; i<THREAD_NUM; i++) {
@@ -310,5 +325,12 @@ void gc_term_marksweep()
 
   for( i=0; i<THREAD_NUM; i++){
     AQ_FREE( heaps[i] );
-  }  
+  }
+#else
+	int i;
+	for (i = 0; i<THREAD_NUM; i++) {
+		AQ_FREE(heaps[i]);
+	}
+	AQ_FREE(heaps[THREAD_NUM]);
+#endif
 }
