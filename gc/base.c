@@ -22,6 +22,10 @@ void pushArg_default(Cell* cellp);
 static int total_malloc_size;
 #endif
 
+#if defined( _MEASURE )
+static void printMeasureInfo();
+#endif
+
 //definitions of Garbage Collectors' name.
 #define GC_STR_COPYING         "copy"
 #define GC_STR_MARKCOMPACT     "mc"
@@ -30,6 +34,18 @@ static int total_malloc_size;
 #define GC_STR_MARK_SWEEP      "ms"
 
 static int heap_size = 0;
+static GC_Measure_Info measure_info;
+
+// variable
+static void* (*_gc_malloc) (size_t size);
+static void (*_gc_start) ();
+static void (*_gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
+static void (*_gc_init_ptr) (Cell* cellp, Cell newcell);
+static void (*_gc_memcpy) (char* dst, char* src, size_t size);
+static void (*_gc_term) ();
+static void (*_pushArg) (Cell* cellp);
+static Cell* (*_popArg) ();
+static void (*_gc_write_barrier_root) (Cell* srcp, Cell dst);
 
 int get_heap_size()
 {
@@ -83,11 +99,36 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
     //option.
     gc_init->gc_popArg = popArg_default;
   }
+
+  _gc_malloc        = gc_init->gc_malloc;
+  _gc_start         = gc_init->gc_start;
+  _gc_write_barrier = gc_init->gc_write_barrier;
+  _gc_write_barrier_root = gc_init->gc_write_barrier_root;
+  _gc_init_ptr      = gc_init->gc_init_ptr;
+  _gc_memcpy        = gc_init->gc_memcpy;
+  _gc_term          = gc_init->gc_term;
+  _pushArg          = gc_init->gc_pushArg;
+  _popArg           = gc_init->gc_popArg;
+  
+  measure_info.gc_count = 0;
+  measure_info.gc_elapsed_time = 0.0f;
+  measure_info.total_elapsed_time = 0.0f;
 }
 
 void gc_term_base()
 {
   AQ_FREE(aq_heap);
+#if defined( _MEASURE )
+  //printMeasureInfo();
+#endif
+}
+
+void printMeasureInfo()
+{
+  AQ_PRINTF("\n\n");
+  AQ_PRINTF("GC count:           %8d\n", measure_info.gc_count);
+  AQ_PRINTF("GC elapsed time:    %.4f\n", measure_info.gc_elapsed_time);
+  AQ_PRINTF("Total elapsed time: %.4f\n", measure_info.total_elapsed_time);
 }
 
 Cell* popArg_default()
@@ -313,6 +354,52 @@ void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t si
     chunk->next       = NULL;
     chunk->chunk_size = size;
   }
+}
+
+void* gc_malloc(size_t size)
+{
+  return _gc_malloc(size);
+}
+
+void gc_start ()
+{
+  _gc_start();
+  measure_info.gc_count++;
+}
+
+void gc_write_barrier (Cell cell, Cell* cellp, Cell newcell)
+{
+  _gc_write_barrier(cell, cellp, newcell);
+}
+
+void gc_write_barrier_root (Cell* srcp, Cell dst)
+{
+  _gc_write_barrier_root(srcp, dst);
+}
+
+void gc_init_ptr (Cell* cellp, Cell newcell)
+{
+  _gc_init_ptr(cellp, newcell);
+}
+
+void gc_memcpy (char* dst, char* src, size_t size)
+{
+  _gc_memcpy(dst, src, size);
+}
+
+void gc_term ()
+{
+  _gc_term();
+}
+
+void pushArg (Cell* cellp)
+{
+  _pushArg(cellp);
+}
+
+Cell* popArg ()
+{
+  return _popArg();
 }
 
 void heap_exhausted_error()

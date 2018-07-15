@@ -109,14 +109,14 @@ void* gc_malloc_marksweep( size_t size )
 {
   int allocate_size = (get_obj_size(size) + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
   if( g_GC_stress ){
-    gc_start_marksweep();
+    gc_start();
   }
   Free_Chunk* chunk = NULL;
   int index = 0;
 
   chunk = get_free_chunk(&index, allocate_size);
   if( !chunk ){
-    gc_start_marksweep();
+    gc_start();
     chunk = get_free_chunk(&index, allocate_size);
     if( !chunk ){
       printf("Heap Exhausted.\n");

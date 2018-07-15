@@ -77,7 +77,7 @@ void gc_init_copy(GC_Init_Info* gc_info)
 void* gc_malloc_copy( size_t size )
 {
   if( g_GC_stress || !IS_ALLOCATABLE(size) ){
-    gc_start_copy();
+    gc_start();
     if( !IS_ALLOCATABLE( size ) ){
       printf("Heap Exhausted.\n ");
       exit(-1);

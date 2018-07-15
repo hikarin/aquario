@@ -1,6 +1,6 @@
 #  Makefile for System-V flavoured UNIX
 #
-CFLAGS = -Wall
+CFLAGS = -Wall -D_MEASURE
 CC = gcc
 CSOURCES = aquario.c gc/base.c gc/copy.c gc/markcompact.c gc/reference_count.c gc/generational.c gc/marksweep.c
 LIBS = -lpthread

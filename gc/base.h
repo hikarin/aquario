@@ -1,7 +1,7 @@
 #include "../types.h"
 #include <stdlib.h>
 
-#define HEAP_SIZE (500*1024*1024)
+#define HEAP_SIZE (250*1024*1024)
 #define AQ_MALLOC  malloc
 #define AQ_FREE    free
 
@@ -34,3 +34,13 @@ char* aq_heap;
 
 extern Boolean g_GC_stress;
 extern void gc_init(char* gc_char, int heap_size, GC_Init_Info* gc_init);
+
+extern void* gc_malloc(size_t size);
+extern void gc_start ();
+extern void gc_write_barrier (Cell cell, Cell* cellp, Cell newcell);
+extern void gc_write_barrier_root (Cell* srcp, Cell dst);
+extern void gc_init_ptr (Cell* cellp, Cell newcell);
+extern void gc_memcpy (char* dst, char* src, size_t size);
+extern void gc_term ();
+extern void pushArg (Cell* cellp);
+extern Cell* popArg ();

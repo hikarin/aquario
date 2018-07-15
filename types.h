@@ -71,4 +71,14 @@ typedef struct gc_init_info{
   Cell* (*gc_popArg) ();
 }GC_Init_Info;
 
+#if defined( _MEASURE )
+typedef struct gc_measure_info{
+  int gc_count;
+  float gc_elapsed_time;
+  float total_elapsed_time;
+  int write_barrier_count;
+  float write_barrier_elapsed_time;
+}GC_Measure_Info;
+#endif
+
 #endif	//!defined( __TYPES_H__ )

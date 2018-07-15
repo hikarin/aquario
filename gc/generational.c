@@ -151,7 +151,7 @@ void gc_init_generational(GC_Init_Info* gc_info)
 void* gc_malloc_generational( size_t size )
 {
   if( g_GC_stress || !IS_ALLOCATABLE_NERSARY(size) ){
-    gc_start_generational();
+    gc_start();
     if( !IS_ALLOCATABLE_NERSARY( size ) ){
       heap_exhausted_error();
     }

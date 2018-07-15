@@ -12,6 +12,7 @@ static void set_gc(char*);
 
 Boolean g_GC_stress;
 
+#if false
 static void* (*gc_malloc) (size_t size);
 static void (*gc_start) ();
 static void (*gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
@@ -20,8 +21,8 @@ static void (*gc_memcpy) (char* dst, char* src, size_t size);
 static void (*gc_term) ();
 static void (*pushArg) (Cell* cellp);
 static Cell* (*popArg) ();
-
 static void (*gc_write_barrier_root) (Cell* srcp, Cell dst);
+#endif
 
 static Cell getChain(char* name, int* key);
 static void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env);
@@ -937,7 +938,7 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  
+#if false
   gc_malloc        = gc_info.gc_malloc;
   gc_start         = gc_info.gc_start;
   gc_write_barrier = gc_info.gc_write_barrier;
@@ -947,7 +948,7 @@ void set_gc(char* gc_char)
   gc_term          = gc_info.gc_term;
   pushArg          = gc_info.gc_pushArg;
   popArg           = gc_info.gc_popArg;
-  
+#endif
   g_GC_stress      = FALSE;
 }
 

@@ -88,7 +88,7 @@ void gc_init_markcompact(GC_Init_Info* gc_info)
 void* gc_malloc_markcompact( size_t size )
 {
   if( g_GC_stress || !IS_ALLOCATABLE( size ) ){
-    gc_start_markcompact();
+    gc_start();
     if( !IS_ALLOCATABLE( size ) ){
       heap_exhausted_error();
     }
