@@ -1,5 +1,6 @@
 #include "base.h"
 #include "marksweep.h"
+#include "../aquario.h"
 #include <stdio.h>
 #include <stdint.h>
 
@@ -76,6 +77,15 @@ static void mark_object(Cell* objp);
 static void mark();
 static void sweep();
 
+typedef struct ms_measure
+{
+  double mark_elapsed_time;
+  double sweep_elapsed_time;
+}MS_Measure;
+
+static MS_Measure measure;
+static void printMeasureMS();
+
 void mark_object(Cell* objp)
 {
   Cell obj = *objp;
@@ -86,6 +96,8 @@ void mark_object(Cell* objp)
       exit(-1);
     }
     mark_stack[mark_stack_top++] = obj;
+
+    increase_live_object(GET_OBJECT_SIZE(obj), 1);
   }
 }
 
@@ -106,6 +118,11 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
+
+  gc_info->printMeasure     = printMeasureMS;
+  measure.mark_elapsed_time  = 0.0;
+  measure.sweep_elapsed_time = 0.0;
+  
 #if defined( MULTI_THREADING )
   for(i=0; i<THREAD_NUM; i++){
     tNum[i]                 = i;
@@ -305,15 +322,41 @@ void sweep()
     
     memset(mark_tbl, 0, sizeof(mark_tbl));
 #else
-	sweep_segment(THREAD_NUM);
+    sweep_segment(THREAD_NUM);
 #endif
+}
+
+void printMeasureMS()
+{
+  AQ_PRINTF("------------------------------\n");
+  AQ_PRINTF("mark elapsed time:  %.8f\n", measure.mark_elapsed_time);
+  AQ_PRINTF("sweep elapsed time: %.8f\n", measure.sweep_elapsed_time);
 }
 
 //Start Garbage Collection.
 void gc_start_marksweep()
 {
+  struct rusage usage;
+  struct timeval ut1;
+  struct timeval ut2;
+  
+  getrusage(RUSAGE_SELF, &usage );
+  ut1 = usage.ru_utime;
+  
   mark();
+  
+  getrusage(RUSAGE_SELF, &usage );
+  ut2 = usage.ru_utime;
+  measure.mark_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
+
+  getrusage(RUSAGE_SELF, &usage );
+  ut1 = usage.ru_utime;
+  
   sweep();
+  
+  getrusage(RUSAGE_SELF, &usage );
+  ut2 = usage.ru_utime;
+  measure.sweep_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
 }
 
 //term.
@@ -336,10 +379,10 @@ void gc_term_marksweep()
     AQ_FREE( heaps[i] );
   }
 #else
-	int i;
-	for (i = 0; i<THREAD_NUM; i++) {
-		AQ_FREE(heaps[i]);
-	}
-	AQ_FREE(heaps[THREAD_NUM]);
+  int i;
+  for (i = 0; i<THREAD_NUM; i++) {
+    AQ_FREE(heaps[i]);
+  }
+  AQ_FREE(heaps[THREAD_NUM]);
 #endif
 }

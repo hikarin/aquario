@@ -69,15 +69,18 @@ typedef struct gc_init_info{
   void  (*gc_term) ();                       //terminate;
   void  (*gc_pushArg) (Cell* cellp);
   Cell* (*gc_popArg) ();
+  void  (*printMeasure) ();
 }GC_Init_Info;
 
 #if defined( _MEASURE )
 typedef struct gc_measure_info{
   int gc_count;
-  float gc_elapsed_time;
-  float total_elapsed_time;
+  double gc_elapsed_time;
+  double total_elapsed_time;
   int write_barrier_count;
-  float write_barrier_elapsed_time;
+  double write_barrier_elapsed_time;
+  int live_object_count;
+  int live_object_size;
 }GC_Measure_Info;
 #endif
 

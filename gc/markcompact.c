@@ -50,6 +50,8 @@ void mark_object(Cell* objp)
       exit(-1);
     }
     mark_stack[mark_stack_top++] = obj;
+
+    increase_live_object(GET_OBJECT_SIZE(obj), 1);
   }
 }
 

@@ -44,3 +44,6 @@ extern void gc_memcpy (char* dst, char* src, size_t size);
 extern void gc_term ();
 extern void pushArg (Cell* cellp);
 extern Cell* popArg ();
+
+extern GC_Measure_Info* get_measure_info();
+extern void increase_live_object(int size_delta, int count_delta);

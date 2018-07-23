@@ -48,6 +48,8 @@ void* copy_object(Cell obj)
   new_cell = (Cell)(((Copy_GC_Header*)new_header)+1);
   FORWARDING(obj) = new_cell;
   FORWARDING(new_cell) = new_cell;
+
+  increase_live_object(size, 1);
   return new_cell;
 }
 
