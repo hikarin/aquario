@@ -1,6 +1,6 @@
 #  Makefile for System-V flavoured UNIX
 #
-CFLAGS = -Wall -D_MEASURE
+CFLAGS = -Wall
 CC = gcc
 CSOURCES = aquario.c gc/base.c gc/copy.c gc/markcompact.c gc/reference_count.c gc/generational.c gc/marksweep.c
 LIBS = -lpthread
@@ -25,11 +25,11 @@ tests: $(CSOURCES)
 	@test/test.sh gen
 
 debug: $(CSOURCES)
-	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -g $(LIBS)
+	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -D_MEASURE -g $(LIBS)
 
 opt: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -O2 $(LIBS)
 
 prof: $(CSOURCES)
-	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -pg $(LIBS)
+	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_MEASURE -pg $(LIBS)
 

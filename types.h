@@ -72,7 +72,6 @@ typedef struct gc_init_info{
   void  (*printMeasure) ();
 }GC_Init_Info;
 
-#if defined( _MEASURE )
 typedef struct gc_measure_info{
   int gc_count;
   double gc_elapsed_time;
@@ -82,6 +81,5 @@ typedef struct gc_measure_info{
   int live_object_count;
   int live_object_size;
 }GC_Measure_Info;
-#endif
 
 #endif	//!defined( __TYPES_H__ )

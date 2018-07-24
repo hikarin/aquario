@@ -81,8 +81,7 @@ void* gc_malloc_copy( size_t size )
   if( g_GC_stress || !IS_ALLOCATABLE(size) ){
     gc_start();
     if( !IS_ALLOCATABLE( size ) ){
-      printf("Heap Exhausted.\n ");
-      exit(-1);
+      heap_exhausted_error();
     }
   }
   Copy_GC_Header* new_header = (Copy_GC_Header*)top;

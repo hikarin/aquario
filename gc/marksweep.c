@@ -151,8 +151,7 @@ void* gc_malloc_marksweep( size_t size )
     gc_start();
     chunk = get_free_chunk(&index, allocate_size);
     if( !chunk ){
-      printf("Heap Exhausted.\n");
-      exit(-1);
+      heap_exhausted_error();
     }
   }
   if(chunk->chunk_size > allocate_size){
