@@ -1,5 +1,6 @@
 #include "base.h"
 #include "markcompact.h"
+#include "../aquario.h"
 #include <stdio.h>
 #include <stdint.h>
 
@@ -39,6 +40,15 @@ static void update_pointer();
 static void slide();
 static void mark();
 static void compact();
+
+typedef struct mc_measure
+{
+  double mark_elapsed_time;
+  double compaction_elapsed_time;
+}MC_Measure;
+
+static MC_Measure measure;
+static void printMeasureMC();
 
 void mark_object(Cell* objp)
 {
@@ -84,6 +94,10 @@ void gc_init_markcompact(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_markcompact;
+  
+  gc_info->printMeasure     = printMeasureMC;
+  measure.mark_elapsed_time  = 0.0;
+  measure.compaction_elapsed_time = 0.0;
 }
 
 //Allocation.
@@ -183,16 +197,41 @@ void compact()
   slide();
 }
 
+void printMeasureMC()
+{
+  AQ_PRINTF("------------------------------\n");
+  AQ_PRINTF("mark elapsed time:  %.8f\n", measure.mark_elapsed_time);
+  AQ_PRINTF("compation elapsed time: %.8f\n", measure.compaction_elapsed_time);
+}
+
 void gc_start_markcompact()
 {
   //initialization.
   mark_stack_top = 0;
 
+  struct rusage usage;
+  struct timeval ut1;
+  struct timeval ut2;
+  
+  getrusage(RUSAGE_SELF, &usage );
+  ut1 = usage.ru_utime;
+  
   //mark phase.
   mark();
 
+  getrusage(RUSAGE_SELF, &usage );
+  ut2 = usage.ru_utime;
+  measure.mark_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
+
+  getrusage(RUSAGE_SELF, &usage );
+  ut1 = usage.ru_utime;
+
   //compaction phase.
   compact();
+
+  getrusage(RUSAGE_SELF, &usage );
+  ut2 = usage.ru_utime;
+  measure.compaction_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
 }
 
 //term.
