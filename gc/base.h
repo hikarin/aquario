@@ -1,7 +1,7 @@
 #include "../types.h"
 #include <stdlib.h>
 
-#define HEAP_SIZE (250*1024*1024)
+#define HEAP_SIZE (800*1024*1024)
 #define AQ_MALLOC  malloc
 #define AQ_FREE    free
 
@@ -27,6 +27,21 @@ void heap_exhausted_error();
 #if defined( _DEBUG )
 size_t get_total_malloc_size();
 #endif //defined( _DEBUG )
+
+#define MEASURE_START()               \
+  {                                   \
+    struct rusage usage;              \
+    struct timeval ut1;               \
+    struct timeval ut2;               \
+                                      \
+    getrusage(RUSAGE_SELF, &usage );  \
+    ut1 = usage.ru_utime;
+
+#define MEASURE_END(lval)             \
+    getrusage(RUSAGE_SELF, &usage );  \
+    ut2 = usage.ru_utime;             \
+    lval += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6; \
+  }
 
 int get_heap_size();
 

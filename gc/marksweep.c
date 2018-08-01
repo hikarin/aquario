@@ -181,28 +181,14 @@ void printMeasureMS()
 //Start Garbage Collection.
 void gc_start_marksweep()
 {
-  struct rusage usage;
-  struct timeval ut1;
-  struct timeval ut2;
-  
-  getrusage(RUSAGE_SELF, &usage );
-  ut1 = usage.ru_utime;
 
-  get_measure_info()->live_object_count = 0;
+  MEASURE_START();
   mark();
-  
-  getrusage(RUSAGE_SELF, &usage );
-  ut2 = usage.ru_utime;
-  measure.mark_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
+  MEASURE_END(measure.mark_elapsed_time);
 
-  getrusage(RUSAGE_SELF, &usage );
-  ut1 = usage.ru_utime;
-  
+  MEASURE_START();
   sweep();
-  
-  getrusage(RUSAGE_SELF, &usage );
-  ut2 = usage.ru_utime;
-  measure.sweep_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;  
+  MEASURE_END(measure.mark_elapsed_time);
 }
 
 //term.
