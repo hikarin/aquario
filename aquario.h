@@ -117,11 +117,11 @@ Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 void printError(char *fmt, ...);
 void setParseError(char* str);
 
-#define ENVSIZE 3000
+#define ENVSIZE (3000)
 Cell env[ENVSIZE];
-#define LINESIZE 1024
+#define LINESIZE (1024)
 
-#define STACKSIZE 1024
+#define STACKSIZE (1024)
 Cell* stack[ STACKSIZE ];
 int stack_top;
 
