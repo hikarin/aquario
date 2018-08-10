@@ -116,6 +116,9 @@ Cell lambdaCell(Cell param, Cell exp)
 Cell makeInteger(int val)
 {
   long lval = val;
+  Cell* cellp = (Cell*)((lval << 1) | AQ_INTEGER_MASK);
+  pushArg(cellp);
+  AQ_PRINTF("mkInt: %ld -> %d\n", lval, (int)cellp);
   return (Cell)((lval << 1) | AQ_INTEGER_MASK);
 }
 
@@ -189,6 +192,7 @@ void cloneSymbolTree(Cell src)
 
 Cell evalExp(Cell exp)
 {
+#if false
   pushArg(&exp);
   Cell exps = pairCell( exp, (Cell)AQ_NIL);
   Cell params = (Cell)AQ_NIL;
@@ -222,7 +226,7 @@ Cell evalExp(Cell exp)
     }
   }
   POP_ARGS4();
-
+#endif
   return getReturn();
 }
 
@@ -456,6 +460,7 @@ Cell setAppendList(Cell ls, Cell append)
 
 void applyList(Cell ls)
 {
+#if false
   if(nullp(ls) || UNDEF_P(ls)){
     setReturn(ls);
     return;
@@ -489,6 +494,7 @@ void applyList(Cell ls)
 
   setReturn(top);
   POP_ARGS3();
+#endif
 }
 
 void printCons(Cell c)
@@ -932,20 +938,6 @@ void set_gc(char* gc_char)
 //equal.
 void op_eqdigitp()
 {
-  Cell* args = getStackTop();
-  UNDEF_RETURN(*args);
-  WRONG_NUMBER_ARGUMENTS_ERROR(2, *args, "=");
-
-  int i1 = ivalue(evalExp(car(*args)));
-  int i2 = ivalue(evalExp(cadr(*args)));
-  if(i1==i2){
-    setReturn((Cell)AQ_TRUE);
-  }
-  else{
-    setReturn((Cell)AQ_FALSE);
-  }
-
-  popArg();
 }
 
 //less than.
@@ -1034,23 +1026,6 @@ void op_cons()
 
 void op_add()
 {
-  Cell* args = popArg();
-  UNDEF_RETURN(*args);
-
-  int ans = 0;
-  while( !nullp(*args) ){
-    if( UNDEF_P( car( *args ) ) ){
-      setReturn((Cell)AQ_UNDEF);
-      return;
-    }else if( !isInteger(car(*args)) ){
-      setParseError("not a number given\n");
-      setReturn((Cell)AQ_UNDEF);
-      return;
-    }
-    ans += ivalue(car(*args));
-    args = &cdr(*args);
-  }
-  setReturn(makeInteger(ans));
 }
 
 void op_sub()
@@ -1159,41 +1134,244 @@ void op_eval()
 
 void op_print()
 {
-  Cell args = *popArg();
-  while( !nullp(args) ){
-    Cell c = car(args);
-    if(isString(c)){
-      AQ_FPRINTF(stdout, "%s", strvalue(c));
-    }
-    else{
-      printCell(c);
-    }
-    if( CELL_P(args) ){
-      args = cdr(args);
-    }else{
-      break;
-    }
-  }
-  setReturn((Cell)AQ_UNDEF);
+  int ret = ivalue(getReturn());
+  AQ_PRINTF("%x\n", ret);
 }
 
 void load_file( const char* filename )
 {
-	FILE* fp = NULL;
+  FILE* fp = NULL;
 #if defined( _WIN32 ) || defined( _WIN64 )
-	fopen_s( &fp, filename, "r");
+  fopen_s( &fp, filename, "rb");
 #else
-	fp = fopen(filename, "r");
+  fp = fopen(filename, "rb");
 #endif
   if( fp ){
-    Cell cell = NULL;
-    while( !EOF_P(cell = readElem(fp)) ){
-      if(UNDEF_P(cell)){
+
+    unsigned char buf[1000];
+    size_t size = fread(buf, sizeof(unsigned char), 1000, fp);
+    int pc = 0;
+    while(pc < size) {
+      unsigned char op = buf[pc];
+      switch(op) {
+      case ADD:
+	{
+	  Cell* val1 = popArg();
+	  Cell* val2 = popArg();
+	  long result = ivalue(val2) + ivalue(val1);
+	  Cell* cellp = (Cell*)((result << 1) | AQ_INTEGER_MASK);
+	  pushArg(cellp);
+	  pc++;
+	}
+	break;
+      case SUB:
+	{
+	  Cell* val1 = popArg();
+	  Cell* val2 = popArg();
+	  long result = ivalue(val2) - ivalue(val1);
+	  Cell* cellp = (Cell*)((result << 1) | AQ_INTEGER_MASK);
+	  pushArg(cellp);
+	  pc++;
+	}
+	break;
+      case MUL:
+	{
+	  Cell* val1 = popArg();
+	  Cell* val2 = popArg();
+	  long result = ivalue(val2) * ivalue(val1);
+	  Cell* cellp = (Cell*)((result << 1) | AQ_INTEGER_MASK);
+	  pushArg(cellp);
+	  pc++;
+	}
+	break;
+      case DIV:
+	{
+	  Cell* val1 = popArg();
+	  Cell* val2 = popArg();
+	  long result = ivalue(val2) / ivalue(val1);
+	  Cell* cellp = (Cell*)((result << 1) | AQ_INTEGER_MASK);
+	  pushArg(cellp);
+	  pc++;
+	}
+	break;
+      case PRINT:
+	{
+	  Cell* val =
+	    popArg();
+	  printCell((Cell)val);
+	  AQ_PRINTF("\n");
+	  pc++;
+	}
+	break;
+      case PUSH:
+	{
+	  unsigned char val = buf[++pc];
+	  Cell* cellp = (Cell*)(((long)val << 1) | AQ_INTEGER_MASK);
+	  pushArg(cellp);
+	  pc++;
+	}
+	break;
+      case POP:
+	{
+	  AQ_PRINTF("[POP]\n");
+	}
+	break;
+      case EQ:
+	{
+	  Cell* val2 = popArg();
+	  Cell* val1 = popArg();
+	  Cell* result = (val1==val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
+	  pushArg(result);
+	  pc++;
+	}
+	break;
+      case LT:
+	{
+	  Cell* val2 = popArg();
+	  Cell* val1 = popArg();
+	  Cell* result = (val1<val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
+	  pushArg(result);
+	  pc++;
+	}
+	break;
+      case LTE:
+	{
+	  Cell* val2 = popArg();
+	  Cell* val1 = popArg();
+	  Cell* result = (val1<=val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
+	  pushArg(result);
+	  pc++;
+	}
+	break;
+      case GT:
+	{
+	  Cell* val2 = popArg();
+	  Cell* val1 = popArg();
+	  int i1 = ivalue(val1);
+	  int i2 = ivalue(val2);
+	  Cell* result = (i1>i2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
+	  pushArg(result);
+	  pc++;
+	}
+	break;
+      case GTE:
+	{
+	  Cell* val2 = popArg();
+	  Cell* val1 = popArg();
+	  Cell* result = (val1>=val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
+	  pushArg(result);
+	  pc++;
+	}
+	break;
+      case JEQ:
+      case JEQB:
+	{
+	  Cell val = (Cell)popArg();
+	  int offset = buf[++pc];
+	  if(op == JEQB) offset = -offset;
+	  if(truep(val)){
+	    pc = offset;
+	  } else {
+	    pc++;
+	  }
+	}
+	break;
+      case JNEQ:
+      case JNEQB:
+	{
+	  Cell val = (Cell)popArg();
+	  int offset = buf[++pc];
+	  if(op == JNEQB) offset = -offset;
+	  if(!truep(val)){
+	    pc = offset;
+	  } else {
+	    pc++;
+	  }
+	}
+	break;
+      case JMP:
+      case JMPB:
+	{
+	  int dst = buf[++pc];
+	  int offset = buf[++pc];
+	  if(op == JMPB) offset = -offset;
+	  pc = dst;
+	}
+	break;
+      case LOAD:
+	{
+	  int offset = -buf[++pc];
+	  Cell* val = stack[stack_top+offset];
+	  pushArg(val);
+	  pc++;
+	}
+	break;
+      case RET:
+	{
+	  Cell* value = popArg();
+	  Cell* value2 = popArg();
+	  int retAddr = ivalue(value2);
+	  popArg();
+	  pushArg(value);
+	  pc = retAddr;
+	}
+	break;
+      case CONS:
+	{
+	  Cell* carCell = popArg();
+	  Cell* cdrCell = popArg();
+	  Cell cell = pairCell((Cell)carCell, (Cell)cdrCell);
+	  pushArg((Cell*)cell);
+	  pc++;
+	}
+	break;
+      case CAR:
+	{
+	  Cell c = (Cell)popArg();
+	  Cell ca = car(c);
+	  pushArg((Cell*)ca);
+	  pc++;
+	}
+	break;
+      case CDR:
+	{
+	  Cell c = (Cell)popArg();
+	  Cell cd = cdr(c);
+	  pushArg((Cell*)cd);
+	  pc++;
+	}
+	break;
+      case PUSH_NIL:
+	{
+	  pushArg((Cell*)AQ_NIL);
+	  pc++;
+	}
+	break;
+      case PUSH_TRUE:
+	{
+	  pushArg((Cell*)AQ_TRUE);
+	  pc++;
+	}
+	break;
+      case PUSH_FALSE:
+	{
+	  pushArg((Cell*)AQ_FALSE);
+	  pc++;
+	}
+	break;
+      case HALT:
+	{
+	  pc = size;
+	  AQ_PRINTF("[HALT]\n");
+	}
+	break;
+      default:
+	AQ_PRINTF("DEFAULT: %d\n", op);
+	pc = size; //just in case.
 	break;
       }
-      evalExp(cell);
     }
-	fclose(fp);
+    fclose(fp);
 
     setReturn((Cell)AQ_TRUE);
   }else{
@@ -1344,11 +1522,11 @@ void printError(char *fmt, ...) {
 int repl()
 {
   while(1){
-    Cell ret;
+    //Cell ret;
     AQ_PRINTF_GUIDE(">");
-    clearArgs();
+    //clearArgs();
     callProc("read");
-    ret = getReturn();
+    Cell ret = getReturn();
     if(EOF_P(ret)) break;
     if(UNDEF_P(ret)) continue;
     Cell pair = pairCell(ret, (Cell)AQ_NIL);
@@ -1358,6 +1536,11 @@ int repl()
     printLineCell(getReturn());
   }
   return 0;
+}
+
+void compile()
+{
+  
 }
 
 int handle_option(int argc, char *argv[])
