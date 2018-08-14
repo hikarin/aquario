@@ -862,6 +862,18 @@ void compileElem(InstQueue* instQ, FILE* fp)
       inst = createInst(PRINT, (Cell)AQ_NIL);
       instQ->tail->next = inst;
       instQ->tail = inst;
+    } else if(strcmp(func, "cons") == 0) {
+      inst = createInst(CONS, (Cell)AQ_NIL);
+      instQ->tail->next = inst;
+      instQ->tail = inst;
+    } else if(strcmp(func, "car") == 0) {
+      inst = createInst(CAR, (Cell)AQ_NIL);
+      instQ->tail->next = inst;
+      instQ->tail = inst;
+    } else if(strcmp(func, "cdr") == 0) {
+      inst = createInst(CDR, (Cell)AQ_NIL);
+      instQ->tail->next = inst;
+      instQ->tail = inst;
     } else {
       AQ_PRINTF("undefined function: %s\n", func);
     }
@@ -1313,6 +1325,7 @@ void execute(Inst* inst)
     switch(inst->op) {
     case PUSH:
       {
+	//AQ_PRINTF("%d\n", inst->operand);
 	pushArg((Cell*)(inst->operand));
       }
       break;
@@ -1379,6 +1392,28 @@ void execute(Inst* inst)
 	  Cell* cellp = (Cell*)makeInteger(ans);
 	  pushArg(cellp);
 	}
+      }
+      break;
+    case CONS:
+      {
+	Cell* cdrCell = popArg();
+	Cell* carCell = popArg();
+	Cell ret = pairCell((Cell)carCell, (Cell)cdrCell);
+	pushArg((Cell*)ret);
+      }
+      break;
+    case CAR:
+      {
+	Cell c = (Cell)popArg();
+	Cell ca = car(c);
+	pushArg((Cell*)ca);
+      }
+      break;
+    case CDR:
+      {
+	Cell c = (Cell)popArg();
+	Cell cd = cdr(c);
+	pushArg((Cell*)cd);
       }
       break;
     case PRINT:
