@@ -874,6 +874,10 @@ void compileElem(InstQueue* instQ, FILE* fp)
       inst = createInst(CDR, (Cell)AQ_NIL);
       instQ->tail->next = inst;
       instQ->tail = inst;
+    } else if(strcmp(func, "quote") == 0) {
+      instQ->tail->next = createInst(PUSH, makeInteger(num));
+      instQ->tail->next->next = createInst(QUOTE, (Cell)AQ_NIL);
+      instQ->tail = instQ->tail->next->next;
     } else {
       AQ_PRINTF("undefined function: %s\n", func);
     }
@@ -1414,6 +1418,18 @@ void execute(Inst* inst)
 	Cell c = (Cell)popArg();
 	Cell cd = cdr(c);
 	pushArg((Cell*)cd);
+      }
+      break;
+    case QUOTE:
+      {
+	int num = ivalue(popArg());
+	pushArg((Cell*)AQ_NIL);
+	for(int i=0; i<num; i++) {
+	  Cell* cdrCell = popArg();
+	  Cell* carCell = popArg();
+	  Cell ret = pairCell((Cell)carCell, (Cell)cdrCell);
+	  pushArg((Cell*)ret);
+	}
       }
       break;
     case PRINT:

@@ -45,6 +45,7 @@ typedef enum opcode{
   CONS = 42,
   CAR  = 43,
   CDR  = 44,
+  QUOTE = 45,
 
   PUSH_NIL   = 50,
   PUSH_TRUE  = 51,
