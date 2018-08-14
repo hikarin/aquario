@@ -15,6 +15,7 @@ typedef enum type{
 } Type;
 
 typedef enum opcode{
+  NOP   =  0,
   ADD   =  1,
   SUB   =  2,
   MUL   =  3,
@@ -91,6 +92,22 @@ struct cell{
 };
 
 Cell retReg;
+
+typedef struct _inst Inst;
+
+struct _inst
+{
+  OPCODE op;
+  Cell operand;
+  struct _inst* prev;
+  struct _inst* next;
+};
+
+typedef struct _instQueue
+{
+  Inst* head;
+  Inst* tail;
+}InstQueue;
 
 typedef enum boolean{
   FALSE  = 0,

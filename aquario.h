@@ -110,6 +110,17 @@ Cell readQuot();
 Cell tokenToCell();
 Cell readElem();
 
+Inst* createInst(OPCODE op, Cell operand);
+int compileList(InstQueue* instQ, FILE* fp);
+void compileQuot(InstQueue* instQ, FILE* fp);
+void  compileElem(InstQueue* instQ, FILE* fp);
+Inst* tokenToInst(char* token);
+
+void addInstHead(InstQueue* queue, Inst* inst);
+void addInstTail(InstQueue* queue, Inst* inst);
+
+void execute(Inst* inst);
+
 Cell evalExp(Cell exp);
 Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_loop);
 void letParam(Cell exp, Cell dummyParams, Cell realParams);
