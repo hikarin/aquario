@@ -879,6 +879,10 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
       inst = createInst(LT, (Cell)AQ_NIL);
       instQ->tail->next = inst;
       instQ->tail = inst;
+    } else if(strcmp(func, "=") == 0) {
+      inst = createInst(EQ, (Cell)AQ_NIL);
+      instQ->tail->next = inst;
+      instQ->tail = inst;
     } else {
       AQ_PRINTF("undefined function: %s\n", func);
     }
@@ -1349,7 +1353,6 @@ void writeInst(InstQueue* instQ)
   Inst* inst = instQ->head;
   while(inst) {
     buf[size] = (char)(inst->op);
-    AQ_PRINTF("op: %d, %ld\n", inst->op, size);
     switch((char)inst->op) {
     case PUSH:
       {
@@ -1375,10 +1378,10 @@ void writeInst(InstQueue* instQ)
     case GT:
     case LT:
     case HALT:
+    case EQ:
       size += 1;
       break;
 #if false
-    case EQ:
     case LT:
     case LTE:
     case GT:
@@ -1502,6 +1505,14 @@ void execute(Inst* inst)
 	Cell c = (Cell)popArg();
 	Cell cd = cdr(c);
 	pushArg((Cell*)cd);
+      }
+      break;
+    case EQ:
+      {
+	int num2 = ivalue(popArg());
+	int num1 = ivalue(popArg());
+	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
+	pushArg((Cell*)ret);
       }
       break;
     case GT:
