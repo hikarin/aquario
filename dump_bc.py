@@ -14,6 +14,16 @@ while counter < size:
         operand = struct.unpack_from("<l", data, counter)[0]
         print '{0:6d}'.format(operand)
         counter += 8
+    elif op == opcode.JNEQ:
+        print "JNEQ    ",
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand)
+        counter += 8
+    elif op == opcode.JMP:
+        print "JMP     ",
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand)
+        counter += 8
     elif op == opcode.NOP:
         print "NOP"
     elif op == opcode.ADD:

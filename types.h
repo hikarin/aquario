@@ -100,6 +100,8 @@ struct _inst
 {
   OPCODE op;
   Cell operand;
+  int offset;
+  int size;
   struct _inst* prev;
   struct _inst* next;
 };

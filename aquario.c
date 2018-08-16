@@ -664,8 +664,6 @@ int compileList(InstQueue* instQ, FILE* fp)
     case ')':
       return n;
     case '.':
-      //addInstTail(instQ, list);
-      //compileElem(instQ, fp);
       readToken(buf, sizeof(buf), fp);
       if(strcmp(buf, ")")!=0){
 	printError("unknown token '%s' after '.'", buf);
@@ -752,14 +750,16 @@ Cell readQuot(FILE* fp)
   return quot;
 }
 
-Inst* createInst(OPCODE op, Cell operand)
+Inst* createInst(OPCODE op, Cell operand, int size)
 {
   Inst* result = (Inst*)malloc(sizeof(Inst));
   result->op = op;
   result->prev = NULL;
   result->next = NULL;
   result->operand = operand;
-
+  result->size = size;
+  result->offset = 0;
+  
   return result;
 }
 
@@ -767,29 +767,29 @@ Inst* tokenToInst(char* token)
 {
   if(isdigitstr(token)) {
     int digit = atoi(token);
-    Inst* ret = createInst(PUSH, makeInteger(digit));
+    Inst* ret = createInst(PUSH, makeInteger(digit), 9);
     return ret;
   }
   else if(strcmp(token, "nil") == 0) {
-    Inst* ret = createInst(PUSH_NIL, (Cell)AQ_NIL);
+    Inst* ret = createInst(PUSH_NIL, (Cell)AQ_NIL, 9);
     return ret;
   }  
   else if(token[0] == '"'){
-    Inst* ret = createInst(PUSH, stringCell(token+1));
+    Inst* ret = createInst(PUSH, stringCell(token+1), 1);
     return ret;
   }
   else if(token[0] == '#'){
     if(token[1] == '\\' && strlen(token)==3){
-      Inst* ret = createInst(PUSH, charCell(token[2]));
+      Inst* ret = createInst(PUSH, charCell(token[2]), 9);
       return ret;
     }
     else{
-      Inst* ret = createInst(PUSH, symbolCell(token));
+      Inst* ret = createInst(PUSH, symbolCell(token), 9);
       return ret;
     }
   }
   else{
-    Inst* ret = createInst(PUSH, symbolCell(token));
+    Inst* ret = createInst(PUSH, symbolCell(token), 9);
     return ret;
   }
 }
@@ -826,63 +826,52 @@ void addInstHead(InstQueue* queue, Inst* inst)
 
 void addInstTail(InstQueue* queue, Inst* inst)
 {
+  inst->offset = queue->tail->offset + queue->tail->size;
   queue->tail->next = inst;
   inst->prev = queue->tail;
 
   queue->tail = inst;
 }
 
+void addPushTail(InstQueue* instQ, int num) {
+  return addInstTail(instQ, createInst(PUSH, makeInteger(num), 9));
+}
+
+void addOneByteInstTail(InstQueue* instQ, OPCODE op)
+{
+  return addInstTail(instQ, createInst(op, (Cell)AQ_NIL, 1));
+}
+
 void compileProcedure(char* func, int num, InstQueue* instQ)
 {
-    Inst* inst = NULL;
     if(strcmp(func, "+") == 0) {
-      instQ->tail->next = createInst(PUSH, makeInteger(num));
-      instQ->tail->next->next = createInst(ADD, (Cell)AQ_NIL);
-      instQ->tail = instQ->tail->next->next;
+      addPushTail(instQ, num);
+      addOneByteInstTail(instQ, ADD);
     } else if(strcmp(func, "-") == 0) {
-      instQ->tail->next = createInst(PUSH, makeInteger(num));
-      instQ->tail->next->next = createInst(SUB, (Cell)AQ_NIL);
-      instQ->tail = instQ->tail->next->next;
+      addPushTail(instQ, num);
+      addOneByteInstTail(instQ, SUB);
     } else if(strcmp(func, "*") == 0) {
-      instQ->tail->next = createInst(PUSH, makeInteger(num));
-      instQ->tail->next->next = createInst(MUL, (Cell)AQ_NIL);
-      instQ->tail = instQ->tail->next->next;
+      addPushTail(instQ, num);
+      addOneByteInstTail(instQ, MUL);
     } else if(strcmp(func, "/") == 0) {
-      instQ->tail->next = createInst(PUSH, makeInteger(num));
-      instQ->tail->next->next = createInst(DIV, (Cell)AQ_NIL);
-      instQ->tail = instQ->tail->next->next;
+      addPushTail(instQ, num);
+      addOneByteInstTail(instQ, DIV);
     } else if(strcmp(func, "print") == 0) {
-      inst = createInst(PRINT, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, PRINT);
     } else if(strcmp(func, "cons") == 0) {
-      inst = createInst(CONS, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, CONS);
     } else if(strcmp(func, "car") == 0) {
-      inst = createInst(CAR, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, CAR);
     } else if(strcmp(func, "cdr") == 0) {
-      inst = createInst(CDR, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, CDR);
     } else if(strcmp(func, "quote") == 0) {
-      inst = createInst(QUOTE, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, QUOTE);
     } else if(strcmp(func, ">") == 0) {
-      inst = createInst(GT, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, GT);
     } else if(strcmp(func, "<") == 0) {
-      inst = createInst(LT, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, LT);
     } else if(strcmp(func, "=") == 0) {
-      inst = createInst(EQ, (Cell)AQ_NIL);
-      instQ->tail->next = inst;
-      instQ->tail = inst;
+      addOneByteInstTail(instQ, EQ);      
     } else {
       AQ_PRINTF("undefined function: %s\n", func);
     }
@@ -893,14 +882,41 @@ void compileElem(InstQueue* instQ, FILE* fp)
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
   if(token==NULL){
-    Inst* inst = createInst(PUSH, (Cell)AQ_EOF);
+    Inst* inst = createInst(PUSH, (Cell)AQ_EOF, 9);
     addInstTail(instQ, inst);
     return;
   }
   else if(token[0]=='('){
     char* func = readToken(buf, sizeof(buf), fp);
-    int num = compileList(instQ, fp);
-    compileProcedure(func, num, instQ);
+    if(strcmp(func, "if") == 0) {
+      compileElem(instQ, fp);  // predicate
+      
+      Inst* jneqInst = createInst(JNEQ, makeInteger(0), 9);
+      addInstTail(instQ, jneqInst);
+      compileElem(instQ, fp);  // statement (TRUE)
+
+      Inst* jmpInst = createInst(JMP, makeInteger(0), 9);
+      addInstTail(instQ, jmpInst);
+      jneqInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
+	
+      int c = fgetc(fp);
+      ungetc(c, fp);
+      if(c ==')' ){
+	addInstTail(instQ, createInst(PUSH_NIL, makeInteger(0), 1));
+      } else {
+	compileElem(instQ, fp);  // statement (FALSE)
+      }
+      
+      jmpInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
+      
+      token = readToken(buf, sizeof(buf), fp);
+      if(token[0] !=')' ){
+	AQ_PRINTF("too many expressions\n");
+      }
+    } else {
+      int num = compileList(instQ, fp);
+      compileProcedure(func, num, instQ);
+    }
     
     return;
   }
@@ -1337,10 +1353,15 @@ void load_file( const char* filename )
   inst.op = NOP;
   inst.prev = NULL;
   inst.next = NULL;
+  inst.offset = 0;
+  inst.size = 1;
   instQ.head = &inst;
   instQ.tail = &inst;
-  
-  compileElem(&instQ, fp);
+  int c = 0;
+  while((c = fgetc(fp)) != EOF) {
+    ungetc(c, fp);
+    compileElem(&instQ, fp);
+  }
   execute(instQ.head);
   writeInst(&instQ);
 }
@@ -1355,6 +1376,20 @@ void writeInst(InstQueue* instQ)
     buf[size] = (char)(inst->op);
     switch((char)inst->op) {
     case PUSH:
+      {
+	long val = ivalue(inst->operand);
+	memcpy(&buf[++size], &val, sizeof(long));
+	size += sizeof(long);
+      }
+      break;
+    case JNEQ:
+      {
+	long val = ivalue(inst->operand);
+	memcpy(&buf[++size], &val, sizeof(long));
+	size += sizeof(long);
+      }
+      break;
+    case JMP:
       {
 	long val = ivalue(inst->operand);
 	memcpy(&buf[++size], &val, sizeof(long));
@@ -1387,8 +1422,6 @@ void writeInst(InstQueue* instQ)
     case GT:
     case GTE:
     case JEQ:
-    case JNEQ:
-    case JMP:
     case JEQB:
     case JNEQB:
     case JMPB:
@@ -1405,10 +1438,11 @@ void writeInst(InstQueue* instQ)
   fclose(fp);
 }
 
-void execute(Inst* inst)
+void execute(Inst* top)
 {
   Boolean exec = TRUE;
   stack_top = 0;
+  Inst* inst = top;
   while(inst && exec != FALSE) {
     switch(inst->op) {
     case PUSH:
@@ -1416,9 +1450,11 @@ void execute(Inst* inst)
 	//AQ_PRINTF("%d\n", inst->operand);
 	pushArg((Cell*)(inst->operand));
       }
+      inst = inst->next;
       break;
     case PUSH_NIL:
       pushArg((Cell*)AQ_NIL);
+      inst = inst->next;      
       break;
     case ADD:
       {
@@ -1433,6 +1469,7 @@ void execute(Inst* inst)
 	Cell* cellp = (Cell*)makeInteger(ans);
 	pushArg(cellp);
       }
+      inst = inst->next;
       break;
     case SUB:
       {
@@ -1452,6 +1489,7 @@ void execute(Inst* inst)
 	  pushArg(cellp);
 	}
       }
+      inst = inst->next;
       break;
     case MUL:
       {
@@ -1464,6 +1502,7 @@ void execute(Inst* inst)
 	Cell* cellp = (Cell*)makeInteger(ans);
 	pushArg(cellp);
       }
+      inst = inst->next;
       break;
     case DIV:
       {
@@ -1484,6 +1523,7 @@ void execute(Inst* inst)
 	  pushArg(cellp);
 	}
       }
+      inst = inst->next;
       break;
     case CONS:
       {
@@ -1492,6 +1532,7 @@ void execute(Inst* inst)
 	Cell ret = pairCell((Cell)carCell, (Cell)cdrCell);
 	pushArg((Cell*)ret);
       }
+      inst = inst->next;
       break;
     case CAR:
       {
@@ -1499,6 +1540,7 @@ void execute(Inst* inst)
 	Cell ca = car(c);
 	pushArg((Cell*)ca);
       }
+      inst = inst->next;
       break;
     case CDR:
       {
@@ -1506,6 +1548,7 @@ void execute(Inst* inst)
 	Cell cd = cdr(c);
 	pushArg((Cell*)cd);
       }
+      inst = inst->next;
       break;
     case EQ:
       {
@@ -1514,6 +1557,7 @@ void execute(Inst* inst)
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
       }
+      inst = inst->next;
       break;
     case GT:
       {
@@ -1522,6 +1566,7 @@ void execute(Inst* inst)
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
       }
+      inst = inst->next;
       break;
     case LT:
       {
@@ -1530,31 +1575,63 @@ void execute(Inst* inst)
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
       }
+      inst = inst->next;
       break;
     case QUOTE:
       {
 	Cell c = (Cell)popArg();
 	pushArg((Cell*)c);
       }
+      inst = inst->next;
       break;
     case PRINT:
       {
 	Cell* val = popArg();
 	printCell((Cell)val);
+	AQ_PRINTF("\n");
       }
+      inst = inst->next;
       break;
     case HALT:
       exec = FALSE;
       break;
+    case JNEQ:
+      {
+	Cell c = (Cell)popArg();
+	int addr = ivalue(inst->operand);
+	if(!truep(c)) {
+	  while(inst) {
+	    if(inst->offset == addr) {
+	      break;
+	    }
+	    inst = inst->next;
+	  }
+	} else {
+	  inst = inst->next;	  
+	}
+      }
+      break;
+    case JMP:
+      {
+	int addr = ivalue(inst->operand);
+	inst = top;
+	while(inst) {
+	  if(inst->offset == addr) {
+	    break;
+	  }
+	  inst = inst->next;
+	}
+      }
+      break;
     case NOP:
       // do nothing
+      inst = inst->next;
       break;
     default:
       AQ_PRINTF("DEFAULT: %d\n", inst->op);
       exec = FALSE;
       break;
     }
-    inst = inst->next;
   }
 }
 

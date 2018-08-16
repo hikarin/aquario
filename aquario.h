@@ -110,7 +110,7 @@ Cell readQuot();
 Cell tokenToCell();
 Cell readElem();
 
-Inst* createInst(OPCODE op, Cell operand);
+Inst* createInst(OPCODE op, Cell operand, int size);
 int compileList(InstQueue* instQ, FILE* fp);
 void compileQuot(InstQueue* instQ, FILE* fp);
 void  compileElem(InstQueue* instQ, FILE* fp);

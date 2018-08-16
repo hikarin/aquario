@@ -1,4 +1,8 @@
-make opt
-python bc_gen.py
+make
+#python bc_gen.py
+#time ./aquario test.abc
+
+./aquario test.lsp
+echo
 #hexdump -C test.abc
-time ./aquario test.abc
+python dump_bc.py
