@@ -27,12 +27,12 @@ while counter < size:
     elif op == opcode.SET:
         print "SET     ",
         string = struct.unpack_from("s", data, counter)[0]
-        print string, len(string)
+        print '{:>6}'.format(string)
         counter += (len(string)+1)
     elif op == opcode.REF:
         print "REF     ",
         string = struct.unpack_from("s", data, counter)[0]
-        print string, len(string)
+        print '{:>6}'.format(string)
         counter += (len(string)+1)
     elif op == opcode.NOP:
         print "NOP"

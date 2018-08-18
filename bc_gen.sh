@@ -1,4 +1,4 @@
-make
+make debug
 #python bc_gen.py
 #time ./aquario test.abc
 
