@@ -37,7 +37,7 @@ static int heap_size = HEAP_SIZE;
 
 inline int getCellSize(Cell cell)
 {
-  switch( type(cell) ){
+  switch( type(cell)){
   case T_STRING:
   case T_SYMBOL:
     return sizeof(struct cell) + strlen(strvalue(cell));
@@ -656,7 +656,6 @@ int compileList(InstQueue* instQ, FILE* fp)
 {
   char c;
   char buf[LINESIZE];
-  //Inst** next = &(list->next);
   int n = 0;
   while(1){
     c = fgetc(fp);
@@ -676,7 +675,6 @@ int compileList(InstQueue* instQ, FILE* fp)
       continue;
     case EOF:
       printError("EOF");
-      //return NULL;
       return n;
     default:
       ungetc(c, fp);
@@ -787,9 +785,8 @@ Inst* tokenToInst(char* token)
       Inst* ret = createInst(PUSH, symbolCell(token), 9);
       return ret;
     }
-  }
-  else{
-    Inst* ret = createInst(PUSH, symbolCell(token), 9);
+  } else {
+    Inst* ret = createInst(REF, stringCell(token), 9);
     return ret;
   }
 }
@@ -877,42 +874,64 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
     }
 }
 
+void compileIf(InstQueue* instQ, FILE* fp)
+{
+  compileElem(instQ, fp);  // predicate
+  
+  Inst* jneqInst = createInst(JNEQ, makeInteger(0), 9);
+  addInstTail(instQ, jneqInst);
+  compileElem(instQ, fp);  // statement (TRUE)
+  
+  Inst* jmpInst = createInst(JMP, makeInteger(0), 9);
+  addInstTail(instQ, jmpInst);
+  jneqInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
+  
+  int c = fgetc(fp);
+  ungetc(c, fp);
+  if(c ==')' ){
+    addInstTail(instQ, createInst(PUSH_NIL, makeInteger(0), 1));
+  } else {
+    compileElem(instQ, fp);  // statement (FALSE)
+  }
+  
+  jmpInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
+
+  char buf[LINESIZE];
+  char* token = readToken(buf, sizeof(buf), fp);
+  if(token[0] !=')' ){
+    AQ_PRINTF("too many expressions\n");
+  }
+}
+
+void compileDefine(InstQueue* instQ, FILE* fp)
+{
+  char buf[LINESIZE];
+  char* var = readToken(buf, sizeof(buf), fp);
+  
+  compileElem(instQ, fp);
+  addInstTail(instQ, createInst(SET, stringCell(var), 1 + strlen(var) + 1));
+  
+  char* token = readToken(buf, sizeof(buf), fp);
+  if(token[0] !=')' ){
+    AQ_PRINTF("too many expressions\n");
+  }
+}
+
 void compileElem(InstQueue* instQ, FILE* fp)
 {
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
   if(token==NULL){
-    Inst* inst = createInst(PUSH, (Cell)AQ_EOF, 9);
+    Inst* inst = createInst(HALT, (Cell)AQ_EOF, 1);
     addInstTail(instQ, inst);
     return;
   }
   else if(token[0]=='('){
     char* func = readToken(buf, sizeof(buf), fp);
     if(strcmp(func, "if") == 0) {
-      compileElem(instQ, fp);  // predicate
-      
-      Inst* jneqInst = createInst(JNEQ, makeInteger(0), 9);
-      addInstTail(instQ, jneqInst);
-      compileElem(instQ, fp);  // statement (TRUE)
-
-      Inst* jmpInst = createInst(JMP, makeInteger(0), 9);
-      addInstTail(instQ, jmpInst);
-      jneqInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
-	
-      int c = fgetc(fp);
-      ungetc(c, fp);
-      if(c ==')' ){
-	addInstTail(instQ, createInst(PUSH_NIL, makeInteger(0), 1));
-      } else {
-	compileElem(instQ, fp);  // statement (FALSE)
-      }
-      
-      jmpInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
-      
-      token = readToken(buf, sizeof(buf), fp);
-      if(token[0] !=')' ){
-	AQ_PRINTF("too many expressions\n");
-      }
+      compileIf(instQ, fp);
+    } else if(strcmp(func, "define") == 0) {
+      compileDefine(instQ, fp);
     } else {
       int num = compileList(instQ, fp);
       compileProcedure(func, num, instQ);
@@ -992,9 +1011,9 @@ void setVarCell(Cell strCell, Cell c)
 void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
 {
   if(!nullp(chain)){
-    pushArg(&chain);
+    //pushArg(&chain);
     Cell pair = pairCell(nameCell, c);
-    popArg();
+    //popArg();
     gc_write_barrier( chain, &car(chain), pair );
   }
   else{
@@ -1379,6 +1398,7 @@ void writeInst(InstQueue* instQ)
       {
 	long val = ivalue(inst->operand);
 	memcpy(&buf[++size], &val, sizeof(long));
+	
 	size += sizeof(long);
       }
       break;
@@ -1394,6 +1414,20 @@ void writeInst(InstQueue* instQ)
 	long val = ivalue(inst->operand);
 	memcpy(&buf[++size], &val, sizeof(long));
 	size += sizeof(long);
+      }
+      break;
+    case SET:
+      {
+	char* str = strvalue(inst->operand);
+	strcpy(&buf[++size], str);
+	size += (strlen(str)+1);
+      }
+      break;
+    case REF:
+      {
+	char* str = strvalue(inst->operand);
+	strcpy(&buf[++size], str);
+	size += (strlen(str)+1);
       }
       break;
     case NOP:
@@ -1447,7 +1481,6 @@ void execute(Inst* top)
     switch(inst->op) {
     case PUSH:
       {
-	//AQ_PRINTF("%d\n", inst->operand);
 	pushArg((Cell*)(inst->operand));
       }
       inst = inst->next;
@@ -1621,6 +1654,23 @@ void execute(Inst* top)
 	  }
 	  inst = inst->next;
 	}
+      }
+      break;
+    case SET:
+      {
+	// TODO: different behavior between on-memory and bytecode.
+	// this is for on-memory
+	Cell val = (Cell)popArg();
+	setVarCell(inst->operand, val);
+	inst = inst->next;
+      }
+      break;
+    case REF:
+      {
+	Cell val = inst->operand;
+	Cell ret = getVar(strvalue(val));
+	pushArg((Cell*)ret);
+	inst = inst->next;
       }
       break;
     case NOP:

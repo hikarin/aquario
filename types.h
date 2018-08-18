@@ -51,6 +51,8 @@ typedef enum opcode{
   PUSH_TRUE  = 51,
   PUSH_FALSE = 52,
 
+  SET   = 53,
+  REF   = 54,
   HALT = 100,
 }OPCODE;
 
