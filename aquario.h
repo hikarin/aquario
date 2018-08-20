@@ -33,6 +33,8 @@
 #define symbolname(p)   strvalue(p)
 #define lambdaparam(p)  car(p)
 #define lambdaexp(p)    cdr(p)
+#define lambdaAddr(p)     (car(p))
+#define lambdaParamNum(p) (cdr(p))
 
 Cell newCell(Type t, size_t size);
 
@@ -86,8 +88,10 @@ Cell pairCell(Cell a, Cell d);
 Cell procCell(opType proc);
 Cell syntaxCell(opType syn);
 Cell symbolCell(char* name);
-Cell lambdaCell(Cell param, Cell exp);
-
+//Cell lambdaCell(Cell param, Cell exp);
+Cell lambdaCell(int addr, int paramNum);
+Cell makeInteger(int val);
+  
 int isdigitstr(char* str);
 int nullp(Cell c);
 int truep(Cell c);
@@ -111,10 +115,10 @@ Cell tokenToCell();
 Cell readElem();
 
 Inst* createInst(OPCODE op, Cell operand, int size);
-int compileList(InstQueue* instQ, FILE* fp);
+int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileQuot(InstQueue* instQ, FILE* fp);
-void  compileElem(InstQueue* instQ, FILE* fp);
-Inst* tokenToInst(char* token);
+void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
+Inst* tokenToInst(char* token, Cell symbolList);
 
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);
@@ -145,6 +149,9 @@ void clearArgs();
 void callProc(char* name);
 Cell getReturn();
 void setReturn(Cell c);
+
+void updateOffsetReg();
+int getOffsetReg();
 
 void op_nullp();
 void op_notp();

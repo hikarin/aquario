@@ -34,6 +34,24 @@ while counter < size:
         string = struct.unpack_from("s", data, counter)[0]
         print '{:>6}'.format(string)
         counter += (len(string)+1)
+    elif op == opcode.FUND:
+        print "FUND    ",
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand),
+        counter += 8
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand)
+        counter += 8
+    elif op == opcode.FUNC:
+        print "FUNC    ",
+        string = struct.unpack_from("s", data, counter)[0]
+        print '{:>6}'.format(string)
+        counter += (len(string)+1)
+    elif op == opcode.LOAD:
+        print "LOAD    ",
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand)
+        counter += 8
     elif op == opcode.NOP:
         print "NOP"
     elif op == opcode.ADD:

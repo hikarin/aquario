@@ -51,8 +51,12 @@ typedef enum opcode{
   PUSH_TRUE  = 51,
   PUSH_FALSE = 52,
 
+
   SET   = 53,
   REF   = 54,
+  FUNC  = 55,
+  FUND  = 56,
+  
   HALT = 100,
 }OPCODE;
 
@@ -95,6 +99,7 @@ struct cell{
 };
 
 Cell retReg;
+int offsetReg;
 
 typedef struct _inst Inst;
 
@@ -102,6 +107,7 @@ struct _inst
 {
   OPCODE op;
   Cell operand;
+  Cell operand2;
   int offset;
   int size;
   struct _inst* prev;

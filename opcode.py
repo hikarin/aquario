@@ -34,4 +34,8 @@ PUSH_TRUE = 51
 PUSH_FALSE = 52
 SET   = 53
 REF   = 54
+
+FUNC  = 55
+FUND  = 56
+
 HALT  = 100

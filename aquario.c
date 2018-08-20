@@ -103,14 +103,13 @@ Cell symbolCell(char* symbol)
   return c;
 }
 
-Cell lambdaCell(Cell param, Cell exp)
+Cell lambdaCell(int addr, int paramNum)
 {
-  PUSH_ARGS2(&param, &exp);
-  Cell c = newCell(T_LAMBDA, sizeof(struct cell));
-  gc_init_ptr( &lambdaexp(c), exp );
-  gc_init_ptr( &lambdaparam(c), param );
-  POP_ARGS2();
-  return c;
+  Cell l = newCell(T_LAMBDA, sizeof(struct cell));
+  gc_init_ptr(&lambdaAddr(l), makeInteger(addr));
+  gc_init_ptr(&lambdaParamNum(l), makeInteger(paramNum));
+
+  return l;
 }
 
 Cell makeInteger(int val)
@@ -652,7 +651,7 @@ char* readToken(char *buf, int len, FILE* fp)
   return buf;
 }
 
-int compileList(InstQueue* instQ, FILE* fp)
+int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   char c;
   char buf[LINESIZE];
@@ -677,9 +676,11 @@ int compileList(InstQueue* instQ, FILE* fp)
       printError("EOF");
       return n;
     default:
-      ungetc(c, fp);
-      compileElem(instQ, fp);
-      n++;
+      {
+	ungetc(c, fp);
+	compileElem(instQ, fp, symbolList);
+	n++;
+      }
     }
   }
   return n;
@@ -730,7 +731,7 @@ Cell readList(FILE* fp)
 
 void compileQuot(InstQueue* instQ, FILE* fp)
 {
-  compileElem(instQ, fp);
+  compileElem(instQ, fp, NULL);
 }
 
 Cell readQuot(FILE* fp)
@@ -755,13 +756,14 @@ Inst* createInst(OPCODE op, Cell operand, int size)
   result->prev = NULL;
   result->next = NULL;
   result->operand = operand;
+  result->operand2 = NULL;
   result->size = size;
   result->offset = 0;
   
   return result;
 }
 
-Inst* tokenToInst(char* token)
+Inst* tokenToInst(char* token, Cell symbolList)
 {
   if(isdigitstr(token)) {
     int digit = atoi(token);
@@ -786,6 +788,21 @@ Inst* tokenToInst(char* token)
       return ret;
     }
   } else {
+    int index = 0;
+    AQ_PRINTF("look for %s ... ", token);
+    while(symbolList && !NIL_P(symbolList)) {
+      char* symbol = symbolname(car(symbolList));
+      if(strcmp(symbol, token) == 0) {
+	AQ_PRINTF("found %s\n", symbol);
+	Inst* ret = createInst(LOAD, makeInteger(index), 9);
+	return ret;
+      }
+      
+      symbolList = cdr(symbolList);
+      index++;
+    }
+    AQ_PRINTF("not found\n");
+    
     Inst* ret = createInst(REF, stringCell(token), 9);
     return ret;
   }
@@ -868,19 +885,21 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
     } else if(strcmp(func, "<") == 0) {
       addOneByteInstTail(instQ, LT);
     } else if(strcmp(func, "=") == 0) {
-      addOneByteInstTail(instQ, EQ);      
+      addOneByteInstTail(instQ, EQ);
     } else {
-      AQ_PRINTF("undefined function: %s\n", func);
+      addPushTail(instQ, num);
+      int len = strlen(func)+1;
+      addInstTail(instQ, createInst(FUNC, stringCell(func), len+1));
     }
 }
 
 void compileIf(InstQueue* instQ, FILE* fp)
 {
-  compileElem(instQ, fp);  // predicate
+  compileElem(instQ, fp, NULL);  // predicate
   
   Inst* jneqInst = createInst(JNEQ, makeInteger(0), 9);
   addInstTail(instQ, jneqInst);
-  compileElem(instQ, fp);  // statement (TRUE)
+  compileElem(instQ, fp, NULL);  // statement (TRUE)
   
   Inst* jmpInst = createInst(JMP, makeInteger(0), 9);
   addInstTail(instQ, jmpInst);
@@ -891,7 +910,7 @@ void compileIf(InstQueue* instQ, FILE* fp)
   if(c ==')' ){
     addInstTail(instQ, createInst(PUSH_NIL, makeInteger(0), 1));
   } else {
-    compileElem(instQ, fp);  // statement (FALSE)
+    compileElem(instQ, fp, NULL);  // statement (FALSE)
   }
   
   jmpInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
@@ -903,12 +922,44 @@ void compileIf(InstQueue* instQ, FILE* fp)
   }
 }
 
+void compileLambda(InstQueue* instQ, FILE* fp)
+{
+  Inst* inst = createInst(FUND, (Cell)AQ_NIL, 17);
+  addInstTail(instQ, inst);
+
+  int c = fgetc(fp);
+  if(c != '(') {
+    AQ_PRINTF("symbol list is not goven\n");
+    return;
+  }
+  
+  int index = 0;
+  Cell symbolList = (Cell)AQ_NIL;
+  while((c = fgetc(fp)) != ')') {
+    ungetc(c, fp);
+    char buf[LINESIZE];
+    char* var = readToken(buf, sizeof(buf), fp);
+    Cell tmp  = pairCell(symbolCell(var), symbolList);
+    symbolList = tmp;
+    AQ_PRINTF("compileElem: %s\n", var);
+    
+    index++;
+  }
+  compileList(instQ, fp, symbolList);  // body
+  addInstTail(instQ, createInst(RET, (Cell)AQ_NIL, 1));
+  
+  int addr = instQ->tail->offset + instQ->tail->size;
+  inst->operand = makeInteger(addr);
+  inst->operand2 = makeInteger(index);
+}
+
+
 void compileDefine(InstQueue* instQ, FILE* fp)
 {
   char buf[LINESIZE];
   char* var = readToken(buf, sizeof(buf), fp);
   
-  compileElem(instQ, fp);
+  compileElem(instQ, fp, NULL);
   addInstTail(instQ, createInst(SET, stringCell(var), 1 + strlen(var) + 1));
   
   char* token = readToken(buf, sizeof(buf), fp);
@@ -917,7 +968,7 @@ void compileDefine(InstQueue* instQ, FILE* fp)
   }
 }
 
-void compileElem(InstQueue* instQ, FILE* fp)
+void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
@@ -928,12 +979,16 @@ void compileElem(InstQueue* instQ, FILE* fp)
   }
   else if(token[0]=='('){
     char* func = readToken(buf, sizeof(buf), fp);
-    if(strcmp(func, "if") == 0) {
+    if(strcmp(func, ")") == 0) {
+      addInstTail(instQ, createInst(PUSH_NIL, (Cell)AQ_EOF, 1));
+    }else if(strcmp(func, "if") == 0) {
       compileIf(instQ, fp);
     } else if(strcmp(func, "define") == 0) {
       compileDefine(instQ, fp);
+    } else if(strcmp(func, "lambda") == 0) {
+      compileLambda(instQ, fp);
     } else {
-      int num = compileList(instQ, fp);
+      int num = compileList(instQ, fp, symbolList);
       compileProcedure(func, num, instQ);
     }
     
@@ -947,7 +1002,7 @@ void compileElem(InstQueue* instQ, FILE* fp)
     return;
   }
   else{
-    Inst* inst = tokenToInst(token);
+    Inst* inst = tokenToInst(token, symbolList);
     addInstTail(instQ, inst);
     return;
   }
@@ -1082,6 +1137,16 @@ Cell getReturn()
 void setReturn(Cell c)
 {
     gc_write_barrier_root( &retReg, c );
+}
+
+void updateOffsetReg()
+{
+  offsetReg = stack_top;
+}
+
+int getOffsetReg()
+{
+  return offsetReg;
 }
 
 void setParseError(char* str)
@@ -1379,7 +1444,7 @@ void load_file( const char* filename )
   int c = 0;
   while((c = fgetc(fp)) != EOF) {
     ungetc(c, fp);
-    compileElem(&instQ, fp);
+    compileElem(&instQ, fp, NULL);
   }
   execute(instQ.head);
   writeInst(&instQ);
@@ -1430,6 +1495,31 @@ void writeInst(InstQueue* instQ)
 	size += (strlen(str)+1);
       }
       break;
+    case FUNC:
+      {
+	char* str = strvalue(inst->operand);
+	strcpy(&buf[++size], str);
+	size += (strlen(str)+1);
+      }
+      break;
+    case FUND:
+      {
+	int addr = ivalue(inst->operand);
+	memcpy(&buf[++size], &addr, sizeof(long));
+	size += sizeof(long);
+	
+	int paramNum = ivalue(inst->operand2);
+	memcpy(&buf[size], &paramNum, sizeof(long));
+	size += sizeof(long);
+      }
+      break;
+    case LOAD:
+      {
+	int offset = ivalue(inst->operand);
+	memcpy(&buf[++size], &offset, sizeof(long));
+	size += sizeof(long);
+      }
+      break;
     case NOP:
     case ADD:
     case SUB:
@@ -1448,6 +1538,7 @@ void writeInst(InstQueue* instQ)
     case LT:
     case HALT:
     case EQ:
+    case RET:
       size += 1;
       break;
 #if false
@@ -1459,8 +1550,6 @@ void writeInst(InstQueue* instQ)
     case JEQB:
     case JNEQB:
     case JMPB:
-    case LOAD:
-    case RET:
       size += 1;
 #endif
       break;
@@ -1558,6 +1647,26 @@ void execute(Inst* top)
       }
       inst = inst->next;
       break;
+    case RET:
+      {
+	Cell* val = popArg();
+	int retAddr = ivalue(popArg());
+	int argNum = ivalue(popArg());
+	for(int i=0; i<argNum; i++) {
+	  popArg();
+	}
+	pushArg(val);
+
+	updateOffsetReg();
+	inst = top;
+	while(inst) {
+	  if(inst->offset == retAddr) {
+	    break;
+	  }
+	  inst = inst->next;
+	}
+      }
+      break;
     case CONS:
       {
 	Cell* cdrCell = popArg();
@@ -1622,10 +1731,12 @@ void execute(Inst* top)
 	Cell* val = popArg();
 	printCell((Cell)val);
 	AQ_PRINTF("\n");
+	pushArg((Cell*)AQ_UNDEF);
       }
       inst = inst->next;
       break;
     case HALT:
+      AQ_PRINTF("[HALT]\n");
       exec = FALSE;
       break;
     case JNEQ:
@@ -1663,13 +1774,69 @@ void execute(Inst* top)
 	Cell val = (Cell)popArg();
 	setVarCell(inst->operand, val);
 	inst = inst->next;
+	
+	//AQ_PRINTF(" and SET: %s\n", strvalue(inst->operand));
       }
       break;
     case REF:
       {
 	Cell val = inst->operand;
 	Cell ret = getVar(strvalue(val));
-	pushArg((Cell*)ret);
+	if(UNDEF_P(ret)) {
+	  printError("[REF] undefined symbol: %s", strvalue(val));
+	  exec = FALSE;
+	} else {
+	  pushArg((Cell*)ret);
+	  inst = inst->next;
+	}
+      }
+      break;
+    case FUNC:
+      {
+	Cell val = inst->operand;
+	Cell func = getVar(strvalue(val));
+	if(UNDEF_P(func)) {
+	  printError("undefined symbol: %s", strvalue(val));
+	  exec = FALSE;
+	} else {
+	  int paramNum = ivalue(lambdaParamNum(func));
+	  int argNum = ivalue(stack[stack_top-1]);
+	  if(paramNum != argNum) {
+	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
+	    inst = inst->next;
+	    break;
+	  }
+	  int retAddr  = inst->offset + inst->size;
+	  pushArg((Cell*)makeInteger(retAddr));
+	  updateOffsetReg();
+
+	  // jump
+	  int funcAddr = ivalue(lambdaAddr(func));
+	  inst = top;
+	  while(inst->offset != funcAddr) {
+	    inst = inst->next;
+	  }
+	}
+      }
+      break;
+    case FUND:
+      {
+	// jump
+	int defEnd = ivalue(inst->operand);
+	int defStart = inst->next->offset;
+	int paramNum = ivalue(inst->operand2);
+	Cell l = lambdaCell(defStart, paramNum);
+	pushArg((Cell*)l);
+	while(inst->offset != defEnd) {
+	  inst = inst->next;
+	}
+      }
+      break;
+    case LOAD:
+      {	
+	int index = getOffsetReg() - ivalue(inst->operand) - 3;
+	Cell* val = stack[index];
+	pushArg(val);
 	inst = inst->next;
       }
       break;
@@ -2017,11 +2184,13 @@ void syntax_ifelse()
 
 void syntax_lambda()
 {
+#if false
   Cell args = *popArg();
   Cell params = car(args);
   Cell exps = cdr(args);
   Cell lambda = lambdaCell(params, exps);
   setReturn(lambda);
+#endif
 }
 
 void syntax_quote()
