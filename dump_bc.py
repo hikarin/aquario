@@ -1,9 +1,22 @@
 import struct
 import opcode
 
+counter = 0
 data = open("test.abc", "r").read()
 size = len(data)
-counter = 0
+
+def concat():
+    global counter
+    global data
+    string = ""
+    while True:
+        chr = struct.unpack_from("s", data, counter)[0]
+        if chr == '\0':
+            break
+        string += chr
+        counter += 1
+    counter += 1
+    return string
 
 while counter < size:
     op = ord(data[counter])
@@ -26,9 +39,8 @@ while counter < size:
         counter += 8
     elif op == opcode.SET:
         print "SET     ",
-        string = struct.unpack_from("s", data, counter)[0]
+        string = concat()
         print '{:>6}'.format(string)
-        counter += (len(string)+1)
     elif op == opcode.REF:
         print "REF     ",
         string = struct.unpack_from("s", data, counter)[0]
@@ -44,14 +56,12 @@ while counter < size:
         counter += 8
     elif op == opcode.FUNC:
         print "FUNC    ",
-        string = struct.unpack_from("s", data, counter)[0]
+        string = concat()
         print '{:>6}'.format(string)
-        counter += (len(string)+1)
     elif op == opcode.LOAD:
         print "LOAD    ",
-        operand = struct.unpack_from("<l", data, counter)[0]
-        print '{0:6d}'.format(operand)
-        counter += 8
+        string = concat()
+        print '{:>6}'.format(string)
     elif op == opcode.NOP:
         print "NOP"
     elif op == opcode.ADD:
