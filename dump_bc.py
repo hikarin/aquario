@@ -60,8 +60,9 @@ while counter < size:
         print '{:>6}'.format(string)
     elif op == opcode.LOAD:
         print "LOAD    ",
-        string = concat()
-        print '{:>6}'.format(string)
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand)
+        counter += 8
     elif op == opcode.NOP:
         print "NOP"
     elif op == opcode.ADD:
@@ -83,7 +84,7 @@ while counter < size:
     elif op == opcode.LTE:
         print "LTE     "
     elif op == opcode.GT:
-        print "GT     "
+        print "GT      "
     elif op == opcode.GTE:
         print "GTE     "
     elif op == opcode.JEQ:

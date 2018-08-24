@@ -784,6 +784,14 @@ Inst* tokenToInst(char* token, Cell symbolList)
       Inst* ret = createInst(PUSH, charCell(token[2]), 9);
       return ret;
     }
+    else if(strcmp(&token[1], "t") == 0){
+      Inst* ret = createInst(PUSH_TRUE, (Cell)AQ_NIL, 1);
+      return ret;
+    }
+    else if(strcmp(&token[1], "f") == 0){
+      Inst* ret = createInst(PUSH_FALSE, (Cell)AQ_NIL, 1);
+      return ret;
+    }
     else{
       Inst* ret = createInst(PUSH, symbolCell(token), 9);
       return ret;
@@ -881,6 +889,10 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
       addOneByteInstTail(instQ, GT);
     } else if(strcmp(func, "<") == 0) {
       addOneByteInstTail(instQ, LT);
+    } else if(strcmp(func, "<=") == 0) {
+      addOneByteInstTail(instQ, LTE);
+    } else if(strcmp(func, ">=") == 0) {
+      addOneByteInstTail(instQ, GTE);
     } else if(strcmp(func, "=") == 0) {
       addOneByteInstTail(instQ, EQ);
     } else {
@@ -1532,22 +1544,12 @@ void writeInst(InstQueue* instQ)
     case PUSH_FALSE:
     case GT:
     case LT:
+    case GTE:
+    case LTE:
     case HALT:
     case EQ:
     case RET:
       size += 1;
-      break;
-#if false
-    case LT:
-    case LTE:
-    case GT:
-    case GTE:
-    case JEQ:
-    case JEQB:
-    case JNEQB:
-    case JMPB:
-      size += 1;
-#endif
       break;
     }
 
@@ -1572,6 +1574,14 @@ void execute(Inst* top)
       break;
     case PUSH_NIL:
       pushArg((Cell*)AQ_NIL);
+      inst = inst->next;      
+      break;
+    case PUSH_TRUE:
+      pushArg((Cell*)AQ_TRUE);
+      inst = inst->next;      
+      break;
+    case PUSH_FALSE:
+      pushArg((Cell*)AQ_FALSE);
       inst = inst->next;      
       break;
     case ADD:
@@ -1704,11 +1714,29 @@ void execute(Inst* top)
       }
       inst = inst->next;
       break;
+    case GTE:
+      {
+	int num2 = ivalue(popArg());
+	int num1 = ivalue(popArg());
+	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
+	pushArg((Cell*)ret);
+      }
+      inst = inst->next;
+      break;
     case LT:
       {
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
+	pushArg((Cell*)ret);
+      }
+      inst = inst->next;
+      break;
+    case LTE:
+      {
+	int num2 = ivalue(popArg());
+	int num1 = ivalue(popArg());
+	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
       }
       inst = inst->next;
@@ -1927,8 +1955,8 @@ void execBuf(FILE* fp)
 	break;
       case LT:
 	{
-	  Cell* val2 = popArg();
-	  Cell* val1 = popArg();
+	  int val2 = ivalue(*popArg());
+	  int val1 = ivalue(*popArg());
 	  Cell* result = (val1<val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
 	  pushArg(result);
 	  pc++;
@@ -1936,8 +1964,8 @@ void execBuf(FILE* fp)
 	break;
       case LTE:
 	{
-	  Cell* val2 = popArg();
-	  Cell* val1 = popArg();
+	  int val2 = ivalue(*popArg());
+	  int val1 = ivalue(*popArg());
 	  Cell* result = (val1<=val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
 	  pushArg(result);
 	  pc++;
@@ -1945,19 +1973,17 @@ void execBuf(FILE* fp)
 	break;
       case GT:
 	{
-	  Cell* val2 = popArg();
-	  Cell* val1 = popArg();
-	  int i1 = ivalue(val1);
-	  int i2 = ivalue(val2);
-	  Cell* result = (i1>i2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
+	  int val2 = ivalue(*popArg());
+	  int val1 = ivalue(*popArg());
+	  Cell* result = (val1>val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
 	  pushArg(result);
 	  pc++;
 	}
 	break;
       case GTE:
 	{
-	  Cell* val2 = popArg();
-	  Cell* val1 = popArg();
+	  int val2 = ivalue(*popArg());
+	  int val1 = ivalue(*popArg());
 	  Cell* result = (val1>=val2) ? (Cell*)AQ_TRUE : (Cell*)AQ_FALSE;
 	  pushArg(result);
 	  pc++;

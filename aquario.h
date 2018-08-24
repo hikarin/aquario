@@ -116,7 +116,7 @@ Cell readElem();
 
 Inst* createInst(OPCODE op, Cell operand, int size);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
-void compileQuot(InstQueue* instQ, FILE* fp);
+void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList);
 void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
 Inst* tokenToInst(char* token, Cell symbolList);
 
