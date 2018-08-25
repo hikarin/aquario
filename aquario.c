@@ -986,7 +986,15 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   }
   else if(token[0]=='('){
     char* func = readToken(buf, sizeof(buf), fp);
-    if(strcmp(func, ")") == 0) {
+    if(strcmp(func, "(") == 0) {
+      ungetc('(', fp);
+      compileElem(instQ, fp, symbolList);
+      int num = compileList(instQ, fp, symbolList);
+      addPushTail(instQ, num);
+      addInstTail(instQ, createInst(SROT, makeInteger(num+1), 1));
+      addInstTail(instQ, createInst(FUNCS, (Cell)AQ_EOF, 1));
+    }
+    else if(strcmp(func, ")") == 0) {
       addInstTail(instQ, createInst(PUSH_NIL, (Cell)AQ_EOF, 1));
     }else if(strcmp(func, "if") == 0) {
       compileIf(instQ, fp, symbolList);
@@ -1521,6 +1529,13 @@ void writeInst(InstQueue* instQ)
 	size += sizeof(long);
       }
       break;
+    case SROT:
+      {
+	int num = ivalue(inst->operand);
+	memcpy(&buf[++size], &num, sizeof(long));
+	size += sizeof(long);
+      }
+      break;
     case LOAD:
       {
 	int offset = ivalue(inst->operand);
@@ -1549,6 +1564,7 @@ void writeInst(InstQueue* instQ)
     case HALT:
     case EQ:
     case RET:
+    case FUNCS:
       size += 1;
       break;
     }
@@ -1852,6 +1868,43 @@ void execute(Inst* top)
 	while(inst->offset != defEnd) {
 	  inst = inst->next;
 	}
+      }
+      break;
+    case FUNCS:
+      {
+	Cell l = (Cell)popArg();
+	int argNum = ivalue(stack[stack_top-1]);
+	int paramNum = ivalue(lambdaParamNum(l));
+	if(paramNum != argNum) {
+	  AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
+	  inst = inst->next;
+	  break;
+	}
+	
+	int retAddr  = inst->offset + inst->size;
+	pushArg((Cell*)makeInteger(retAddr));
+	updateOffsetReg();
+	  
+	// jump
+	int funcAddr = ivalue(lambdaAddr(l));
+	inst = top;
+	while(inst->offset != funcAddr) {
+	  inst = inst->next;
+	}
+      }
+      break;
+    case SROT:
+      {
+	int n = ivalue(inst->operand);
+	Cell* val = stack[stack_top-(n+1)];
+	
+	for(int i=n; i>0; i--) {
+	  stack[stack_top-(i+1)] = stack[stack_top-i];
+	}
+	
+	stack_top--;
+	pushArg(val);
+	inst = inst->next;
       }
       break;
     case LOAD:

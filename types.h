@@ -39,9 +39,7 @@ typedef enum opcode{
   JMPB   = 35,
 
   LOAD = 40,
-
   RET  = 41,
-
   CONS = 42,
   CAR  = 43,
   CDR  = 44,
@@ -56,6 +54,9 @@ typedef enum opcode{
   REF   = 54,
   FUNC  = 55,
   FUND  = 56,
+
+  FUNCS = 57,
+  SROT  = 58,
   
   HALT = 100,
 }OPCODE;

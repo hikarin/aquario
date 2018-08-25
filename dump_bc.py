@@ -40,12 +40,11 @@ while counter < size:
     elif op == opcode.SET:
         print "SET     ",
         string = concat()
-        print '{:>6}'.format(string)
+        print '{:>10}'.format(string)
     elif op == opcode.REF:
         print "REF     ",
-        string = struct.unpack_from("s", data, counter)[0]
-        print '{:>6}'.format(string)
-        counter += (len(string)+1)
+        string = concat()
+        print '{:>10}'.format(string)
     elif op == opcode.FUND:
         print "FUND    ",
         operand = struct.unpack_from("<l", data, counter)[0]
@@ -63,6 +62,13 @@ while counter < size:
         operand = struct.unpack_from("<l", data, counter)[0]
         print '{0:6d}'.format(operand)
         counter += 8
+    elif op == opcode.SROT:
+        print "SROT    ",
+        operand = struct.unpack_from("<l", data, counter)[0]
+        print '{0:6d}'.format(operand)
+        counter += 8
+    elif op == opcode.FUNCS:
+        print "FUNCS   "
     elif op == opcode.NOP:
         print "NOP"
     elif op == opcode.ADD:

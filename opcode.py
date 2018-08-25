@@ -37,5 +37,7 @@ REF   = 54
 
 FUNC  = 55
 FUND  = 56
+FUNCS = 57
+SROT  = 58
 
 HALT  = 100
