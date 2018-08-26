@@ -357,7 +357,7 @@ Inst* tokenToInst(char* token, Cell symbolList)
     return ret;
   }  
   else if(token[0] == '"'){
-    Inst* ret = createInst(PUSH, stringCell(token+1), 1);
+    Inst* ret = createInst(PUSHS, stringCell(token+1), 9);
     return ret;
   }
   else if(token[0] == '#'){
@@ -807,6 +807,13 @@ size_t writeInst(InstQueue* instQ, char* buf)
 	size += sizeof(long);
       }
       break;
+    case PUSHS:
+      {
+	char* str = strvalue(inst->operand);
+	strcpy(&buf[++size], str);
+	size += (strlen(str)+1);
+      }
+      break;
     case NOP:
     case ADD:
     case SUB:
@@ -1068,6 +1075,14 @@ void execute(char* buf)
 	pc += (strlen(str)+1);
       }
       break;
+    case PUSHS:
+      {
+	char* str = &buf[++pc];
+	Cell strCell = stringCell(str);
+	pushArg((Cell*)strCell);
+	pc += (strlen(str)+1);
+      }
+      break;
     case REF:
       {
 	char* str = &buf[++pc];
@@ -1148,8 +1163,7 @@ void execute(char* buf)
 	  stack[stack_top-(i+1)] = stack[stack_top-i];
 	}
 	
-	stack_top--;
-	pushArg(val);
+	stack[stack_top-1]  = val;
 	pc += sizeof(Cell);
       }
       break;

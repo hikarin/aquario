@@ -40,4 +40,6 @@ FUND  = 56
 FUNCS = 57
 SROT  = 58
 
+PUSHS = 60
+
 HALT  = 100

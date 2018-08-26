@@ -52,6 +52,8 @@ typedef enum opcode{
 
   FUNCS = 57,
   SROT  = 58,
+
+  PUSHS = 60,
   
   HALT = 100,
 }OPCODE;
