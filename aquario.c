@@ -357,7 +357,7 @@ Inst* tokenToInst(char* token, Cell symbolList)
     return ret;
   }  
   else if(token[0] == '"'){
-    Inst* ret = createInst(PUSHS, stringCell(token+1), 9);
+    Inst* ret = createInst(PUSHS, stringCell(&token[1]), 9);
     return ret;
   }
   else if(token[0] == '#'){
@@ -374,7 +374,7 @@ Inst* tokenToInst(char* token, Cell symbolList)
       return ret;
     }
     else{
-      Inst* ret = createInst(PUSH, symbolCell(token), 9);
+      Inst* ret = createInst(PUSHS, stringCell(token), 9);
       return ret;
     }
   } else {
@@ -569,6 +569,8 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
     return;
   }
   else if(token[0]=='\''){
+    char* token2 = readToken(buf, sizeof(buf), fp);
+    addInstTail(instQ, createInst(PUSH_SYM, symbolCell(token2), 9));
     return;
   }
   else if(token[0]==')'){
@@ -812,6 +814,13 @@ size_t writeInst(InstQueue* instQ, char* buf)
 	char* str = strvalue(inst->operand);
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
+      }
+      break;
+    case PUSH_SYM:
+      {
+	char* sym = symbolname(inst->operand);
+	strcpy(&buf[++size], sym);
+	size += (strlen(sym)+1);
       }
       break;
     case NOP:
@@ -1081,6 +1090,14 @@ void execute(char* buf)
 	Cell strCell = stringCell(str);
 	pushArg((Cell*)strCell);
 	pc += (strlen(str)+1);
+      }
+      break;
+    case PUSH_SYM:
+      {
+	char* sym = &buf[++pc];
+	Cell symCell = symbolCell(sym);
+	pushArg((Cell*)symCell);
+	pc += (strlen(sym)+1);
       }
       break;
     case REF:

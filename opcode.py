@@ -41,5 +41,6 @@ FUNCS = 57
 SROT  = 58
 
 PUSHS = 60
+PUSH_SYM = 61
 
 HALT  = 100
