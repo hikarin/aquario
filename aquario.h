@@ -88,7 +88,6 @@ Cell pairCell(Cell a, Cell d);
 Cell procCell(opType proc);
 Cell syntaxCell(opType syn);
 Cell symbolCell(char* name);
-//Cell lambdaCell(Cell param, Cell exp);
 Cell lambdaCell(int addr, int paramNum);
 Cell makeInteger(int val);
   
@@ -99,9 +98,6 @@ int notp(Cell c);
 int zerop(Cell c);
 int eqdigitp(Cell c);
 int length(Cell ls);
-void setAppendCell(Cell ls, Cell c);
-Cell setAppendList(Cell ls, Cell append);
-Cell reverseList(Cell ls);
 void applyList(Cell ls);
 
 void printPair(Cell c);
@@ -109,10 +105,6 @@ void printCell(Cell c);
 void printLineCell(Cell c);
 char* readTokenInDQuot();
 char* readToken();
-Cell readList();
-Cell readQuot();
-Cell tokenToCell();
-Cell readElem();
 
 Inst* createInst(OPCODE op, Cell operand, int size);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
@@ -126,10 +118,6 @@ void addInstTail(InstQueue* queue, Inst* inst);
 void execute(char* buf);
 size_t writeInst(InstQueue* instQ, char* buf);
 
-Cell evalExp(Cell exp);
-Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_loop);
-void letParam(Cell exp, Cell dummyParams, Cell realParams);
-Cell findParam(Cell exp, Cell dummyParams, Cell realParams);
 void printError(char *fmt, ...);
 void setParseError(char* str);
 
@@ -153,38 +141,6 @@ void setReturn(Cell c);
 
 void updateOffsetReg();
 int getOffsetReg();
-
-void op_nullp();
-void op_notp();
-void op_eofp();
-void op_zerop();
-void op_eqdigitp();
-void op_lessdigitp();
-void op_greaterdigitp();
-void op_car();
-void op_cdr();
-void op_cons();
-void op_add();
-void op_sub();
-void op_mul();
-void op_div();
-void op_eval();
-void op_read();
-void op_print();
-void op_load();
-void op_eqp();
-void op_gc();
-void op_gc_stress();
-
-void syntax_define();
-void syntax_ifelse();
-void syntax_lambda();
-void syntax_quote();
-void syntax_set();
-void syntax_begin();
-
-Cell last(Cell cell);
-Boolean ApplyParams(Cell args, int stack_top, Cell* pExps, Cell* pParams, Boolean is_loop);
 
 int repl();
 
