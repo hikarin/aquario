@@ -14,7 +14,6 @@ Boolean g_GC_stress;
 
 static Cell getChain(char* name, int* key);
 static void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env);
-static Cell* getStackTop();
 
 static void init();
 static void term();
@@ -23,7 +22,7 @@ static int heap_size = HEAP_SIZE;
 
 #define UNDEF_RETURN(x)         \
   if( UNDEF_P(x) ){             \
-    setReturn((Cell)AQ_UNDEF);  \
+    pushArg((Cell*)AQ_UNDEF);	\
     return;                     \
   }
 
@@ -31,7 +30,7 @@ static int heap_size = HEAP_SIZE;
   int argNum = length( args );                             \
   if(argNum != num){                                       \
     printError("wrong number of arguments for %s: should be %d but giben %d", proc, num, argNum); \
-    setReturn((Cell)AQ_UNDEF);				   \
+    pushArg((Cell*)AQ_UNDEF);						\
     return;                                                \
   }
 
@@ -79,13 +78,6 @@ Cell pairCell(Cell a, Cell d)
 
   POP_ARGS2();
   return cons;
-}
-
-Cell procCell(opType proc)
-{
-  Cell c = newCell(T_PROC, sizeof(struct cell));
-  procvalue(c) = proc;
-  return c;
 }
 
 Cell symbolCell(char* symbol)
@@ -200,9 +192,6 @@ void printCell(Cell c)
       break;
     case T_STRING:
       AQ_PRINTF("\"%s\"", strvalue(c));
-      break;
-    case T_PROC:
-      AQ_PRINTF("#proc");
       break;
     case T_SYMBOL:
       AQ_PRINTF("%s", symbolname(c));
@@ -640,11 +629,6 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   }
 }
 
-Cell* getStackTop()
-{
-  return stack[ stack_top-1 ];
-}
-
 Cell getChain(char* name, int* key)
 {
   *key = hash(name)%ENVSIZE;
@@ -662,22 +646,10 @@ Cell getChain(char* name, int* key)
 void setVar(char* name, Cell c)
 {
   int key = 0;
-  pushArg(&c);
   Cell nameCell = stringCell(name);
   Cell chain = getChain(name, &key);
   registerVar(nameCell, chain, c, &env[key]);
   popArg();
-}
-
-void dupArg()
-{
-  Cell* c = getStackTop();
-  pushArg(c);
-}
-
-void clearArgs()
-{
-  stack_top = 0;
 }
 
 void callProc(char* name)
@@ -690,16 +662,6 @@ void callProc(char* name)
   else{
     printError("unknown proc");
   }
-}
-
-Cell getReturn()
-{
-  return retReg;
-}
-
-void setReturn(Cell c)
-{
-    gc_write_barrier_root( &retReg, c );
 }
 
 void updateOffsetReg()
@@ -719,10 +681,7 @@ void setParseError(char* str)
 
 void init()
 {
-  gc_init_ptr( &retReg, (Cell)AQ_NIL );
-
   memset(env, 0, ENVSIZE);
-  
   memset(stack, 0, STACKSIZE);
   stack_top = 0;
 }
@@ -747,8 +706,9 @@ void load_file( const char* filename )
 #if defined( _WIN32 ) || defined( _WIN64 )
   fopen_s( &fp, filename, "r");
 #else
-  fp = fopen(filename, "r");
+  fp = fopen(filename, "rb");
 #endif
+
   InstQueue instQ;
   Inst inst;
   inst.op = NOP;
@@ -763,11 +723,10 @@ void load_file( const char* filename )
     ungetc(c, fp);
     compileElem(&instQ, fp, NULL);
   }
-
   char* buf = (char*)malloc(sizeof(char) * 1024);
   size_t fileSize = writeInst(&instQ, buf);
   execute(buf);
-  
+
   FILE* outputFile = fopen("test.abc", "wb");
   fwrite(buf, fileSize, 1, outputFile);
   fclose(outputFile);
@@ -889,8 +848,8 @@ Cell getOperand(char* buf, int pc)
 void execute(char* buf)
 {
   Boolean exec = TRUE;
-  stack_top = 0;
   int pc = 0;
+  stack_top = 0;
   while(exec != FALSE) {
     OPCODE op = buf[pc];
     switch(op) {
@@ -1234,7 +1193,7 @@ void op_load()
     load_file(strvalue(cell));
   }else{
     setParseError("string required.");
-    setReturn((Cell)AQ_UNDEF);
+    pushArg((Cell*)AQ_UNDEF);
   }
 }
 
@@ -1254,14 +1213,14 @@ int repl()
     AQ_PRINTF_GUIDE(">");
     //clearArgs();
     callProc("read");
-    Cell ret = getReturn();
+    Cell ret = (Cell)popArg();
     if(EOF_P(ret)) break;
     if(UNDEF_P(ret)) continue;
     Cell pair = pairCell(ret, (Cell)AQ_NIL);
     pushArg(&pair);
 
     callProc("eval");
-    printLineCell(getReturn());
+    printLineCell((Cell)popArg());
   }
   return 0;
 }
