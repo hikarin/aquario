@@ -30,13 +30,8 @@ typedef enum opcode{
   GT    = 25,
   GTE   = 26,
 
-  JEQ   = 30,
   JNEQ  = 31,
   JMP   = 32,
-
-  JEQB   = 33,
-  JNEQB  = 34,
-  JMPB   = 35,
 
   LOAD = 40,
   RET  = 41,

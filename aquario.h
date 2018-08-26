@@ -123,7 +123,8 @@ Inst* tokenToInst(char* token, Cell symbolList);
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);
 
-void execute(Inst* inst);
+void execute(char* buf);
+size_t writeInst(InstQueue* instQ, char* buf);
 
 Cell evalExp(Cell exp);
 Boolean evalPair(Cell* pExp,Cell* pProc, Cell* pParams, Cell* pExps, Boolean is_loop);

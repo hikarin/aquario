@@ -731,7 +731,6 @@ Cell readList(FILE* fp)
 
 void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
-  AQ_PRINTF("WOW\n");
   compileElem(instQ, fp, symbolList);
 }
 
@@ -1156,7 +1155,6 @@ void setReturn(Cell c)
 
 void updateOffsetReg()
 {
-  //AQ_PRINTF("updateOffsetReg: %d\n", stack_top);
   offsetReg = stack_top;
 }
 
@@ -1438,8 +1436,6 @@ void op_print()
   AQ_PRINTF("%x\n", ret);
 }
 
-void writeInst(InstQueue* instQ);
-
 void load_file( const char* filename )
 {
   FILE* fp = NULL;
@@ -1462,24 +1458,28 @@ void load_file( const char* filename )
     ungetc(c, fp);
     compileElem(&instQ, fp, NULL);
   }
-  execute(instQ.head);
-  writeInst(&instQ);
+
+  char* buf = (char*)malloc(sizeof(char) * 1024);
+  size_t fileSize = writeInst(&instQ, buf);
+  execute(buf);
+  
+  FILE* outputFile = fopen("test.abc", "wb");
+  fwrite(buf, fileSize, 1, outputFile);
+  fclose(outputFile);
 }
 
-void writeInst(InstQueue* instQ)
+size_t writeInst(InstQueue* instQ, char* buf)
 {
-  FILE* fp = fopen("test.abc", "wb");
-  char* buf = (char*)malloc(sizeof(char) * 1024);
   size_t size = 0;
   Inst* inst = instQ->head;
   while(inst) {
-    buf[size] = (char)(inst->op);
-    switch((char)inst->op) {
+    OPCODE op = inst->op;
+    buf[size] = (char)op;
+    switch(op) {
     case PUSH:
       {
 	long val = ivalue(inst->operand);
 	memcpy(&buf[++size], &val, sizeof(long));
-	
 	size += sizeof(long);
       }
       break;
@@ -1565,40 +1565,48 @@ void writeInst(InstQueue* instQ)
     case EQ:
     case RET:
     case FUNCS:
+      buf[size] = (char)inst->op;
       size += 1;
       break;
     }
 
     inst = inst->next;
   }
-  fwrite(buf, size, 1, fp);
-  fclose(fp);
+
+  return size;
 }
 
-void execute(Inst* top)
+Cell getOperand(char* buf, int pc)
+{
+  return (Cell)(*(Cell*)&buf[pc]);
+}
+
+void execute(char* buf)
 {
   Boolean exec = TRUE;
   stack_top = 0;
-  Inst* inst = top;
-  while(inst && exec != FALSE) {
-    switch(inst->op) {
+  int pc = 0;
+  while(exec != FALSE) {
+    OPCODE op = buf[pc];
+    switch(op) {
     case PUSH:
       {
-	pushArg((Cell*)(inst->operand));
+	int value = (int)getOperand(buf, ++pc);
+	pushArg((Cell*)makeInteger(value));
+	pc += sizeof(Cell);
       }
-      inst = inst->next;
       break;
     case PUSH_NIL:
       pushArg((Cell*)AQ_NIL);
-      inst = inst->next;      
+      ++pc;
       break;
     case PUSH_TRUE:
       pushArg((Cell*)AQ_TRUE);
-      inst = inst->next;      
+      ++pc;
       break;
     case PUSH_FALSE:
       pushArg((Cell*)AQ_FALSE);
-      inst = inst->next;      
+      ++pc;
       break;
     case ADD:
       {
@@ -1611,8 +1619,8 @@ void execute(Inst* top)
 	}
 	Cell* cellp = (Cell*)makeInteger(ans);
 	pushArg(cellp);
+	++pc;
       }
-      inst = inst->next;
       break;
     case SUB:
       {
@@ -1631,8 +1639,8 @@ void execute(Inst* top)
 	  Cell* cellp = (Cell*)makeInteger(ans);
 	  pushArg(cellp);
 	}
+	++pc;
       }
-      inst = inst->next;
       break;
     case MUL:
       {
@@ -1644,8 +1652,8 @@ void execute(Inst* top)
 	}
 	Cell* cellp = (Cell*)makeInteger(ans);
 	pushArg(cellp);
+	++pc;
       }
-      inst = inst->next;
       break;
     case DIV:
       {
@@ -1665,8 +1673,8 @@ void execute(Inst* top)
 	  Cell* cellp = (Cell*)makeInteger(ans);
 	  pushArg(cellp);
 	}
+	++pc;
       }
-      inst = inst->next;
       break;
     case RET:
       {
@@ -1678,13 +1686,7 @@ void execute(Inst* top)
 	}
 	updateOffsetReg();
 	pushArg(val);
-	inst = top;
-	while(inst) {
-	  if(inst->offset == retAddr) {
-	    break;
-	  }
-	  inst = inst->next;
-	}
+	pc = retAddr;
       }
       break;
     case CONS:
@@ -1693,24 +1695,24 @@ void execute(Inst* top)
 	Cell* carCell = popArg();
 	Cell ret = pairCell((Cell)carCell, (Cell)cdrCell);
 	pushArg((Cell*)ret);
+	++pc;
       }
-      inst = inst->next;
       break;
     case CAR:
       {
 	Cell c = (Cell)popArg();
 	Cell ca = car(c);
 	pushArg((Cell*)ca);
+	++pc;
       }
-      inst = inst->next;
       break;
     case CDR:
       {
 	Cell c = (Cell)popArg();
 	Cell cd = cdr(c);
 	pushArg((Cell*)cd);
+	++pc;
       }
-      inst = inst->next;
       break;
     case EQ:
       {
@@ -1718,8 +1720,8 @@ void execute(Inst* top)
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
+	++pc;
       }
-      inst = inst->next;
       break;
     case GT:
       {
@@ -1727,8 +1729,8 @@ void execute(Inst* top)
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
+	++pc;
       }
-      inst = inst->next;
       break;
     case GTE:
       {
@@ -1736,8 +1738,8 @@ void execute(Inst* top)
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
+	++pc;
       }
-      inst = inst->next;
       break;
     case LT:
       {
@@ -1746,7 +1748,7 @@ void execute(Inst* top)
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
       }
-      inst = inst->next;
+      pc++;
       break;
     case LTE:
       {
@@ -1755,14 +1757,14 @@ void execute(Inst* top)
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
       }
-      inst = inst->next;
+      pc++;
       break;
     case QUOTE:
       {
 	Cell c = (Cell)popArg();
 	pushArg((Cell*)c);
+	++pc;
       }
-      inst = inst->next;
       break;
     case PRINT:
       {
@@ -1770,39 +1772,25 @@ void execute(Inst* top)
 	printCell((Cell)val);
 	AQ_PRINTF("\n");
 	pushArg((Cell*)AQ_UNDEF);
+	++pc;
       }
-      inst = inst->next;
-      break;
-    case HALT:
-      AQ_PRINTF("[HALT]\n");
-      exec = FALSE;
       break;
     case JNEQ:
       {
 	Cell c = (Cell)popArg();
-	int addr = ivalue(inst->operand);
+	++pc;
 	if(!truep(c)) {
-	  while(inst) {
-	    if(inst->offset == addr) {
-	      break;
-	    }
-	    inst = inst->next;
-	  }
+	  int addr = (int)getOperand(buf, pc);
+	  pc = addr;
 	} else {
-	  inst = inst->next;	  
+	  pc += sizeof(Cell);
 	}
       }
       break;
     case JMP:
       {
-	int addr = ivalue(inst->operand);
-	inst = top;
-	while(inst) {
-	  if(inst->offset == addr) {
-	    break;
-	  }
-	  inst = inst->next;
-	}
+	int addr = (int)getOperand(buf, ++pc);
+	pc = addr;
       }
       break;
     case SET:
@@ -1810,64 +1798,60 @@ void execute(Inst* top)
 	// TODO: different behavior between on-memory and bytecode.
 	// this is for on-memory
 	Cell val = (Cell)popArg();
-	setVarCell(inst->operand, val);
-	inst = inst->next;
-	
-	//AQ_PRINTF(" and SET: %s\n", strvalue(inst->operand));
+	char* str = &buf[++pc];
+	Cell strCell = stringCell(str);
+	setVarCell(strCell, val);
+	pc += (strlen(str)+1);
       }
       break;
     case REF:
       {
-	Cell val = inst->operand;
-	Cell ret = getVar(strvalue(val));
+	char* str = &buf[++pc];
+	Cell ret = getVar(str);
 	if(UNDEF_P(ret)) {
-	  printError("[REF] undefined symbol: %s", strvalue(val));
+	  printError("[REF] undefined symbol: %s", str);
 	  exec = FALSE;
 	} else {
 	  pushArg((Cell*)ret);
-	  inst = inst->next;
+	  pc += (strlen(str)+1);
 	}
       }
       break;
     case FUNC:
       {
-	Cell val = inst->operand;
-	Cell func = getVar(strvalue(val));
+	char* str = &buf[++pc];
+	Cell func = getVar(str);
 	if(UNDEF_P(func)) {
-	  printError("undefined symbol: %s", strvalue(val));
+	  printError("undefined symbol: %s", str);
 	  exec = FALSE;
 	} else {
 	  int paramNum = ivalue(lambdaParamNum(func));
 	  int argNum = ivalue(stack[stack_top-1]);
 	  if(paramNum != argNum) {
 	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	    inst = inst->next;
+	    ++pc;
 	    break;
 	  }
-	  int retAddr  = inst->offset + inst->size;
+	  int retAddr  = pc + strlen(str) + 1;
 	  pushArg((Cell*)makeInteger(retAddr));
 	  updateOffsetReg();
-
+	  
 	  // jump
 	  int funcAddr = ivalue(lambdaAddr(func));
-	  inst = top;
-	  while(inst->offset != funcAddr) {
-	    inst = inst->next;
-	  }
+	  pc = funcAddr;
 	}
       }
       break;
     case FUND:
       {
 	// jump
-	int defEnd = ivalue(inst->operand);
-	int defStart = inst->next->offset;
-	int paramNum = ivalue(inst->operand2);
+	int defEnd = (int)getOperand(buf, ++pc);
+	int defStart = pc + sizeof(Cell) * 2;
+	pc += sizeof(Cell);
+	int paramNum = (int)getOperand(buf, pc);
 	Cell l = lambdaCell(defStart, paramNum);
 	pushArg((Cell*)l);
-	while(inst->offset != defEnd) {
-	  inst = inst->next;
-	}
+	pc = defEnd;
       }
       break;
     case FUNCS:
@@ -1877,25 +1861,23 @@ void execute(Inst* top)
 	int paramNum = ivalue(lambdaParamNum(l));
 	if(paramNum != argNum) {
 	  AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	  inst = inst->next;
+	  ++pc;
 	  break;
 	}
 	
-	int retAddr  = inst->offset + inst->size;
+	int retAddr  = pc + 1;
 	pushArg((Cell*)makeInteger(retAddr));
 	updateOffsetReg();
-	  
+	
 	// jump
 	int funcAddr = ivalue(lambdaAddr(l));
-	inst = top;
-	while(inst->offset != funcAddr) {
-	  inst = inst->next;
-	}
+	pc = funcAddr;
       }
       break;
     case SROT:
       {
-	int n = ivalue(inst->operand);
+	Cell operand = getOperand(buf, ++pc);
+	int n = ivalue(operand);
 	Cell* val = stack[stack_top-(n+1)];
 	
 	for(int i=n; i>0; i--) {
@@ -1904,23 +1886,28 @@ void execute(Inst* top)
 	
 	stack_top--;
 	pushArg(val);
-	inst = inst->next;
+	pc += sizeof(Cell);
       }
       break;
     case LOAD:
-      {	
-	int index = getOffsetReg() - ivalue(inst->operand) - 3;
+      {
+	int offset = (int)getOperand(buf, ++pc);
+	int index = getOffsetReg() - offset - 3;
 	Cell* val = stack[index];
 	pushArg(val);
-	inst = inst->next;
+	pc += sizeof(Cell);
       }
       break;
     case NOP:
       // do nothing
-      inst = inst->next;
+      pc++;
+      break;
+    case HALT:
+      AQ_PRINTF("[HALT]\n");
+      exec = FALSE;
       break;
     default:
-      AQ_PRINTF("DEFAULT: %d\n", inst->op);
+      AQ_PRINTF("Unknown opcode: %d\n", op);
       exec = FALSE;
       break;
     }
@@ -2042,25 +2029,10 @@ void execBuf(FILE* fp)
 	  pc++;
 	}
 	break;
-      case JEQ:
-      case JEQB:
-	{
-	  Cell val = (Cell)popArg();
-	  int offset = buf[++pc];
-	  if(op == JEQB) offset = -offset;
-	  if(truep(val)){
-	    pc = offset;
-	  } else {
-	    pc++;
-	  }
-	}
-	break;
       case JNEQ:
-      case JNEQB:
 	{
 	  Cell val = (Cell)popArg();
 	  int offset = buf[++pc];
-	  if(op == JNEQB) offset = -offset;
 	  if(!truep(val)){
 	    pc = offset;
 	  } else {
@@ -2069,11 +2041,8 @@ void execBuf(FILE* fp)
 	}
 	break;
       case JMP:
-      case JMPB:
 	{
 	  int dst = buf[++pc];
-	  int offset = buf[++pc];
-	  if(op == JMPB) offset = -offset;
 	  pc = dst;
 	}
 	break;
@@ -2141,7 +2110,6 @@ void execBuf(FILE* fp)
       case HALT:
 	{
 	  pc = size;
-	  AQ_PRINTF("[HALT]\n");
 	}
 	break;
       default:
