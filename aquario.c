@@ -961,9 +961,11 @@ void execute(char* buf)
 	Cell* val = popArg();
 	int retAddr = ivalue(popArg());
 	int argNum = ivalue(popArg());
+
 	for(int i=0; i<argNum; i++) {
 	  popArg();
 	}
+	
 	updateOffsetReg();
 	pushArg(val);
 	pc = retAddr;
@@ -1051,7 +1053,7 @@ void execute(char* buf)
 	Cell* val = popArg();
 	printCell((Cell)val);
 	AQ_PRINTF("\n");
-	pushArg((Cell*)AQ_UNDEF);
+	//pushArg((Cell*)AQ_UNDEF);
 	++pc;
       }
       break;
@@ -1172,15 +1174,13 @@ void execute(char* buf)
       break;
     case SROT:
       {
-	Cell operand = getOperand(buf, ++pc);
-	int n = ivalue(operand);
+	int n = (int)getOperand(buf, ++pc);
 	Cell* val = stack[stack_top-(n+1)];
 	
 	for(int i=n; i>0; i--) {
 	  stack[stack_top-(i+1)] = stack[stack_top-i];
 	}
-	
-	stack[stack_top-1]  = val;
+	stack[stack_top-1] = val;
 	pc += sizeof(Cell);
       }
       break;
@@ -1190,6 +1190,7 @@ void execute(char* buf)
 	int index = getOffsetReg() - offset - 3;
 	Cell* val = stack[index];
 	pushArg(val);
+	//	printCell((Cell)val); AQ_PRINTF("  LOAD(%d)\n", offset);
 	pc += sizeof(Cell);
       }
       break;
