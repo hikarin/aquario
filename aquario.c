@@ -720,14 +720,15 @@ void load_file( const char* filename )
   inst.size = 1;
   instQ.head = &inst;
   instQ.tail = &inst;
-  int c = 0;
-  while((c = fgetc(fp)) != EOF) {
-    ungetc(c, fp);
+  char chr = 0;
+  int pc = 0;
+  while((chr = fgetc(fp)) != EOF) {
+    ungetc(chr, fp);
     compileElem(&instQ, fp, NULL);
   }
   char* buf = (char*)malloc(sizeof(char) * 1024);
   size_t fileSize = writeInst(&instQ, buf);
-  execute(buf);
+  pc = execute(buf, pc);
 
   FILE* outputFile = fopen("test.abc", "wb");
   fwrite(buf, fileSize, 1, outputFile);
@@ -861,13 +862,13 @@ Cell getOperand(char* buf, int pc)
   return (Cell)(*(Cell*)&buf[pc]);
 }
 
-void execute(char* buf)
+int execute(char* buf, int pc)
 {
   Boolean exec = TRUE;
-  int pc = 0;
   stack_top = 0;
   while(exec != FALSE) {
     OPCODE op = buf[pc];
+    //AQ_PRINTF("[op]: %d\n", op);
     switch(op) {
     case PUSH:
       {
@@ -961,13 +962,14 @@ void execute(char* buf)
 	Cell* val = popArg();
 	int retAddr = ivalue(popArg());
 	int argNum = ivalue(popArg());
-
-	for(int i=0; i<argNum; i++) {
+	
+	for(int i=0; i<argNum; ++i) {
 	  popArg();
 	}
 	
 	updateOffsetReg();
 	pushArg(val);
+	
 	pc = retAddr;
       }
       break;
@@ -1029,8 +1031,8 @@ void execute(char* buf)
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
+	++pc;
       }
-      pc++;
       break;
     case LTE:
       {
@@ -1038,8 +1040,8 @@ void execute(char* buf)
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg((Cell*)ret);
+	++pc;
       }
-      pc++;
       break;
     case QUOTE:
       {
@@ -1053,7 +1055,7 @@ void execute(char* buf)
 	Cell* val = popArg();
 	printCell((Cell)val);
 	AQ_PRINTF("\n");
-	//pushArg((Cell*)AQ_UNDEF);
+	pushArg((Cell*)AQ_UNDEF);
 	++pc;
       }
       break;
@@ -1190,17 +1192,16 @@ void execute(char* buf)
 	int index = getOffsetReg() - offset - 3;
 	Cell* val = stack[index];
 	pushArg(val);
-	//	printCell((Cell)val); AQ_PRINTF("  LOAD(%d)\n", offset);
 	pc += sizeof(Cell);
       }
       break;
     case NOP:
       // do nothing
-      pc++;
+      ++pc;
       break;
     case HALT:
-      AQ_PRINTF("[HALT]\n");
       exec = FALSE;
+      ++pc;
       break;
     default:
       AQ_PRINTF("Unknown opcode: %d\n", op);
@@ -1208,6 +1209,8 @@ void execute(char* buf)
       break;
     }
   }
+
+  return pc;
 }
 
 void op_load()
@@ -1240,19 +1243,32 @@ void printError(char *fmt, ...) {
 
 int repl()
 {
-  while(1){
-    //Cell ret;
-    AQ_PRINTF_GUIDE(">");
-    //clearArgs();
-    callProc("read");
-    Cell ret = (Cell)popArg();
-    if(EOF_P(ret)) break;
-    if(UNDEF_P(ret)) continue;
-    Cell pair = pairCell(ret, (Cell)AQ_NIL);
-    pushArg(&pair);
+  InstQueue instQ;
+  Inst inst;
+  inst.op = NOP;
+  inst.prev = NULL;
+  inst.next = NULL;
+  inst.offset = 0;
+  inst.size = 1;
+  instQ.head = &inst;
+  instQ.tail = &inst;
+  int pc = 0;
 
-    callProc("eval");
+  char* buf = (char*)malloc(sizeof(char) * 1024);
+  
+  while(1){
+    AQ_PRINTF_GUIDE(">");
+
+    compileElem(&instQ, stdin, NULL);
+    addInstTail(&instQ, createInst(HALT, (Cell)AQ_EOF, 1));
+    
+    writeInst(&instQ, &buf[pc]);
+    pc = execute(buf, pc);
     printLineCell((Cell)popArg());
+    
+    instQ.head = instQ.tail;
+    instQ.head->next = NULL;
+    instQ.head->op = NOP;
   }
   return 0;
 }

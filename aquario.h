@@ -115,7 +115,7 @@ Inst* tokenToInst(char* token, Cell symbolList);
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);
 
-void execute(char* buf);
+int execute(char* buf, int pc);
 size_t writeInst(InstQueue* instQ, char* buf);
 
 void printError(char *fmt, ...);
