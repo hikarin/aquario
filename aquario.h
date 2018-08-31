@@ -107,16 +107,17 @@ char* readTokenInDQuot();
 char* readToken();
 
 Inst* createInst(OPCODE op, Cell operand, int size);
+void addInstHead(InstQueue* queue, Inst* inst);
+void addInstTail(InstQueue* queue, Inst* inst);
+size_t writeInst(InstQueue* instQ, char* buf);
+Inst* tokenToInst(char* token, Cell symbolList);
+
+size_t compile(FILE* fp, char* buf);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList);
 void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
-Inst* tokenToInst(char* token, Cell symbolList);
-
-void addInstHead(InstQueue* queue, Inst* inst);
-void addInstTail(InstQueue* queue, Inst* inst);
 
 int execute(char* buf, int pc);
-size_t writeInst(InstQueue* instQ, char* buf);
 
 void printError(char *fmt, ...);
 void setParseError(char* str);

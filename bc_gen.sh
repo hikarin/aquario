@@ -1,8 +1,10 @@
-make debug
-#python bc_gen.py
-#time ./aquario test.abc
+make opt
+script=fib
+echo $script
+rm $script.abc
+time ./aquario $script.lsp
+time ./aquario $script.lsp
 
-./aquario test.lsp
 echo
 #hexdump -C test.abc
-python dump_bc.py
+#python dump_bc.py $script.abc

@@ -1,8 +1,9 @@
+import sys
 import struct
 import opcode
 
 counter = 0
-data = open("test.abc", "r").read()
+data = open(sys.argv[1], "r").read()
 size = len(data)
 
 def concat():

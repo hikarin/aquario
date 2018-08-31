@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 
 #include "aquario.h"
 #include "gc/base.h"
@@ -289,6 +290,26 @@ char* readToken(char *buf, int len, FILE* fp)
   }
   *token = '\0';
   return buf;
+}
+
+size_t compile(FILE* fp, char* buf)
+{
+  InstQueue instQ;
+  Inst inst;
+  inst.op = NOP;
+  inst.prev = NULL;
+  inst.next = NULL;
+  inst.offset = 0;
+  inst.size = 1;
+  instQ.head = &inst;
+  instQ.tail = &inst;
+  char chr = 0;
+  while((chr = fgetc(fp)) != EOF) {
+    ungetc(chr, fp);
+    compileElem(&instQ, fp, NULL);
+  }
+
+  return writeInst(&instQ, buf);
 }
 
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
@@ -708,31 +729,46 @@ void load_file( const char* filename )
 #if defined( _WIN32 ) || defined( _WIN64 )
   fopen_s( &fp, filename, "r");
 #else
-  fp = fopen(filename, "rb");
-#endif
-
-  InstQueue instQ;
-  Inst inst;
-  inst.op = NOP;
-  inst.prev = NULL;
-  inst.next = NULL;
-  inst.offset = 0;
-  inst.size = 1;
-  instQ.head = &inst;
-  instQ.tail = &inst;
-  char chr = 0;
-  int pc = 0;
-  while((chr = fgetc(fp)) != EOF) {
-    ungetc(chr, fp);
-    compileElem(&instQ, fp, NULL);
+  int len = strlen(filename);
+  char* abcFileName = malloc(sizeof(char*) * (len + 3));
+  strcpy(abcFileName, filename);
+  char* ext = strrchr(abcFileName, '.');
+  if(ext) {
+    *ext = '\0';
   }
+  strcat(abcFileName, ".abc");
+  
+  struct stat abcInfo;
+  struct stat lspInfo;
+  Boolean noCompile = (stat(abcFileName, &abcInfo) == 0 &&
+		       stat(filename, &lspInfo) == 0 &&
+		       abcInfo.st_ctime > lspInfo.st_ctime);
+  
   char* buf = (char*)malloc(sizeof(char) * 1024);
-  size_t fileSize = writeInst(&instQ, buf);
-  pc = execute(buf, pc);
-
-  FILE* outputFile = fopen("test.abc", "wb");
-  fwrite(buf, fileSize, 1, outputFile);
-  fclose(outputFile);
+  if(noCompile) {
+    fp = fopen(abcFileName, "rb");
+    if(fp) {
+      fread(buf, abcInfo.st_size, 1, fp);
+      execute(buf, 0);
+      fclose(fp);
+    } else {
+      AQ_PRINTF("[ERROR] %s: cannot open.\n", abcFileName);
+    }
+  } else {
+    fp = fopen(filename, "r");
+    if(fp) {
+      size_t fileSize = compile(fp, buf);
+      execute(buf, 0);
+      fclose(fp);
+      
+      FILE* outputFile = fopen(abcFileName, "wb");
+      fwrite(buf, fileSize, 1, outputFile);
+      fclose(outputFile);
+    } else {
+      AQ_PRINTF("[ERROR] %s: not found\n", filename);
+    }
+  }
+#endif
 }
 
 size_t writeInst(InstQueue* instQ, char* buf)
@@ -868,7 +904,6 @@ int execute(char* buf, int pc)
   stack_top = 0;
   while(exec != FALSE) {
     OPCODE op = buf[pc];
-    //AQ_PRINTF("[op]: %d\n", op);
     switch(op) {
     case PUSH:
       {
@@ -1211,25 +1246,6 @@ int execute(char* buf, int pc)
   }
 
   return pc;
-}
-
-void op_load()
-{
-  Cell* args = popArg();
-  UNDEF_RETURN(*args);
-  int argNum = length(*args);
-  if( argNum != 1 ){
-    setParseError("wrong number of arguments for load");
-    return;
-  }
-
-  Cell cell = car(*args);
-  if( isString(cell) ){
-    load_file(strvalue(cell));
-  }else{
-    setParseError("string required.");
-    pushArg((Cell*)AQ_UNDEF);
-  }
 }
 
 void printError(char *fmt, ...) {
