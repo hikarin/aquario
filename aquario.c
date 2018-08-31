@@ -486,18 +486,18 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   compileElem(instQ, fp, symbolList);  // predicate
   
-  Inst* jneqInst = createInst(JNEQ, makeInteger(0), 9);
+  Inst* jneqInst = createInst(JNEQ, (Cell)AQ_NIL /* placeholder */, 9);
   addInstTail(instQ, jneqInst);
   compileElem(instQ, fp, symbolList);  // statement (TRUE)
   
-  Inst* jmpInst = createInst(JMP, makeInteger(0), 9);
+  Inst* jmpInst = createInst(JMP, (Cell)AQ_NIL /* placeholder */, 9);
   addInstTail(instQ, jmpInst);
   jneqInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
   
   int c = fgetc(fp);
   ungetc(c, fp);
   if(c ==')' ){
-    addInstTail(instQ, createInst(PUSH_NIL, makeInteger(0), 1));
+    addInstTail(instQ, createInst(PUSH_NIL, (Cell)AQ_NIL, 1));
   } else {
     compileElem(instQ, fp, symbolList);  // statement (FALSE)
   }
@@ -513,7 +513,7 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
 
 void compileLambda(InstQueue* instQ, FILE* fp)
 {
-  Inst* inst = createInst(FUND, (Cell)AQ_NIL, 17);
+  Inst* inst = createInst(FUND, (Cell)AQ_NIL /* placeholder */, 17);
   addInstTail(instQ, inst);
 
   int c = fgetc(fp);
@@ -560,8 +560,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
   if(token==NULL){
-    Inst* inst = createInst(HALT, (Cell)AQ_EOF, 1);
-    addInstTail(instQ, inst);
+    addOneByteInstTail(instQ, HALT);
     return;
   }
   else if(token[0]=='('){
@@ -572,10 +571,10 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
       int num = compileList(instQ, fp, symbolList);
       addPushTail(instQ, num);
       addInstTail(instQ, createInst(SROT, makeInteger(num+1), 1));
-      addInstTail(instQ, createInst(FUNCS, (Cell)AQ_EOF, 1));
+      addOneByteInstTail(instQ, FUNCS);
     }
     else if(strcmp(func, ")") == 0) {
-      addInstTail(instQ, createInst(PUSH_NIL, (Cell)AQ_EOF, 1));
+      addOneByteInstTail(instQ, PUSH_NIL);
     }else if(strcmp(func, "if") == 0) {
       compileIf(instQ, fp, symbolList);
     } else if(strcmp(func, "define") == 0) {
@@ -1276,7 +1275,7 @@ int repl()
     AQ_PRINTF_GUIDE(">");
 
     compileElem(&instQ, stdin, NULL);
-    addInstTail(&instQ, createInst(HALT, (Cell)AQ_EOF, 1));
+    addOneByteInstTail(&instQ, HALT);
     
     writeInst(&instQ, &buf[pc]);
     pc = execute(buf, pc);
