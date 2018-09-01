@@ -110,9 +110,11 @@ Inst* createInst(OPCODE op, Cell operand, int size);
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);
 size_t writeInst(InstQueue* instQ, char* buf);
-Inst* tokenToInst(char* token, Cell symbolList);
+void addPushTail(InstQueue* instQ, int num);
+void addOneByteInstTail(InstQueue* instQ, OPCODE op);
 
 size_t compile(FILE* fp, char* buf);
+void compileToken(InstQueue* instQ, char* token, Cell symbolList);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList);
 void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);

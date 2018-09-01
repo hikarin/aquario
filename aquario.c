@@ -366,52 +366,49 @@ Inst* createInst(OPCODE op, Cell operand, int size)
   return result;
 }
 
-Inst* tokenToInst(char* token, Cell symbolList)
+void compileToken(InstQueue* instQ, char* token, Cell symbolList)
 {
   if(isdigitstr(token)) {
     int digit = atoi(token);
-    Inst* ret = createInst(PUSH, makeInteger(digit), 9);
-    return ret;
+    addPushTail(instQ, digit);
   }
   else if(strcmp(token, "nil") == 0) {
-    Inst* ret = createInst(PUSH_NIL, (Cell)AQ_NIL, 9);
-    return ret;
+    addOneByteInstTail(instQ, PUSH_NIL);
   }  
   else if(token[0] == '"'){
-    Inst* ret = createInst(PUSHS, stringCell(&token[1]), 9);
-    return ret;
+    Inst* inst = createInst(PUSHS, stringCell(&token[1]), 9);
+    addInstTail(instQ, inst);
   }
   else if(token[0] == '#'){
     if(token[1] == '\\' && strlen(token)==3){
       Inst* ret = createInst(PUSH, charCell(token[2]), 9);
-      return ret;
+      addInstTail(instQ, ret);
     }
     else if(strcmp(&token[1], "t") == 0){
-      Inst* ret = createInst(PUSH_TRUE, (Cell)AQ_NIL, 1);
-      return ret;
+      addOneByteInstTail(instQ, PUSH_TRUE);
     }
     else if(strcmp(&token[1], "f") == 0){
-      Inst* ret = createInst(PUSH_FALSE, (Cell)AQ_NIL, 1);
-      return ret;
+      addOneByteInstTail(instQ, PUSH_FALSE);
     }
     else{
-      Inst* ret = createInst(PUSHS, stringCell(token), 9);
-      return ret;
+      Inst* inst = createInst(PUSHS, stringCell(token), 9);
+      addInstTail(instQ, inst);
     }
   } else {
     int index = 0;
     while(symbolList && !NIL_P(symbolList)) {
       char* symbol = symbolname(car(symbolList));
       if(strcmp(symbol, token) == 0) {
-	Inst* ret = createInst(LOAD, makeInteger(index), 9);
-	return ret;
+	Inst* inst = createInst(LOAD, makeInteger(index), 9);
+	addInstTail(instQ, inst);
+	return;
       }
       
       symbolList = cdr(symbolList);
       index++;
     }
-    Inst* ret = createInst(REF, stringCell(token), 9);
-    return ret;
+    Inst* inst = createInst(REF, stringCell(token), 9);
+    addInstTail(instQ, inst);
   }
 }
 
@@ -419,7 +416,6 @@ void addInstHead(InstQueue* queue, Inst* inst)
 {
   queue->head->prev = inst;
   inst->next = queue->head;
-
   queue->head = inst;
 }
 
@@ -428,11 +424,11 @@ void addInstTail(InstQueue* queue, Inst* inst)
   inst->offset = queue->tail->offset + queue->tail->size;
   queue->tail->next = inst;
   inst->prev = queue->tail;
-
   queue->tail = inst;
 }
 
-void addPushTail(InstQueue* instQ, int num) {
+void addPushTail(InstQueue* instQ, int num)
+{
   return addInstTail(instQ, createInst(PUSH, makeInteger(num), 9));
 }
 
@@ -540,7 +536,6 @@ void compileLambda(InstQueue* instQ, FILE* fp)
   inst->operand2 = makeInteger(index);
 }
 
-
 void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   char buf[LINESIZE];
@@ -561,7 +556,6 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   char* token = readToken(buf, sizeof(buf), fp);
   if(token==NULL){
     addOneByteInstTail(instQ, HALT);
-    return;
   }
   else if(token[0]=='('){
     char* func = readToken(buf, sizeof(buf), fp);
@@ -585,22 +579,16 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
       int num = compileList(instQ, fp, symbolList);
       compileProcedure(func, num, instQ);
     }
-    
-    return;
   }
   else if(token[0]=='\''){
     char* token2 = readToken(buf, sizeof(buf), fp);
     addInstTail(instQ, createInst(PUSH_SYM, symbolCell(token2), 9));
-    return;
   }
   else if(token[0]==')'){
     printError("extra close parensis");
-    return;
   }
   else{
-    Inst* inst = tokenToInst(token, symbolList);
-    addInstTail(instQ, inst);
-    return;
+    compileToken(instQ, token, symbolList);
   }
 }
 
@@ -1297,7 +1285,6 @@ int handle_option(int argc, char *argv[])
   }else{
     set_gc("");
   }
-
   return i;
 }
 
