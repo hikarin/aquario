@@ -46,13 +46,11 @@ Cell stringCell(char* str)
 
 Cell pairCell(Cell a, Cell d)
 {
-  PUSH_ARGS2(&a, &d);
   Cell cons = newCell(T_PAIR, sizeof(struct cell));
 
   gc_init_ptr(&cdr(cons), d);
   gc_init_ptr(&car(cons), a);
 
-  POP_ARGS2();
   return cons;
 }
 
@@ -67,9 +65,8 @@ Cell symbolCell(char* symbol)
 Cell lambdaCell(int addr, int paramNum)
 {
   Cell l = newCell(T_LAMBDA, sizeof(struct cell));
-  gc_init_ptr(&lambdaAddr(l), makeInteger(addr));
-  gc_init_ptr(&lambdaParamNum(l), makeInteger(paramNum));
-
+  lambdaAddr(l) = makeInteger(addr);
+  lambdaParamNum(l) = makeInteger(paramNum);
   return l;
 }
 
@@ -687,7 +684,7 @@ void load_file( const char* filename )
 		       stat(filename, &lspInfo) == 0 &&
 		       abcInfo.st_ctime > lspInfo.st_ctime);
   
-  char* buf = (char*)malloc(sizeof(char) * 1024);
+  char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
   if(noCompile) {
     fp = fopen(abcFileName, "rb");
     if(fp) {
