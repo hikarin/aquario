@@ -109,7 +109,6 @@ struct _inst
   Cell operand2;
   int offset;
   int size;
-  struct _inst* prev;
   struct _inst* next;
 };
 

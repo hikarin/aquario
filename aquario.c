@@ -21,31 +21,6 @@ static void term();
 
 static int heap_size = HEAP_SIZE;
 
-#define UNDEF_RETURN(x)         \
-  if( UNDEF_P(x) ){             \
-    pushArg((Cell*)AQ_UNDEF);	\
-    return;                     \
-  }
-
-#define WRONG_NUMBER_ARGUMENTS_ERROR(num, args, proc)	   \
-  int argNum = length( args );                             \
-  if(argNum != num){                                       \
-    printError("wrong number of arguments for %s: should be %d but giben %d", proc, num, argNum); \
-    pushArg((Cell*)AQ_UNDEF);						\
-    return;                                                \
-  }
-
-inline int getCellSize(Cell cell)
-{
-  switch( type(cell)){
-  case T_STRING:
-  case T_SYMBOL:
-    return sizeof(struct cell) + strlen(strvalue(cell));
-  default:
-    return sizeof(struct cell);
-  }
-}
-
 inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
@@ -129,15 +104,6 @@ int truep(Cell c)
 int notp(Cell c)
 {
   return FALSE_P(c)?TRUE:FALSE;
-}
-
-int length(Cell ls)
-{
-  int length = 0;
-  for(;!nullp(ls) && ls != NULL;ls=cdr(ls)){
-    ++length;
-  }
-  return length;
 }
 
 void printCons(Cell c)
@@ -297,7 +263,6 @@ size_t compile(FILE* fp, char* buf)
   InstQueue instQ;
   Inst inst;
   inst.op = NOP;
-  inst.prev = NULL;
   inst.next = NULL;
   inst.offset = 0;
   inst.size = 1;
@@ -356,7 +321,6 @@ Inst* createInst(OPCODE op, Cell operand, int size)
 {
   Inst* result = (Inst*)malloc(sizeof(Inst));
   result->op = op;
-  result->prev = NULL;
   result->next = NULL;
   result->operand = operand;
   result->operand2 = NULL;
@@ -412,18 +376,10 @@ void compileToken(InstQueue* instQ, char* token, Cell symbolList)
   }
 }
 
-void addInstHead(InstQueue* queue, Inst* inst)
-{
-  queue->head->prev = inst;
-  inst->next = queue->head;
-  queue->head = inst;
-}
-
 void addInstTail(InstQueue* queue, Inst* inst)
 {
   inst->offset = queue->tail->offset + queue->tail->size;
   queue->tail->next = inst;
-  inst->prev = queue->tail;
   queue->tail = inst;
 }
 
@@ -1249,7 +1205,6 @@ int repl()
   InstQueue instQ;
   Inst inst;
   inst.op = NOP;
-  inst.prev = NULL;
   inst.next = NULL;
   inst.offset = 0;
   inst.size = 1;
