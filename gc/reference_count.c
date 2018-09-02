@@ -24,10 +24,8 @@ static void gc_term_reference_count();
 static char* heap           = NULL;
 static Free_Chunk* freelist = NULL;
 
-static void push_reference_count(Cell* cellp);
-static Cell* pop_reference_count();
-static void push_reference_count(Cell* cellp);
-static Cell* pop_reference_count();
+static void push_reference_count(Cell c);
+static Cell pop_reference_count();
 
 #define GET_OBJECT_SIZE(obj) (((Reference_Count_Header*)(obj)-1)->obj_size)
 
@@ -54,17 +52,17 @@ void gc_init_reference_count(GC_Init_Info* gc_info)
   gc_info->gc_popArg        = pop_reference_count;
 }
 
-void push_reference_count(Cell* cellp)
+void push_reference_count(Cell c)
 {
-  increment_count(cellp);
-  pushArg_default(cellp);
+  increment_count(&c);
+  pushArg_default(c);
 }
 
-Cell* pop_reference_count()
+Cell pop_reference_count()
 {
-  Cell* cellp = popArg_default();
-  decrement_count(cellp);
-  return cellp;
+  Cell c = popArg_default();
+  decrement_count(&c);
+  return c;
 }
 
 //Allocation.

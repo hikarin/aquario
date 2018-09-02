@@ -1,7 +1,7 @@
 #include "../types.h"
 #include <stdlib.h>
 
-#define HEAP_SIZE (1024)
+#define HEAP_SIZE (16 * 1024)
 #define AQ_MALLOC  malloc
 #define AQ_FREE    free
 
@@ -15,8 +15,8 @@ void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );
 Boolean trace_object_bool( Cell cell, Boolean (*trace) (Cell* cellp) );
 
-Cell* popArg_default();
-void pushArg_default(Cell* cellp);
+Cell popArg_default();
+void pushArg_default(Cell c);
 
 void gc_term_base();
 
@@ -57,8 +57,8 @@ extern void gc_write_barrier_root (Cell* srcp, Cell dst);
 extern void gc_init_ptr (Cell* cellp, Cell newcell);
 extern void gc_memcpy (char* dst, char* src, size_t size);
 extern void gc_term ();
-extern void pushArg (Cell* cellp);
-extern Cell* popArg ();
+extern void pushArg (Cell c);
+extern Cell popArg ();
 
 extern GC_Measure_Info* get_measure_info();
 extern void increase_live_object(int size_delta, int count_delta);

@@ -131,8 +131,8 @@ typedef struct gc_init_info{
   void  (*gc_init_ptr) (Cell*, Cell);        //init pointer;
   void  (*gc_memcpy) (char*, char*, size_t); //memcpy;
   void  (*gc_term) ();                       //terminate;
-  void  (*gc_pushArg) (Cell* cellp);
-  Cell* (*gc_popArg) ();
+  void  (*gc_pushArg) (Cell c);
+  Cell (*gc_popArg) ();
   void  (*printMeasure) ();
 }GC_Init_Info;
 

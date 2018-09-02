@@ -19,8 +19,8 @@ static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init
 static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
 static void printMeasure_default();
 
-Cell* popArg_default();
-void pushArg_default(Cell* cellp);
+Cell popArg_default();
+void pushArg_default(Cell c);
 
 #if defined( _DEBUG )
 static int total_malloc_size;
@@ -47,8 +47,8 @@ static void (*_gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
 static void (*_gc_init_ptr) (Cell* cellp, Cell newcell);
 static void (*_gc_memcpy) (char* dst, char* src, size_t size);
 static void (*_gc_term) ();
-static void (*_pushArg) (Cell* cellp);
-static Cell* (*_popArg) ();
+static void (*_pushArg) (Cell c);
+static Cell (*_popArg) ();
 static void (*_gc_write_barrier_root) (Cell* srcp, Cell dst);
 static void (*_printMeasure) ();
 
@@ -149,9 +149,9 @@ void printMeasureInfo()
   _printMeasure();
 }
 
-Cell* popArg_default()
+Cell popArg_default()
 {
-  Cell* c = stack[ --stack_top ];
+  Cell c = stack[ --stack_top ];
 #if defined( _DEBUG )
   if( stack_top < 0 ){
     printError("Stack Underflow");
@@ -161,34 +161,30 @@ Cell* popArg_default()
   return c;
 }
 
-void pushArg_default(Cell* cellp)
+void pushArg_default(Cell c)
 {
   if( stack_top >= STACKSIZE ){
     printError( "Stack Overflow" );
     return;
   }
-  stack[stack_top++] = cellp;
+  stack[stack_top++] = c;
 }
 
 void trace_roots(void (*trace) (Cell* cellp)){
   //trace machine stack.
   int scan = stack_top;
-  while( scan > 0 ){
-    Cell* cellp = stack[ --scan ];
-    if(CELL_P(*cellp)){
-      trace( cellp );
+  while(scan > 0){
+    Cell* c = &stack[ --scan ];
+    if(CELL_P(*c)){
+      trace( c );
     }
-  }
-
-  //trace return value.
-  if(CELL_P(retReg)){
-    trace( &retReg );
   }
 
   //trace env.
   int i;
   for( i=0; i<ENVSIZE; i++ ){
-    if( env[i] ){
+    if(CELL_P(env[i])){
+      AQ_PRINTF("%d\n", i);
       trace( &env[i] );
     }
   }
@@ -216,12 +212,6 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
     case T_SYMBOL:
       break;
     case T_LAMBDA:
-      if( CELL_P(lambdaparam(cell)) ){
-	trace(&(lambdaparam(cell)));
-      }
-      if( CELL_P(lambdaexp(cell)) ){
-	trace(&(lambdaexp(cell)));
-      }
       break;
     default:
       printf("trace_object: Object Corrupted(%p).\n", cell);
@@ -253,12 +243,6 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
     case T_SYMBOL:
       break;
     case T_LAMBDA:
-      if( CELL_P(lambdaparam(cell)) && trace(&(lambdaparam(cell))) ){
-	return TRUE;
-      }
-      if( CELL_P(lambdaexp(cell)) && trace(&(lambdaexp(cell))) ){
-	return TRUE;
-      }
       break;
     default:
       printf("trace_object_bool: Object Corrupted(%p).\n", cell);
@@ -393,6 +377,9 @@ void gc_start ()
   ut2 = usage.ru_utime;
   
   measure_info.gc_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
+
+  static int count = 0;
+  AQ_PRINTF("gc: count: %d\n", count++);
 }
 
 void gc_write_barrier (Cell cell, Cell* cellp, Cell newcell)
@@ -420,12 +407,12 @@ void gc_term ()
   _gc_term();
 }
 
-void pushArg (Cell* cellp)
+void pushArg (Cell c)
 {
-  _pushArg(cellp);
+  _pushArg(c);
 }
 
-Cell* popArg ()
+Cell popArg ()
 {
   return _popArg();
 }

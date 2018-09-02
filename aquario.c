@@ -571,48 +571,43 @@ Cell getVar(char* name)
   return cdar(chain);
 }
 
-void setVarCell(Cell strCell, Cell c)
-{
-  int key = 0;
-  Cell chain = getChain(strvalue(strCell), &key);
-  registerVar(strCell, chain, c, &env[key]);
-}
-
-void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
-{
-  if(!nullp(chain)){
-    //pushArg(&chain);
-    Cell pair = pairCell(nameCell, c);
-    //popArg();
-    gc_write_barrier( chain, &car(chain), pair );
-  }
-  else{
-    Cell entry = pairCell(nameCell, c);
-    gc_write_barrier_root(env, pairCell(entry, *env));
-  }
-}
-
-Cell getChain(char* name, int* key)
-{
-  *key = hash(name)%ENVSIZE;
-  Cell chain = env[*key];
-  if(env[*key]==NULL){
-    chain = (Cell)AQ_NIL;
-    env[*key] = (Cell)AQ_NIL;
-  }
-  while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
-    chain = cdr(chain);
-  }
-  return chain;
-}
-
 void setVar(char* name, Cell c)
 {
   int key = 0;
   Cell nameCell = stringCell(name);
   Cell chain = getChain(name, &key);
   registerVar(nameCell, chain, c, &env[key]);
-  popArg();
+}
+
+void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
+{
+  if(!nullp(chain)){
+    AQ_PRINTF("env\n");
+    Cell entry = pairCell(nameCell, c);
+    pushArg(entry);
+    gc_write_barrier( chain, &car(chain), entry );
+    gc_write_barrier_root(env, chain);
+  }
+  else{
+    AQ_PRINTF("entry\n");
+    Cell entry = pairCell(nameCell, c);
+    pushArg(entry);
+    gc_write_barrier_root(env, pairCell(entry, *env));
+  }
+}
+
+Cell getChain(char* name, int* key)
+{
+  //  *key = hash(name)%ENVSIZE;
+  *key = 0;
+  if(env[*key]==NULL){
+    env[*key] = (Cell)AQ_NIL;
+  }
+  Cell chain = env[*key];
+  while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
+    chain = cdr(chain);
+  }
+  return chain;
 }
 
 void callProc(char* name)
@@ -660,7 +655,8 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  g_GC_stress      = FALSE;
+  g_GC_stress = FALSE;
+  //g_GC_stress = TRUE;
 }
 
 void load_file( const char* filename )
@@ -848,33 +844,30 @@ int execute(char* buf, int pc)
     case PUSH:
       {
 	int value = (int)getOperand(buf, ++pc);
-	pushArg((Cell*)makeInteger(value));
+	pushArg(makeInteger(value));
 	pc += sizeof(Cell);
       }
       break;
     case PUSH_NIL:
-      pushArg((Cell*)AQ_NIL);
+      pushArg((Cell)AQ_NIL);
       ++pc;
       break;
     case PUSH_TRUE:
-      pushArg((Cell*)AQ_TRUE);
+      pushArg((Cell)AQ_TRUE);
       ++pc;
       break;
     case PUSH_FALSE:
-      pushArg((Cell*)AQ_FALSE);
+      pushArg((Cell)AQ_FALSE);
       ++pc;
       break;
     case ADD:
       {
-	Cell* numCell = popArg();
-	int num = ivalue(numCell);
+	int num = ivalue(popArg());
 	long ans = 0;
 	for(int i=0; i<num; i++) {
-	  Cell* val = popArg();
-	  ans += ivalue(val);
+	  ans += ivalue(popArg());
 	}
-	Cell* cellp = (Cell*)makeInteger(ans);
-	pushArg(cellp);
+	pushArg(makeInteger(ans));
 	++pc;
       }
       break;
@@ -883,17 +876,14 @@ int execute(char* buf, int pc)
 	int num = ivalue(popArg());
 	if(num == 1) {
 	  int ans = -ivalue(popArg());
-	  Cell* cellp = (Cell*)makeInteger(ans);
-	  pushArg(cellp);
+	  pushArg(makeInteger(ans));
 	} else {
 	  long ans = 0;
 	  for(int i=0; i<num-1; i++) {
-	    Cell* val = popArg();
-	    ans -= ivalue(val);
+	    ans -= ivalue(popArg());
 	  }
 	  ans += ivalue(popArg());
-	  Cell* cellp = (Cell*)makeInteger(ans);
-	  pushArg(cellp);
+	  pushArg(makeInteger(ans));
 	}
 	++pc;
       }
@@ -903,11 +893,9 @@ int execute(char* buf, int pc)
 	int num = ivalue(popArg());
 	long ans = 1;
 	for(int i=0; i<num; i++) {
-	  Cell* val = popArg();
-	  ans *= ivalue(val);
+	  ans *= ivalue(popArg());
 	}
-	Cell* cellp = (Cell*)makeInteger(ans);
-	pushArg(cellp);
+	pushArg(makeInteger(ans));
 	++pc;
       }
       break;
@@ -916,25 +904,22 @@ int execute(char* buf, int pc)
 	int num = ivalue(popArg());
 	if(num == 1) {
 	  long ans = 1/ivalue(popArg());
-	  Cell* cellp = (Cell*)makeInteger(ans);
-	  pushArg(cellp);	  
+	  pushArg(makeInteger(ans));
 	} else {
 	  int div = 1;
 	  for(int i=0; i<num-1; i++) {
-	    Cell* val = popArg();
-	    div *= ivalue(val);
+	    div *= ivalue(popArg());
 	  }
 	  long ans = ivalue(popArg());
 	  ans = ans/div;
-	  Cell* cellp = (Cell*)makeInteger(ans);
-	  pushArg(cellp);
+	  pushArg(makeInteger(ans));
 	}
 	++pc;
       }
       break;
     case RET:
       {
-	Cell* val = popArg();
+	Cell val = popArg();
 	int retAddr = ivalue(popArg());
 	int argNum = ivalue(popArg());
 	
@@ -944,32 +929,32 @@ int execute(char* buf, int pc)
 	
 	updateOffsetReg();
 	pushArg(val);
-	
 	pc = retAddr;
       }
       break;
     case CONS:
       {
-	Cell* cdrCell = popArg();
-	Cell* carCell = popArg();
-	Cell ret = pairCell((Cell)carCell, (Cell)cdrCell);
-	pushArg((Cell*)ret);
+	// TODO: need to care.
+	Cell cdrCell = popArg();
+	Cell carCell = popArg();
+	Cell ret = pairCell(carCell, cdrCell);
+	pushArg(ret);
 	++pc;
       }
       break;
     case CAR:
       {
-	Cell c = (Cell)popArg();
+	Cell c = popArg();
 	Cell ca = car(c);
-	pushArg((Cell*)ca);
+	pushArg(ca);
 	++pc;
       }
       break;
     case CDR:
       {
-	Cell c = (Cell)popArg();
+	Cell c = popArg();
 	Cell cd = cdr(c);
-	pushArg((Cell*)cd);
+	pushArg(cd);
 	++pc;
       }
       break;
@@ -978,7 +963,7 @@ int execute(char* buf, int pc)
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pushArg((Cell*)ret);
+	pushArg(ret);
 	++pc;
       }
       break;
@@ -987,7 +972,7 @@ int execute(char* buf, int pc)
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pushArg((Cell*)ret);
+	pushArg(ret);
 	++pc;
       }
       break;
@@ -996,7 +981,7 @@ int execute(char* buf, int pc)
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pushArg((Cell*)ret);
+	pushArg(ret);
 	++pc;
       }
       break;
@@ -1005,7 +990,7 @@ int execute(char* buf, int pc)
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pushArg((Cell*)ret);
+	pushArg(ret);
 	++pc;
       }
       break;
@@ -1014,29 +999,29 @@ int execute(char* buf, int pc)
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pushArg((Cell*)ret);
+	pushArg(ret);
 	++pc;
       }
       break;
     case QUOTE:
       {
-	Cell c = (Cell)popArg();
-	pushArg((Cell*)c);
+	Cell c = popArg();
+	pushArg(c);
 	++pc;
       }
       break;
     case PRINT:
       {
-	Cell* val = popArg();
-	printCell((Cell)val);
+	Cell val = popArg();
+	printCell(val);
 	AQ_PRINTF("\n");
-	pushArg((Cell*)AQ_UNDEF);
+	pushArg((Cell)AQ_UNDEF);
 	++pc;
       }
       break;
     case JNEQ:
       {
-	Cell c = (Cell)popArg();
+	Cell c = popArg();
 	++pc;
 	if(!truep(c)) {
 	  int addr = (int)getOperand(buf, pc);
@@ -1056,10 +1041,9 @@ int execute(char* buf, int pc)
       {
 	// TODO: different behavior between on-memory and bytecode.
 	// this is for on-memory
-	Cell val = (Cell)popArg();
+	Cell val = stack[stack_top-1];
 	char* str = &buf[++pc];
-	Cell strCell = stringCell(str);
-	setVarCell(strCell, val);
+	setVar(str, val);
 	pc += (strlen(str)+1);
       }
       break;
@@ -1067,7 +1051,7 @@ int execute(char* buf, int pc)
       {
 	char* str = &buf[++pc];
 	Cell strCell = stringCell(str);
-	pushArg((Cell*)strCell);
+	pushArg(strCell);
 	pc += (strlen(str)+1);
       }
       break;
@@ -1075,7 +1059,7 @@ int execute(char* buf, int pc)
       {
 	char* sym = &buf[++pc];
 	Cell symCell = symbolCell(sym);
-	pushArg((Cell*)symCell);
+	pushArg(symCell);
 	pc += (strlen(sym)+1);
       }
       break;
@@ -1084,10 +1068,11 @@ int execute(char* buf, int pc)
 	char* str = &buf[++pc];
 	Cell ret = getVar(str);
 	if(UNDEF_P(ret)) {
-	  printError("[REF] undefined symbol: %s", str);
+	  //	  printError("[REF] undefined symbol: %s", str);
+	  pushArg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
-	  pushArg((Cell*)ret);
+	  pushArg(ret);
 	  pc += (strlen(str)+1);
 	}
       }
@@ -1108,7 +1093,7 @@ int execute(char* buf, int pc)
 	    break;
 	  }
 	  int retAddr  = pc + strlen(str) + 1;
-	  pushArg((Cell*)makeInteger(retAddr));
+	  pushArg(makeInteger(retAddr));
 	  updateOffsetReg();
 	  
 	  // jump
@@ -1125,13 +1110,13 @@ int execute(char* buf, int pc)
 	pc += sizeof(Cell);
 	int paramNum = (int)getOperand(buf, pc);
 	Cell l = lambdaCell(defStart, paramNum);
-	pushArg((Cell*)l);
+	pushArg(l);
 	pc = defEnd;
       }
       break;
     case FUNCS:
       {
-	Cell l = (Cell)popArg();
+	Cell l = popArg();
 	int argNum = ivalue(stack[stack_top-1]);
 	int paramNum = ivalue(lambdaParamNum(l));
 	if(paramNum != argNum) {
@@ -1141,7 +1126,7 @@ int execute(char* buf, int pc)
 	}
 	
 	int retAddr  = pc + 1;
-	pushArg((Cell*)makeInteger(retAddr));
+	pushArg(makeInteger(retAddr));
 	updateOffsetReg();
 	
 	// jump
@@ -1152,7 +1137,7 @@ int execute(char* buf, int pc)
     case SROT:
       {
 	int n = (int)getOperand(buf, ++pc);
-	Cell* val = stack[stack_top-(n+1)];
+	Cell val = stack[stack_top-(n+1)];
 	
 	for(int i=n; i>0; i--) {
 	  stack[stack_top-(i+1)] = stack[stack_top-i];
@@ -1165,7 +1150,7 @@ int execute(char* buf, int pc)
       {
 	int offset = (int)getOperand(buf, ++pc);
 	int index = getOffsetReg() - offset - 3;
-	Cell* val = stack[index];
+	Cell val = stack[index];
 	pushArg(val);
 	pc += sizeof(Cell);
       }
@@ -1219,7 +1204,7 @@ int repl()
     
     writeInst(&instQ, &buf[pc]);
     pc = execute(buf, pc);
-    printLineCell((Cell)popArg());
+    printLineCell(popArg());
     
     instQ.head = instQ.tail;
     instQ.head->next = NULL;

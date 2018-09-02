@@ -47,46 +47,9 @@ Cell newCell(Type t, size_t size);
 #define isSyntax(p)     (CELL_P(p) && (p)->_type==T_SYNTAX)
 #define isLambda(p)     (CELL_P(p) && (p)->_type==T_LAMBDA)
 
-#define PUSH_ARGS2(c1, c2)                \
-  pushArg(c1);                            \
-  pushArg(c2);
-
-#define PUSH_ARGS3(c1, c2, c3)            \
-  pushArg(c1);                            \
-  pushArg(c2);                            \
-  pushArg(c3);
-
-#define PUSH_ARGS4(c1, c2, c3, c4)        \
-  PUSH_ARGS2(c1, c2)                      \
-  PUSH_ARGS2(c3, c4)
-
-#define PUSH_ARGS5(c1, c2, c3, c4, c5)    \
-  PUSH_ARGS2(c1, c2)                      \
-  PUSH_ARGS3(c3, c4, c5)
-
-#define POP_ARGS2()                       \
-  popArg();                               \
-  popArg();
-
-#define POP_ARGS3()                       \
-  popArg();                               \
-  popArg();                               \
-  popArg();
-
-#define POP_ARGS4()                       \
-  POP_ARGS2()                             \
-  POP_ARGS2()
-
-#define POP_ARGS5()                       \
-  POP_ARGS2()                             \
-  POP_ARGS3()
-
-void clone(Cell c);
 Cell charCell(char ch);
 Cell stringCell(char* str);
 Cell pairCell(Cell a, Cell d);
-Cell procCell(opType proc);
-Cell syntaxCell(opType syn);
 Cell symbolCell(char* name);
 Cell lambdaCell(int addr, int paramNum);
 Cell makeInteger(int val);
@@ -95,16 +58,11 @@ int isdigitstr(char* str);
 int nullp(Cell c);
 int truep(Cell c);
 int notp(Cell c);
-int zerop(Cell c);
-int eqdigitp(Cell c);
-int length(Cell ls);
-void applyList(Cell ls);
 
 void printPair(Cell c);
 void printCell(Cell c);
 void printLineCell(Cell c);
 char* readTokenInDQuot();
-char* readToken();
 
 Inst* createInst(OPCODE op, Cell operand, int size);
 void addInstHead(InstQueue* queue, Inst* inst);
@@ -122,19 +80,17 @@ void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
 int execute(char* buf, int pc);
 
 void printError(char *fmt, ...);
-void setParseError(char* str);
 
 #define ENVSIZE (3000)
 Cell env[ENVSIZE];
 #define LINESIZE (1024)
 
 #define STACKSIZE (1024)
-Cell* stack[ STACKSIZE ];
+Cell stack[ STACKSIZE ];
 int stack_top;
 
 int hash(char* key);
 Cell getVar(char* name);
-void setVarCell(Cell strCell, Cell c);
 void setVar(char* name, Cell c);
 void dupArg();
 void clearArgs();
@@ -146,8 +102,6 @@ void updateOffsetReg();
 int getOffsetReg();
 
 int repl();
-
-int getCellSize(Cell cell);
 
 #if defined( _WIN32 ) || defined( _WIN64 )
 #define STRCPY(mem, str)	strcpy_s(mem, sizeof(char) * (strlen(str)+1), str)
