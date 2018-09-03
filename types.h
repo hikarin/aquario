@@ -100,13 +100,20 @@ struct cell{
 Cell retReg;
 int offsetReg;
 
+typedef union _operand
+{
+  char _char;
+  char* _string;
+  Cell _num;
+} Operand;
+
 typedef struct _inst Inst;
 
 struct _inst
 {
   OPCODE op;
-  Cell operand;
-  Cell operand2;
+  Operand operand;
+  Operand operand2;
   int offset;
   int size;
   struct _inst* next;

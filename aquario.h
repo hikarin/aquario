@@ -64,7 +64,11 @@ void printCell(Cell c);
 void printLineCell(Cell c);
 char* readTokenInDQuot();
 
-Inst* createInst(OPCODE op, Cell operand, int size);
+Inst* createInst(OPCODE op, int size);
+Inst* createInstChar(OPCODE op, char c);
+Inst* createInsString(OPCODE op, char* str);
+Inst* createInstNum(OPCODE op, int num);
+
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);
 size_t writeInst(InstQueue* instQ, char* buf);

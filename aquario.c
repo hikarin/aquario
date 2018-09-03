@@ -315,13 +315,38 @@ void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList)
   compileElem(instQ, fp, symbolList);
 }
 
-Inst* createInst(OPCODE op, Cell operand, int size)
+Inst* createInstChar(OPCODE op, char c)
+{
+  Inst* result = createInst(op, 3);
+  result->operand._char = c;
+  
+  return result;
+}
+Inst* createInstStr(OPCODE op, char* str)
+{
+  int len = strlen(str)+1;
+  Inst* result = createInst(op, len+1);
+  result->operand._string = malloc(sizeof(char)*len);
+  strcpy(result->operand._string, str);
+  
+  return result;  
+}
+
+Inst* createInstNum(OPCODE op, int num)
+{
+  Inst* result = createInst(op, 1+sizeof(Cell));
+  result->operand._num = makeInteger(num);
+  
+  return result;
+}
+
+Inst* createInst(OPCODE op, int size)
 {
   Inst* result = (Inst*)malloc(sizeof(Inst));
   result->op = op;
   result->next = NULL;
-  result->operand = operand;
-  result->operand2 = NULL;
+  result->operand._num  = (Cell)AQ_NIL;
+  result->operand2._num = (Cell)AQ_NIL;
   result->size = size;
   result->offset = 0;
   
@@ -338,13 +363,12 @@ void compileToken(InstQueue* instQ, char* token, Cell symbolList)
     addOneByteInstTail(instQ, PUSH_NIL);
   }  
   else if(token[0] == '"'){
-    Inst* inst = createInst(PUSHS, stringCell(&token[1]), 9);
+    Inst* inst = createInstStr(PUSHS, &token[1]);
     addInstTail(instQ, inst);
   }
   else if(token[0] == '#'){
     if(token[1] == '\\' && strlen(token)==3){
-      Inst* ret = createInst(PUSH, charCell(token[2]), 9);
-      addInstTail(instQ, ret);
+      addInstTail(instQ, createInstChar(PUSH, token[2])); // TODO: PUSHC
     }
     else if(strcmp(&token[1], "t") == 0){
       addOneByteInstTail(instQ, PUSH_TRUE);
@@ -353,15 +377,15 @@ void compileToken(InstQueue* instQ, char* token, Cell symbolList)
       addOneByteInstTail(instQ, PUSH_FALSE);
     }
     else{
-      Inst* inst = createInst(PUSHS, stringCell(token), 9);
+      Inst* inst = createInstStr(PUSHS, token);
       addInstTail(instQ, inst);
     }
   } else {
     int index = 0;
     while(symbolList && !NIL_P(symbolList)) {
-      char* symbol = symbolname(car(symbolList));
+      char* symbol = (char*)car(symbolList);
       if(strcmp(symbol, token) == 0) {
-	Inst* inst = createInst(LOAD, makeInteger(index), 9);
+	Inst* inst = createInstNum(LOAD, index);
 	addInstTail(instQ, inst);
 	return;
       }
@@ -369,7 +393,7 @@ void compileToken(InstQueue* instQ, char* token, Cell symbolList)
       symbolList = cdr(symbolList);
       index++;
     }
-    Inst* inst = createInst(REF, stringCell(token), 9);
+    Inst* inst = createInstStr(REF, token);
     addInstTail(instQ, inst);
   }
 }
@@ -383,12 +407,13 @@ void addInstTail(InstQueue* queue, Inst* inst)
 
 void addPushTail(InstQueue* instQ, int num)
 {
-  return addInstTail(instQ, createInst(PUSH, makeInteger(num), 9));
+  return addInstTail(instQ, createInstNum(PUSH, num));
 }
 
 void addOneByteInstTail(InstQueue* instQ, OPCODE op)
 {
-  return addInstTail(instQ, createInst(op, (Cell)AQ_NIL, 1));
+  Inst* ret = createInst(op, 1);
+  return addInstTail(instQ, ret);
 }
 
 void compileProcedure(char* func, int num, InstQueue* instQ)
@@ -427,8 +452,7 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
       addOneByteInstTail(instQ, EQ);
     } else {
       addPushTail(instQ, num);
-      int len = strlen(func)+1;
-      addInstTail(instQ, createInst(FUNC, stringCell(func), len+1));
+      addInstTail(instQ, createInstStr(FUNC, func));
     }
 }
 
@@ -436,23 +460,23 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   compileElem(instQ, fp, symbolList);  // predicate
   
-  Inst* jneqInst = createInst(JNEQ, (Cell)AQ_NIL /* placeholder */, 9);
+  Inst* jneqInst = createInstNum(JNEQ, 0 /* placeholder */);
   addInstTail(instQ, jneqInst);
   compileElem(instQ, fp, symbolList);  // statement (TRUE)
   
-  Inst* jmpInst = createInst(JMP, (Cell)AQ_NIL /* placeholder */, 9);
+  Inst* jmpInst = createInstNum(JMP, 0/* placeholder */);
   addInstTail(instQ, jmpInst);
-  jneqInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
+  jneqInst->operand._num = makeInteger(instQ->tail->offset + instQ->tail->size);
   
   int c = fgetc(fp);
   ungetc(c, fp);
   if(c ==')' ){
-    addInstTail(instQ, createInst(PUSH_NIL, (Cell)AQ_NIL, 1));
+    addOneByteInstTail(instQ, PUSH_NIL);
   } else {
     compileElem(instQ, fp, symbolList);  // statement (FALSE)
   }
   
-  jmpInst->operand = makeInteger(instQ->tail->offset + instQ->tail->size);
+  jmpInst->operand._num = makeInteger(instQ->tail->offset + instQ->tail->size);
 
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
@@ -463,7 +487,7 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
 
 void compileLambda(InstQueue* instQ, FILE* fp)
 {
-  Inst* inst = createInst(FUND, (Cell)AQ_NIL /* placeholder */, 17);
+  Inst* inst = createInst(FUND, 1 + sizeof(Cell)*2);
   addInstTail(instQ, inst);
 
   int c = fgetc(fp);
@@ -478,16 +502,24 @@ void compileLambda(InstQueue* instQ, FILE* fp)
     ungetc(c, fp);
     char buf[LINESIZE];
     char* var = readToken(buf, sizeof(buf), fp);
-    symbolList = pairCell(symbolCell(var), symbolList);
+    
+    Cell tmp = (Cell)gc_malloc(sizeof(struct cell));
+    size_t len = strlen(var)+1;
+    char* sym = malloc(len);
+    strcpy(sym, var);
+    car(tmp) = (Cell)sym;
+    cdr(tmp) = symbolList;
+    symbolList = tmp;
     
     index++;
+    //    AQ_PRINTF("symlist: %s\n", (char*)car(symbolList));
   }
   compileList(instQ, fp, symbolList);  // body
-  addInstTail(instQ, createInst(RET, (Cell)AQ_NIL, 1));
+  addOneByteInstTail(instQ, RET);
   
   int addr = instQ->tail->offset + instQ->tail->size;
-  inst->operand = makeInteger(addr);
-  inst->operand2 = makeInteger(index);
+  inst->operand._num = makeInteger(addr);
+  inst->operand2._num = makeInteger(index);
 }
 
 void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
@@ -496,7 +528,7 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   char* var = readToken(buf, sizeof(buf), fp);
   
   compileElem(instQ, fp, symbolList);
-  addInstTail(instQ, createInst(SET, stringCell(var), 1 + strlen(var) + 1));
+  addInstTail(instQ, createInstStr(SET, var));
   
   char* token = readToken(buf, sizeof(buf), fp);
   if(token[0] !=')' ){
@@ -518,7 +550,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
       compileElem(instQ, fp, symbolList);
       int num = compileList(instQ, fp, symbolList);
       addPushTail(instQ, num);
-      addInstTail(instQ, createInst(SROT, makeInteger(num+1), 1));
+      addInstTail(instQ, createInstNum(SROT, num+1));
       addOneByteInstTail(instQ, FUNCS);
     }
     else if(strcmp(func, ")") == 0) {
@@ -536,7 +568,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   }
   else if(token[0]=='\''){
     char* token2 = readToken(buf, sizeof(buf), fp);
-    addInstTail(instQ, createInst(PUSH_SYM, symbolCell(token2), 9));
+    addInstTail(instQ, createInstStr(PUSH_SYM, token2));
   }
   else if(token[0]==')'){
     printError("extra close parensis");
@@ -652,8 +684,8 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  //g_GC_stress = FALSE;
-  g_GC_stress = TRUE;
+  g_GC_stress = FALSE;
+  //g_GC_stress = TRUE;
 }
 
 void load_file( const char* filename )
@@ -714,81 +746,81 @@ size_t writeInst(InstQueue* instQ, char* buf)
     switch(op) {
     case PUSH:
       {
-	long val = ivalue(inst->operand);
+	long val = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &val, sizeof(long));
 	size += sizeof(long);
       }
       break;
     case JNEQ:
       {
-	long val = ivalue(inst->operand);
+	long val = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &val, sizeof(long));
 	size += sizeof(long);
       }
       break;
     case JMP:
       {
-	long val = ivalue(inst->operand);
+	long val = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &val, sizeof(long));
 	size += sizeof(long);
       }
       break;
     case SET:
       {
-	char* str = strvalue(inst->operand);
+	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
       }
       break;
     case REF:
       {
-	char* str = strvalue(inst->operand);
+	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
       }
       break;
     case FUNC:
       {
-	char* str = strvalue(inst->operand);
+	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
       }
       break;
     case FUND:
       {
-	int addr = ivalue(inst->operand);
+	int addr = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &addr, sizeof(long));
 	size += sizeof(long);
 	
-	int paramNum = ivalue(inst->operand2);
+	int paramNum = ivalue(inst->operand2._num);
 	memcpy(&buf[size], &paramNum, sizeof(long));
 	size += sizeof(long);
       }
       break;
     case SROT:
       {
-	int num = ivalue(inst->operand);
+	int num = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &num, sizeof(long));
 	size += sizeof(long);
       }
       break;
     case LOAD:
       {
-	int offset = ivalue(inst->operand);
+	int offset = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &offset, sizeof(long));
 	size += sizeof(long);
       }
       break;
     case PUSHS:
       {
-	char* str = strvalue(inst->operand);
+	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
       }
       break;
     case PUSH_SYM:
       {
-	char* sym = symbolname(inst->operand);
+	char* sym = inst->operand._string;
 	strcpy(&buf[++size], sym);
 	size += (strlen(sym)+1);
       }
