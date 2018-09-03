@@ -257,6 +257,7 @@ char* readToken(char *buf, int len, FILE* fp)
 
 size_t compile(FILE* fp, char* buf)
 {
+  AQ_PRINTF("compiling...\n");
   InstQueue instQ;
   Inst inst;
   inst.op = NOP;
@@ -556,25 +557,22 @@ int hash(char* key)
 
 Cell getVar(char* name)
 {
-  int key = hash(name)%ENVSIZE;
-  Cell chain = env[key];
-  if(chain==NULL || nullp(chain)){
-    printError("undefined symbol: %s", name);
-    return (Cell)AQ_UNDEF;
+  int key = 0;
+  Cell chain = getChain(name, &key);
+  if(NIL_P(chain)) {
+    AQ_PRINTF("getVar: undef (%s), %d\n", name, key);
+    return (Cell)AQ_NIL;
+  } else {
+    return cdar(chain);
   }
-  while(strcmp(name, strvalue(caar(chain)))!=0){
-    if(nullp(cdr(chain))){
-      return (Cell)AQ_UNDEF;
-    }
-    chain = cdr(chain);
-  }
-  return cdar(chain);
 }
 
 void setVar(char* name, Cell c)
 {
   int key = 0;
+  pushArg(c);
   Cell nameCell = stringCell(name);
+  c = popArg();
   Cell chain = getChain(name, &key);
   registerVar(nameCell, chain, c, &env[key]);
 }
@@ -582,27 +580,23 @@ void setVar(char* name, Cell c)
 void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
 {
   if(!nullp(chain)){
-    AQ_PRINTF("env\n");
+    gc_write_barrier(chain, &cdr(car(chain)), c);
+  } else{
+    printCell(nameCell); AQ_PRINTF(", "); printCell(c); AQ_PRINTF(" ---\n");
+    pushArg(nameCell);
+    pushArg(c);
     Cell entry = pairCell(nameCell, c);
-    pushArg(entry);
-    gc_write_barrier( chain, &car(chain), entry );
-    gc_write_barrier_root(env, chain);
-  }
-  else{
-    AQ_PRINTF("entry\n");
-    Cell entry = pairCell(nameCell, c);
-    pushArg(entry);
+    printCell(nameCell); AQ_PRINTF(", "); printCell(c); AQ_PRINTF(" --- done1\n");
+    c = popArg();
+    nameCell = popArg();
+    printCell(nameCell); AQ_PRINTF(", "); printCell(c); AQ_PRINTF(" --- done2\n");
     gc_write_barrier_root(env, pairCell(entry, *env));
   }
 }
 
 Cell getChain(char* name, int* key)
 {
-  //  *key = hash(name)%ENVSIZE;
-  *key = 0;
-  if(env[*key]==NULL){
-    env[*key] = (Cell)AQ_NIL;
-  }
+  *key = hash(name)%ENVSIZE;
   Cell chain = env[*key];
   while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
     chain = cdr(chain);
@@ -639,7 +633,10 @@ void setParseError(char* str)
 
 void init()
 {
-  memset(env, 0, ENVSIZE);
+  int i;
+  for(i=0; i<ENVSIZE; ++i) {
+    env[i] = (Cell)AQ_NIL;
+  }
   memset(stack, 0, STACKSIZE);
   stack_top = 0;
 }
@@ -655,8 +652,8 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  g_GC_stress = FALSE;
-  //g_GC_stress = TRUE;
+  //g_GC_stress = FALSE;
+  g_GC_stress = TRUE;
 }
 
 void load_file( const char* filename )
