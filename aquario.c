@@ -1109,8 +1109,11 @@ int execute(char* buf, int start, int end)
 	char* str = &buf[++pc];
 	Cell func = getVar(str);
 	if(UNDEF_P(func)) {
-	  printError("[FUNC] undefined symbol: %s", str);
-	  popArg();
+	  printError("[FUNC] undefined function: %s", str);
+	  int num = ivalue(popArg());
+	  for(int i=0; i<num; i++) {
+	    popArg();
+	  }
 	  pushArg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
