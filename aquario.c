@@ -591,8 +591,8 @@ Cell getVar(char* name)
 {
   int key = 0;
   Cell chain = getChain(name, &key);
-  if(NIL_P(chain)) {
-    return (Cell)AQ_NIL;
+  if(UNDEF_P(chain)) {
+    return (Cell)AQ_UNDEF;
   } else {
     return cdar(chain);
   }
@@ -610,7 +610,7 @@ void setVar(char* name, Cell c)
 
 void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
 {
-  if(!nullp(chain)){
+  if(!UNDEF_P(chain)){
     gc_write_barrier(chain, &cdr(car(chain)), c);
   } else{
     pushArg(nameCell);
@@ -626,7 +626,8 @@ Cell getChain(char* name, int* key)
 {
   *key = hash(name)%ENVSIZE;
   Cell chain = env[*key];
-  while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
+  //  while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
+  while(isPair(chain) && strcmp(name, strvalue(caar(chain)))!=0){
     chain = cdr(chain);
   }
   return chain;
@@ -663,7 +664,7 @@ void init()
 {
   int i;
   for(i=0; i<ENVSIZE; ++i) {
-    env[i] = (Cell)AQ_NIL;
+    env[i] = (Cell)AQ_UNDEF;
   }
   memset(stack, 0, STACKSIZE);
   stack_top = 0;
@@ -1094,7 +1095,7 @@ int execute(char* buf, int start, int end)
 	char* str = &buf[++pc];
 	Cell ret = getVar(str);
 	if(UNDEF_P(ret)) {
-	  //printError("[REF] undefined symbol: %s", str);
+	  printError("[REF] undefined symbol: %s", str);
 	  pushArg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
@@ -1108,7 +1109,9 @@ int execute(char* buf, int start, int end)
 	char* str = &buf[++pc];
 	Cell func = getVar(str);
 	if(UNDEF_P(func)) {
-	  printError("undefined symbol: %s", str);
+	  printError("[FUNC] undefined symbol: %s", str);
+	  popArg();
+	  pushArg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
 	  int paramNum = ivalue(lambdaParamNum(func));
