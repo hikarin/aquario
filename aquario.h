@@ -71,7 +71,7 @@ Inst* createInstNum(OPCODE op, int num);
 
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);
-size_t writeInst(InstQueue* instQ, char* buf);
+size_t writeInst(Inst* inst, char* buf);
 void addPushTail(InstQueue* instQ, int num);
 void addOneByteInstTail(InstQueue* instQ, OPCODE op);
 
@@ -81,7 +81,7 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList);
 void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
 
-int execute(char* buf, int pc);
+int execute(char* buf, int start, int end);
 
 void printError(char *fmt, ...);
 

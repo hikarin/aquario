@@ -272,7 +272,7 @@ size_t compile(FILE* fp, char* buf)
     compileElem(&instQ, fp, NULL);
   }
 
-  return writeInst(&instQ, buf);
+  return writeInst(instQ.head, buf);
 }
 
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
@@ -592,7 +592,6 @@ Cell getVar(char* name)
   int key = 0;
   Cell chain = getChain(name, &key);
   if(NIL_P(chain)) {
-    AQ_PRINTF("getVar: undef (%s), %d\n", name, key);
     return (Cell)AQ_NIL;
   } else {
     return cdar(chain);
@@ -614,14 +613,11 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   if(!nullp(chain)){
     gc_write_barrier(chain, &cdr(car(chain)), c);
   } else{
-    printCell(nameCell); AQ_PRINTF(", "); printCell(c); AQ_PRINTF(" ---\n");
     pushArg(nameCell);
     pushArg(c);
     Cell entry = pairCell(nameCell, c);
-    printCell(nameCell); AQ_PRINTF(", "); printCell(c); AQ_PRINTF(" --- done1\n");
     c = popArg();
     nameCell = popArg();
-    printCell(nameCell); AQ_PRINTF(", "); printCell(c); AQ_PRINTF(" --- done2\n");
     gc_write_barrier_root(env, pairCell(entry, *env));
   }
 }
@@ -714,7 +710,7 @@ void load_file( const char* filename )
     fp = fopen(abcFileName, "rb");
     if(fp) {
       fread(buf, abcInfo.st_size, 1, fp);
-      execute(buf, 0);
+      execute(buf, 0, abcInfo.st_size);
       fclose(fp);
     } else {
       AQ_PRINTF("[ERROR] %s: cannot open.\n", abcFileName);
@@ -723,7 +719,7 @@ void load_file( const char* filename )
     fp = fopen(filename, "r");
     if(fp) {
       size_t fileSize = compile(fp, buf);
-      execute(buf, 0);
+      execute(buf, 0, fileSize);
       fclose(fp);
       
       FILE* outputFile = fopen(abcFileName, "wb");
@@ -736,10 +732,10 @@ void load_file( const char* filename )
 #endif
 }
 
-size_t writeInst(InstQueue* instQ, char* buf)
+//size_t writeInst(InstQueue* instQ, char* buf)
+size_t writeInst(Inst* inst, char* buf)
 {
   size_t size = 0;
-  Inst* inst = instQ->head;
   while(inst) {
     OPCODE op = inst->op;
     buf[size] = (char)op;
@@ -863,11 +859,12 @@ Cell getOperand(char* buf, int pc)
   return (Cell)(*(Cell*)&buf[pc]);
 }
 
-int execute(char* buf, int pc)
+int execute(char* buf, int start, int end)
 {
   Boolean exec = TRUE;
   stack_top = 0;
-  while(exec != FALSE) {
+  int pc = start;
+  while(exec != FALSE && pc < end) {
     OPCODE op = buf[pc];
     switch(op) {
     case PUSH:
@@ -1097,7 +1094,7 @@ int execute(char* buf, int pc)
 	char* str = &buf[++pc];
 	Cell ret = getVar(str);
 	if(UNDEF_P(ret)) {
-	  //	  printError("[REF] undefined symbol: %s", str);
+	  //printError("[REF] undefined symbol: %s", str);
 	  pushArg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
@@ -1213,31 +1210,26 @@ void printError(char *fmt, ...) {
 
 int repl()
 {
-  InstQueue instQ;
-  Inst inst;
-  inst.op = NOP;
-  inst.next = NULL;
-  inst.offset = 0;
-  inst.size = 1;
-  instQ.head = &inst;
-  instQ.tail = &inst;
-  int pc = 0;
-
   char* buf = (char*)malloc(sizeof(char) * 1024);
+  int pc = 0;
   
   while(1){
     AQ_PRINTF_GUIDE(">");
-
+    
+    InstQueue instQ;
+    Inst inst;
+    inst.op = NOP;
+    inst.next = NULL;
+    inst.offset = pc;
+    inst.size = 1;
+    instQ.head = &inst;
+    instQ.tail = &inst;
+    
     compileElem(&instQ, stdin, NULL);
-    addOneByteInstTail(&instQ, HALT);
+    size_t bufSize = writeInst(instQ.head, &buf[pc]);
     
-    writeInst(&instQ, &buf[pc]);
-    pc = execute(buf, pc);
+    pc = execute(buf, pc, pc+bufSize);
     printLineCell(popArg());
-    
-    instQ.head = instQ.tail;
-    instQ.head->next = NULL;
-    instQ.head->op = NOP;
   }
   return 0;
 }
