@@ -503,16 +503,17 @@ void compileLambda(InstQueue* instQ, FILE* fp)
     char buf[LINESIZE];
     char* var = readToken(buf, sizeof(buf), fp);
     
-    Cell tmp = (Cell)gc_malloc(sizeof(struct cell));
+    Cell tmp = malloc(sizeof(struct cell));
+    AQ_PRINTF("tmp:    %p\n", tmp);
     size_t len = strlen(var)+1;
     char* sym = malloc(len);
+    AQ_PRINTF("sym:    %p\n", sym);
     strcpy(sym, var);
     car(tmp) = (Cell)sym;
     cdr(tmp) = symbolList;
     symbolList = tmp;
     
     index++;
-    //    AQ_PRINTF("symlist: %s\n", (char*)car(symbolList));
   }
   compileList(instQ, fp, symbolList);  // body
   addOneByteInstTail(instQ, RET);
@@ -682,7 +683,6 @@ void set_gc(char* gc_char)
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
   g_GC_stress = FALSE;
-  //g_GC_stress = TRUE;
 }
 
 void load_file( const char* filename )
@@ -733,7 +733,6 @@ void load_file( const char* filename )
 #endif
 }
 
-//size_t writeInst(InstQueue* instQ, char* buf)
 size_t writeInst(Inst* inst, char* buf)
 {
   size_t size = 0;
@@ -767,6 +766,7 @@ size_t writeInst(Inst* inst, char* buf)
 	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
+	free(inst->operand._string);
       }
       break;
     case REF:
@@ -774,6 +774,7 @@ size_t writeInst(Inst* inst, char* buf)
 	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
+	free(inst->operand._string);
       }
       break;
     case FUNC:
@@ -781,6 +782,7 @@ size_t writeInst(Inst* inst, char* buf)
 	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
+	free(inst->operand._string);
       }
       break;
     case FUND:
@@ -813,6 +815,7 @@ size_t writeInst(Inst* inst, char* buf)
 	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
 	size += (strlen(str)+1);
+	free(inst->operand._string);
       }
       break;
     case PUSH_SYM:
@@ -820,6 +823,7 @@ size_t writeInst(Inst* inst, char* buf)
 	char* sym = inst->operand._string;
 	strcpy(&buf[++size], sym);
 	size += (strlen(sym)+1);
+	free(inst->operand._string);
       }
       break;
     case NOP:
