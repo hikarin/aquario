@@ -91,8 +91,10 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
 void* gc_malloc_marksweep( size_t size )
 {
   int allocate_size = (get_obj_size(size) + MEMORY_ALIGNMENT-1) / MEMORY_ALIGNMENT * MEMORY_ALIGNMENT;
-  if( g_GC_stress ){
-    gc_start();
+  if( g_GC_stress ) {
+    if( freelist && freelist->chunk_size < get_heap_size() - sizeof(Cell) * MARK_STACK_SIZE ) {
+      gc_start();
+    }
   }
   Free_Chunk* chunk = NULL;
 
