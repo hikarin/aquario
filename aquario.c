@@ -933,11 +933,10 @@ int execute(char* buf, int start, int end)
       break;
     case CONS:
       {
-	AQ_PRINTF("consing ..\n");
-	// TODO: need to care.
-	Cell cdrCell = popArg();
-	Cell carCell = popArg();
-	Cell ret = pairCell(carCell, cdrCell);
+	Cell ret = pairCell(stack[stack_top-2], stack[stack_top-1]);
+	popArg();
+	popArg();
+	
 	pushArg(ret);
 	++pc;
       }
