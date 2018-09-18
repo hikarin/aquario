@@ -183,8 +183,7 @@ void trace_roots(void (*trace) (Cell* cellp)){
   //trace env.
   int i;
   for( i=0; i<ENVSIZE; i++ ){
-    if(CELL_P(env[i])){
-      AQ_PRINTF("%d\n", i);
+    if(!UNDEF_P(env[i])){
       trace( &env[i] );
     }
   }
@@ -377,9 +376,6 @@ void gc_start ()
   ut2 = usage.ru_utime;
   
   measure_info.gc_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
-
-  static int count = 0;
-  AQ_PRINTF("gc: count: %d\n", count++);
 }
 
 void gc_write_barrier (Cell cell, Cell* cellp, Cell newcell)

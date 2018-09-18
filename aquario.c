@@ -50,7 +50,6 @@ Cell pairCell(Cell a, Cell d)
 
   gc_init_ptr(&cdr(cons), d);
   gc_init_ptr(&car(cons), a);
-
   return cons;
 }
 
@@ -516,6 +515,12 @@ void compileLambda(InstQueue* instQ, FILE* fp)
     index++;
   }
   compileList(instQ, fp, symbolList);  // body
+  while(symbolList != (Cell)AQ_NIL) {
+    Cell tmp = symbolList;
+    symbolList = cdr(symbolList);
+    free(car(tmp));
+    free(tmp);
+  }
   addOneByteInstTail(instQ, RET);
   
   int addr = instQ->tail->offset + instQ->tail->size;
@@ -610,6 +615,7 @@ void setVar(char* name, Cell c)
 }
 
 void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
+
 {
   if(!UNDEF_P(chain)){
     gc_write_barrier(chain, &cdr(car(chain)), c);
@@ -619,7 +625,18 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
     Cell entry = pairCell(nameCell, c);
     c = popArg();
     nameCell = popArg();
-    gc_write_barrier_root(env, pairCell(entry, *env));
+    car(entry) = nameCell;
+    cdr(entry) = c;
+
+    pushArg(*env);
+    pushArg(entry);
+    Cell p = pairCell(entry, *env);
+    entry = popArg();
+    *env = popArg();
+    car(p) = entry;
+    cdr(p) = *env;
+  
+    gc_write_barrier_root(env, p);
   }
 }
 
@@ -627,7 +644,6 @@ Cell getChain(char* name, int* key)
 {
   *key = hash(name)%ENVSIZE;
   Cell chain = env[*key];
-  //  while(!nullp(chain) && strcmp(name, strvalue(caar(chain)))!=0){
   while(isPair(chain) && strcmp(name, strvalue(caar(chain)))!=0){
     chain = cdr(chain);
   }
@@ -682,7 +698,8 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  g_GC_stress = FALSE;
+  //g_GC_stress = FALSE;
+  g_GC_stress = TRUE;
 }
 
 void load_file( const char* filename )
@@ -730,6 +747,9 @@ void load_file( const char* filename )
       AQ_PRINTF("[ERROR] %s: not found\n", filename);
     }
   }
+
+  free(abcFileName);
+  free(buf);
 #endif
 }
 
@@ -741,20 +761,10 @@ size_t writeInst(Inst* inst, char* buf)
     buf[size] = (char)op;
     switch(op) {
     case PUSH:
-      {
-	long val = ivalue(inst->operand._num);
-	memcpy(&buf[++size], &val, sizeof(long));
-	size += sizeof(long);
-      }
-      break;
     case JNEQ:
-      {
-	long val = ivalue(inst->operand._num);
-	memcpy(&buf[++size], &val, sizeof(long));
-	size += sizeof(long);
-      }
-      break;
     case JMP:
+    case SROT:
+    case LOAD:
       {
 	long val = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &val, sizeof(long));
@@ -762,22 +772,10 @@ size_t writeInst(Inst* inst, char* buf)
       }
       break;
     case SET:
-      {
-	char* str = inst->operand._string;
-	strcpy(&buf[++size], str);
-	size += (strlen(str)+1);
-	free(inst->operand._string);
-      }
-      break;
     case REF:
-      {
-	char* str = inst->operand._string;
-	strcpy(&buf[++size], str);
-	size += (strlen(str)+1);
-	free(inst->operand._string);
-      }
-      break;
     case FUNC:
+    case PUSHS:
+    case PUSH_SYM:
       {
 	char* str = inst->operand._string;
 	strcpy(&buf[++size], str);
@@ -794,36 +792,6 @@ size_t writeInst(Inst* inst, char* buf)
 	int paramNum = ivalue(inst->operand2._num);
 	memcpy(&buf[size], &paramNum, sizeof(long));
 	size += sizeof(long);
-      }
-      break;
-    case SROT:
-      {
-	int num = ivalue(inst->operand._num);
-	memcpy(&buf[++size], &num, sizeof(long));
-	size += sizeof(long);
-      }
-      break;
-    case LOAD:
-      {
-	int offset = ivalue(inst->operand._num);
-	memcpy(&buf[++size], &offset, sizeof(long));
-	size += sizeof(long);
-      }
-      break;
-    case PUSHS:
-      {
-	char* str = inst->operand._string;
-	strcpy(&buf[++size], str);
-	size += (strlen(str)+1);
-	free(inst->operand._string);
-      }
-      break;
-    case PUSH_SYM:
-      {
-	char* sym = inst->operand._string;
-	strcpy(&buf[++size], sym);
-	size += (strlen(sym)+1);
-	free(inst->operand._string);
       }
       break;
     case NOP:
@@ -965,6 +933,7 @@ int execute(char* buf, int start, int end)
       break;
     case CONS:
       {
+	AQ_PRINTF("consing ..\n");
 	// TODO: need to care.
 	Cell cdrCell = popArg();
 	Cell carCell = popArg();
