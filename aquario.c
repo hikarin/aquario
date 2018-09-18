@@ -503,10 +503,9 @@ void compileLambda(InstQueue* instQ, FILE* fp)
     char* var = readToken(buf, sizeof(buf), fp);
     
     Cell tmp = malloc(sizeof(struct cell));
-    AQ_PRINTF("tmp:    %p\n", tmp);
     size_t len = strlen(var)+1;
     char* sym = malloc(len);
-    AQ_PRINTF("sym:    %p\n", sym);
+
     strcpy(sym, var);
     car(tmp) = (Cell)sym;
     cdr(tmp) = symbolList;
@@ -698,8 +697,7 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  //g_GC_stress = FALSE;
-  g_GC_stress = TRUE;
+  g_GC_stress = FALSE;
 }
 
 void load_file( const char* filename )
