@@ -621,19 +621,15 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   } else{
     pushArg(nameCell);
     pushArg(c);
-    Cell entry = pairCell(nameCell, c);
-    c = popArg();
-    nameCell = popArg();
-    car(entry) = nameCell;
-    cdr(entry) = c;
+    Cell entry = pairCell(stack[stack_top-2], stack[stack_top-1]);
+    popArg();
+    popArg();
 
-    pushArg(*env);
     pushArg(entry);
-    Cell p = pairCell(entry, *env);
-    entry = popArg();
-    *env = popArg();
-    car(p) = entry;
-    cdr(p) = *env;
+    pushArg(*env);
+    Cell p = pairCell(stack[stack_top-2], stack[stack_top-1]);
+    popArg();
+    popArg();
   
     gc_write_barrier_root(env, p);
   }
@@ -934,7 +930,7 @@ int execute(char* buf, int start, int end)
 	Cell ret = pairCell(stack[stack_top-2], stack[stack_top-1]);
 	popArg();
 	popArg();
-	
+
 	pushArg(ret);
 	++pc;
       }
@@ -1009,8 +1005,8 @@ int execute(char* buf, int start, int end)
       break;
     case PRINT:
       {
-	Cell val = popArg();
-	printCell(val);
+	printCell(stack[stack_top-1]);
+	popArg();
 	AQ_PRINTF("\n");
 	pushArg((Cell)AQ_UNDEF);
 	++pc;
@@ -1205,7 +1201,8 @@ int repl()
     size_t bufSize = writeInst(instQ.head, &buf[pc]);
     
     pc = execute(buf, pc, pc+bufSize);
-    printLineCell(popArg());
+    printLineCell(stack[stack_top-1]);
+    popArg();
   }
   return 0;
 }
