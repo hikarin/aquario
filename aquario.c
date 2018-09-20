@@ -831,6 +831,7 @@ int execute(char* buf, int start, int end)
   Boolean exec = TRUE;
   stack_top = 0;
   int pc = start;
+  int i = 0;
   while(exec != FALSE && pc < end) {
     OPCODE op = buf[pc];
     switch(op) {
@@ -857,7 +858,7 @@ int execute(char* buf, int start, int end)
       {
 	int num = ivalue(popArg());
 	long ans = 0;
-	for(int i=0; i<num; i++) {
+	for(i=0; i<num; i++) {
 	  ans += ivalue(popArg());
 	}
 	pushArg(makeInteger(ans));
@@ -872,7 +873,7 @@ int execute(char* buf, int start, int end)
 	  pushArg(makeInteger(ans));
 	} else {
 	  long ans = 0;
-	  for(int i=0; i<num-1; i++) {
+	  for(i=0; i<num-1; i++) {
 	    ans -= ivalue(popArg());
 	  }
 	  ans += ivalue(popArg());
@@ -885,7 +886,7 @@ int execute(char* buf, int start, int end)
       {
 	int num = ivalue(popArg());
 	long ans = 1;
-	for(int i=0; i<num; i++) {
+	for(i=0; i<num; i++) {
 	  ans *= ivalue(popArg());
 	}
 	pushArg(makeInteger(ans));
@@ -900,7 +901,7 @@ int execute(char* buf, int start, int end)
 	  pushArg(makeInteger(ans));
 	} else {
 	  int div = 1;
-	  for(int i=0; i<num-1; i++) {
+	  for(i=0; i<num-1; i++) {
 	    div *= ivalue(popArg());
 	  }
 	  long ans = ivalue(popArg());
@@ -915,8 +916,7 @@ int execute(char* buf, int start, int end)
 	Cell val = popArg();
 	int retAddr = ivalue(popArg());
 	int argNum = ivalue(popArg());
-	
-	for(int i=0; i<argNum; ++i) {
+	for(i=0; i<argNum; ++i) {
 	  popArg();
 	}
 	
@@ -1077,7 +1077,7 @@ int execute(char* buf, int start, int end)
 	if(UNDEF_P(func)) {
 	  printError("[FUNC] undefined function: %s", str);
 	  int num = ivalue(popArg());
-	  for(int i=0; i<num; i++) {
+	  for(i=0; i<num; i++) {
 	    popArg();
 	  }
 	  pushArg((Cell)AQ_UNDEF);
@@ -1136,8 +1136,7 @@ int execute(char* buf, int start, int end)
       {
 	int n = (int)getOperand(buf, ++pc);
 	Cell val = stack[stack_top-(n+1)];
-	
-	for(int i=n; i>0; i--) {
+	for(i=n; i>0; i--) {
 	  stack[stack_top-(i+1)] = stack[stack_top-i];
 	}
 	stack[stack_top-1] = val;
