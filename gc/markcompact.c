@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 typedef struct markcompact_gc_header{
   int obj_size;
   Cell forwarding;
