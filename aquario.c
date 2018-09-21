@@ -75,29 +75,31 @@ Cell makeInteger(int val)
   return (Cell)((lval << 1) | AQ_INTEGER_MASK);
 }
 
-int isdigitstr(char* str)
+Boolean isdigitstr(char* str)
 {
   int i;
-  for(i=0;i<strlen(str);++i){
+  int len = strlen(str);
+  for(i=0;i<len;++i){
     if(!isdigit(str[i])){
-      if(strlen(str) < 2 || i!=0 ||
-	 (str[0] != '-' && str[0] != '+')) return 0;
+      if(len < 2 || i!=0 || (str[0] != '-' && str[0] != '+')){
+	return FALSE;
+      }
     }
   }
-  return 1;
+  return TRUE;
 }
 
-int nullp(Cell c)
+Boolean nullp(Cell c)
 {
   return NIL_P(c) ? TRUE:FALSE;
 }
 
-int truep(Cell c)
+Boolean truep(Cell c)
 {
   return !( nullp(c) || notp(c) )?TRUE:FALSE;
 }
 
-int notp(Cell c)
+Boolean notp(Cell c)
 {
   return FALSE_P(c)?TRUE:FALSE;
 }

@@ -54,10 +54,10 @@ Cell symbolCell(char* name);
 Cell lambdaCell(int addr, int paramNum);
 Cell makeInteger(int val);
   
-int isdigitstr(char* str);
-int nullp(Cell c);
-int truep(Cell c);
-int notp(Cell c);
+Boolean isdigitstr(char* str);
+Boolean nullp(Cell c);
+Boolean truep(Cell c);
+Boolean notp(Cell c);
 
 void printPair(Cell c);
 void printCell(Cell c);
