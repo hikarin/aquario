@@ -438,6 +438,7 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
     } else if(strcmp(func, "cdr") == 0) {
       addOneByteInstTail(instQ, CDR);
     } else if(strcmp(func, "quote") == 0) {
+      AQ_PRINTF("quote\n");
       addOneByteInstTail(instQ, QUOTE);
     } else if(strcmp(func, ">") == 0) {
       addOneByteInstTail(instQ, GT);
@@ -1179,14 +1180,25 @@ void printError(char *fmt, ...) {
   va_end(ap);
 }
 
+Boolean isEndInput(int c)
+{
+#if defined( _TEST )
+  if(c == EOF || c == '\n') return TRUE;
+#else
+  if(c == EOF) return TRUE;
+#endif
+  return FALSE;
+}
+
 int repl()
 {
-  char* buf = (char*)malloc(sizeof(char) * 1024);
+  char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
   int pc = 0;
-  int c = fgetc(stdin);
-  while(c != EOF && c != '\n') {
-    ungetc(c, stdin);
+  while(1) {
     AQ_PRINTF_GUIDE(">");
+    int c = fgetc(stdin);
+    if(isEndInput(c)) break;
+    ungetc(c, stdin);
     
     InstQueue instQ;
     Inst inst;
@@ -1203,8 +1215,6 @@ int repl()
     pc = execute(buf, pc, pc+bufSize);
     printLineCell(stack[stack_top-1]);
     popArg();
-
-    c = fgetc(stdin);
   }
   return 0;
 }
