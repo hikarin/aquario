@@ -1183,8 +1183,9 @@ int repl()
 {
   char* buf = (char*)malloc(sizeof(char) * 1024);
   int pc = 0;
-  
-  while(1){
+  int c = fgetc(stdin);
+  while(c != EOF && c != '\n') {
+    ungetc(c, stdin);
     AQ_PRINTF_GUIDE(">");
     
     InstQueue instQ;
@@ -1202,6 +1203,8 @@ int repl()
     pc = execute(buf, pc, pc+bufSize);
     printLineCell(stack[stack_top-1]);
     popArg();
+
+    c = fgetc(stdin);
   }
   return 0;
 }
