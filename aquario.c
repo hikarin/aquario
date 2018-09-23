@@ -258,7 +258,6 @@ char* readToken(char *buf, int len, FILE* fp)
 
 size_t compile(FILE* fp, char* buf)
 {
-  AQ_PRINTF("compiling...\n");
   InstQueue instQ;
   Inst inst;
   inst.op = NOP;
@@ -311,9 +310,31 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
   return n;
 }
 
-void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList)
+void compileQuote(InstQueue* instQ, FILE* fp)
 {
-  compileElem(instQ, fp, symbolList);
+  char buf[LINESIZE];
+  char* var = readToken(buf, sizeof(buf), fp);
+  if(strcmp(var, "(") == 0) {
+    compileQuote(instQ, fp);
+    compileQuote(instQ, fp);
+    addOneByteInstTail(instQ, CONS);
+  }else if(strcmp(var, ")") == 0) {
+    addOneByteInstTail(instQ, PUSH_NIL);
+  }else if(strcmp(var, ".") == 0) {
+    var = readToken(buf, sizeof(buf), fp);
+    Inst* inst = createInstStr(PUSH_SYM, var);
+    addInstTail(instQ, inst);
+
+    var = readToken(buf, sizeof(buf), fp);
+    if(var[0] != ')') {
+      AQ_PRINTF("too many expressions\n");
+    }
+  }else{
+    Inst* inst = createInstStr(PUSH_SYM, var);
+    addInstTail(instQ, inst);
+    compileQuote(instQ, fp);
+    addOneByteInstTail(instQ, CONS);
+  }
 }
 
 Inst* createInstChar(OPCODE op, char c)
@@ -323,14 +344,15 @@ Inst* createInstChar(OPCODE op, char c)
   
   return result;
 }
+
 Inst* createInstStr(OPCODE op, char* str)
 {
   int len = strlen(str)+1;
   Inst* result = createInst(op, len+1);
   result->operand._string = malloc(sizeof(char)*len);
   strcpy(result->operand._string, str);
-  
-  return result;  
+
+  return result;
 }
 
 Inst* createInstNum(OPCODE op, int num)
@@ -575,8 +597,14 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
     }
   }
   else if(token[0]=='\''){
-    char* token2 = readToken(buf, sizeof(buf), fp);
-    addInstTail(instQ, createInstStr(PUSH_SYM, token2));
+    token = readToken(buf, sizeof(buf), fp);
+    if(token[0]=='('){
+      compileQuote(instQ, stdin);
+    }
+    else {
+      Inst* inst = createInstStr(PUSH_SYM, token);
+      addInstTail(instQ, inst);
+    }
   }
   else if(token[0]==')'){
     printError("extra close parensis");
@@ -1245,3 +1273,5 @@ int main(int argc, char *argv[])
   term();
   return 0;
 }
+
+

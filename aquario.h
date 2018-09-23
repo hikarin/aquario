@@ -62,11 +62,10 @@ Boolean notp(Cell c);
 void printPair(Cell c);
 void printCell(Cell c);
 void printLineCell(Cell c);
-char* readTokenInDQuot();
 
 Inst* createInst(OPCODE op, int size);
 Inst* createInstChar(OPCODE op, char c);
-Inst* createInsString(OPCODE op, char* str);
+Inst* createInstStr(OPCODE op, char* str);
 Inst* createInstNum(OPCODE op, int num);
 
 void addInstHead(InstQueue* queue, Inst* inst);
@@ -78,8 +77,8 @@ void addOneByteInstTail(InstQueue* instQ, OPCODE op);
 size_t compile(FILE* fp, char* buf);
 void compileToken(InstQueue* instQ, char* token, Cell symbolList);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
-void compileQuot(InstQueue* instQ, FILE* fp, Cell symbolList);
-void  compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
+void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
+void compileQuote(InstQueue* instQ, FILE* fp);
 
 int execute(char* buf, int start, int end);
 
