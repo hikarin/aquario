@@ -92,8 +92,8 @@ while counter < size:
         print "PRINT   "
     elif op == opcode.POP:
         print "POP     "
-    elif op == opcode.EQ:
-        print "EQ      "
+    elif op == opcode.EQUAL:
+        print "EQUAL   "
     elif op == opcode.LT:
         print "LT      "
     elif op == opcode.LTE:

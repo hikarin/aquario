@@ -7,7 +7,7 @@ PRINT = 10
 PUSH  = 20
 POP   = 21
 
-EQ    = 22
+EQUAL = 22
 LT    = 23
 LTE   = 24
 GT    = 25
@@ -42,5 +42,7 @@ SROT  = 58
 
 PUSHS = 60
 PUSH_SYM = 61
+
+EQ    = 70
 
 HALT  = 100
