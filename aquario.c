@@ -461,9 +461,6 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
       addOneByteInstTail(instQ, CAR);
     } else if(strcmp(func, "cdr") == 0) {
       addOneByteInstTail(instQ, CDR);
-    } else if(strcmp(func, "quote") == 0) {
-      AQ_PRINTF("quote\n");
-      addOneByteInstTail(instQ, QUOTE);
     } else if(strcmp(func, ">") == 0) {
       addOneByteInstTail(instQ, GT);
     } else if(strcmp(func, "<") == 0) {
@@ -587,6 +584,20 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
     }
     else if(strcmp(func, ")") == 0) {
       addOneByteInstTail(instQ, PUSH_NIL);
+    } else if(strcmp(func, "quote") == 0) {
+      token = readToken(buf, sizeof(buf), fp);
+      if(token[0]=='('){
+	compileQuote(instQ, fp);
+      }
+      else {
+	Inst* inst = createInstStr(PUSH_SYM, token);
+	addInstTail(instQ, inst);
+      }
+      
+      token = readToken(buf, sizeof(buf), fp);
+      if(token[0]!=')'){
+	printError("broken quote");
+      }
     }else if(strcmp(func, "if") == 0) {
       compileIf(instQ, fp, symbolList);
     } else if(strcmp(func, "define") == 0) {
@@ -601,7 +612,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   else if(token[0]=='\''){
     token = readToken(buf, sizeof(buf), fp);
     if(token[0]=='('){
-      compileQuote(instQ, stdin);
+      compileQuote(instQ, fp);
     }
     else {
       Inst* inst = createInstStr(PUSH_SYM, token);
@@ -1286,5 +1297,3 @@ int main(int argc, char *argv[])
   term();
   return 0;
 }
-
-
