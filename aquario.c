@@ -1063,11 +1063,12 @@ int execute(char* buf, int start, int end)
       break;
     case SET:
       {
-	// TODO: different behavior between on-memory and bytecode.
 	// this is for on-memory
 	Cell val = stack[stack_top-1];
 	char* str = &buf[++pc];
 	setVar(str, val);
+	popArg();
+	pushArg(symbolCell(str));
 	pc += (strlen(str)+1);
       }
       break;
