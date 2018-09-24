@@ -12,7 +12,7 @@ function success() {
 
 function fail() {
     echo -n F
-    str="${str}Test ${i}: ${2} expected, but got $3\n"
+    str="${str}Test [${1}] failed.: ${2} expected, but got $3\n"
 }
 
 function verify(){
