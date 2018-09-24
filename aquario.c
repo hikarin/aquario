@@ -473,6 +473,8 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
     } else if(strcmp(func, ">=") == 0) {
       addOneByteInstTail(instQ, GTE);
     } else if(strcmp(func, "=") == 0) {
+      addOneByteInstTail(instQ, EQUAL);
+    } else if(strcmp(func, "eq?") == 0) {
       addOneByteInstTail(instQ, EQ);
     } else {
       addPushTail(instQ, num);
@@ -838,6 +840,7 @@ size_t writeInst(Inst* inst, char* buf)
     case GTE:
     case LTE:
     case HALT:
+    case EQUAL:
     case EQ:
     case RET:
     case FUNCS:
@@ -982,7 +985,7 @@ int execute(char* buf, int start, int end)
 	++pc;
       }
       break;
-    case EQ:
+    case EQUAL:
       {
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
@@ -1023,6 +1026,15 @@ int execute(char* buf, int start, int end)
 	int num2 = ivalue(popArg());
 	int num1 = ivalue(popArg());
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
+	pushArg(ret);
+	++pc;
+      }
+      break;
+    case EQ:
+      {
+	Cell p1 = popArg();
+	Cell p2 = popArg();
+	Cell ret = (p1 == p2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg(ret);
 	++pc;
       }
