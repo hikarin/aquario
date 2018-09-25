@@ -80,6 +80,8 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileQuote(InstQueue* instQ, FILE* fp);
 
+Cell eval(Cell c);
+
 int execute(char* buf, int start, int end);
 
 void printError(char *fmt, ...);
