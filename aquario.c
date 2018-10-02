@@ -318,19 +318,12 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
 
 void compileQuotedSymbol(InstQueue* instQ, char* symbol, FILE* fp)
 {
-  Inst* inst = createInstStr(PUSH_SYM, "quote");
-  addInstTail(instQ, inst);
-
   if(strcmp(symbol, "'") == 0) {
     compileQuote(instQ, fp);
   } else {
-    inst = createInstStr(PUSH_SYM, symbol);
+    Inst* inst = createInstStr(PUSH_SYM, symbol);
     addInstTail(instQ, inst);
   }
-
-  addOneByteInstTail(instQ, PUSH_NIL);
-  addOneByteInstTail(instQ, CONS);
-  addOneByteInstTail(instQ, CONS);
 }
 
 void compileQuotedList(InstQueue* instQ, FILE* fp)
@@ -349,12 +342,18 @@ void compileQuotedList(InstQueue* instQ, FILE* fp)
     compileQuotedList(instQ, fp);
     addOneByteInstTail(instQ, CONS);
   }else if(strcmp(token, ".") == 0) {
-    // TODO
-    Inst* inst = createInstStr(PUSH_SYM, token);
-    addInstTail(instQ, inst);
+    token = readToken(buf, sizeof(buf), fp);
+    if(strcmp(token, "(") == 0) {
+      compileQuotedList(instQ, fp);
+    }
+    else {
+      compileQuotedSymbol(instQ, token, fp);
+    }
     
-    compileQuotedList(instQ, fp);
-    addOneByteInstTail(instQ, CONS);
+    token = readToken(buf, sizeof(buf), fp);
+    if(strcmp(token, ")") != 0) {
+      printError("broken dot list");
+    }
   }
   else {
     Inst* inst = createInstStr(PUSH_SYM, token);
@@ -369,19 +368,20 @@ void compileQuote(InstQueue* instQ, FILE* fp)
 {
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
-  if(token[0]=='('){
-    Inst* inst = createInstStr(PUSH_SYM, "quote");
-    addInstTail(instQ, inst);
 
+  Inst* inst = createInstStr(PUSH_SYM, "quote");
+  addInstTail(instQ, inst);
+  
+  if(token[0]=='('){
     compileQuotedList(instQ, fp);
-    
-    addOneByteInstTail(instQ, PUSH_NIL);
-    addOneByteInstTail(instQ, CONS);
-    addOneByteInstTail(instQ, CONS);
   }
   else {
     compileQuotedSymbol(instQ, token, fp);
   }
+  
+  addOneByteInstTail(instQ, PUSH_NIL);
+  addOneByteInstTail(instQ, CONS);
+  addOneByteInstTail(instQ, CONS);
 }
  
 Inst* createInstChar(OPCODE op, char c)
