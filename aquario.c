@@ -665,37 +665,6 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   }
 }
 
-Cell eval(Cell c)
-{
-  if(CELL_P(c)){
-    switch(type(c)) {
-    case T_CHAR:
-    case T_STRING:
-      return c;
-    case T_PAIR:
-      if(type(car(c)) == T_SYMBOL) {
-	if(strcmp(symbolname(car(c)), "quote") == 0) {
-	  printCell(cadr(c)); AQ_PRINTF(" returns\n");
-	  return cadr(c);
-	}
-	return c;
-      }
-      return c;
-    case T_PROC:
-      return c;
-    case T_SYMBOL:
-      return getVar(symbolname(c));
-    case T_LAMBDA:
-      return c;
-    default:
-      return (Cell)AQ_NIL;
-    }
-  }
-  else {
-    return c;
-  }
-}
-
 int hash(char* key)
 {
   int val = 0;
@@ -969,10 +938,12 @@ int execute(char* buf, int start, int end)
       break;
     case ADD:
       {
-	int num = ivalue(popArg());
+	int num = ivalue(stack[stack_top-1]);
+	popArg();
 	long ans = 0;
 	for(i=0; i<num; i++) {
-	  ans += ivalue(eval(popArg()));
+	  ans += ivalue(stack[stack_top-1]);
+	  popArg();
 	}
 	pushArg(makeInteger(ans));
 	++pc;
@@ -980,18 +951,19 @@ int execute(char* buf, int start, int end)
       break;
     case SUB:
       {
-	int num = ivalue(popArg());
+	int num = ivalue(stack[stack_top-1]);
+	popArg();
 	if(num == 1) {
-	  int ans = -ivalue(eval(stack[stack_top-1]));
+	  int ans = -ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  long ans = 0;
 	  for(i=0; i<num-1; i++) {
-	    ans -= ivalue(eval(stack[stack_top-1]));
+	    ans -= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
-	  ans += ivalue(eval(stack[stack_top-1]));
+	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	}
@@ -1000,11 +972,11 @@ int execute(char* buf, int start, int end)
       break;
     case MUL:
       {
-	int num = ivalue(eval(stack[stack_top-1]));
+	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 1;
 	for(i=0; i<num; i++) {
-	  ans *= ivalue(eval(stack[stack_top-1]));
+	  ans *= ivalue(stack[stack_top-1]);
 	  popArg();
 	}
 	pushArg(makeInteger(ans));
@@ -1013,19 +985,19 @@ int execute(char* buf, int start, int end)
       break;
     case DIV:
       {
-	int num = ivalue(eval(stack[stack_top-1]));
+	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
-	  long ans = 1/ivalue(eval(stack[stack_top-1]));
+	  long ans = 1/ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  int div = 1;
 	  for(i=0; i<num-1; i++) {
-	    div *= ivalue(eval(stack[stack_top-1]));
+	    div *= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
-	  long ans = ivalue(eval(stack[stack_top-1]));
+	  long ans = ivalue(stack[stack_top-1]);
 	  popArg();
 	  ans = ans/div;
 	  pushArg(makeInteger(ans));
@@ -1059,24 +1031,20 @@ int execute(char* buf, int start, int end)
       break;
     case CAR:
       {
-	Cell c = popArg();
-	Cell ca = car(c);
-	pushArg(ca);
+	gc_write_barrier_root(&stack[stack_top-1], car(stack[stack_top-1]));
 	++pc;
       }
       break;
     case CDR:
       {
-	Cell c = popArg();
-	Cell cd = cdr(c);
-	pushArg(cd);
+	gc_write_barrier_root(&stack[stack_top-1], cdr(stack[stack_top-1]));
 	++pc;
       }
       break;
     case EQUAL:
       {
-	int num2 = ivalue(eval(stack[stack_top-1]));
-	int num1 = ivalue(eval(stack[stack_top-2]));
+	int num2 = ivalue(stack[stack_top-1]);
+	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
@@ -1086,8 +1054,8 @@ int execute(char* buf, int start, int end)
       break;
     case GT:
       {
-	int num2 = ivalue(eval(stack[stack_top-1]));
-	int num1 = ivalue(eval(stack[stack_top-2]));
+	int num2 = ivalue(stack[stack_top-1]);
+	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
@@ -1097,8 +1065,8 @@ int execute(char* buf, int start, int end)
       break;
     case GTE:
       {
-	int num2 = ivalue(eval(stack[stack_top-1]));
-	int num1 = ivalue(eval(stack[stack_top-2]));
+	int num2 = ivalue(stack[stack_top-1]);
+	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
@@ -1108,8 +1076,8 @@ int execute(char* buf, int start, int end)
       break;
     case LT:
       {
-	int num2 = ivalue(eval(stack[stack_top-1]));
-	int num1 = ivalue(eval(stack[stack_top-2]));
+	int num2 = ivalue(stack[stack_top-1]);
+	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
@@ -1119,8 +1087,8 @@ int execute(char* buf, int start, int end)
       break;
     case LTE:
       {
-	int num2 = ivalue(eval(stack[stack_top-1]));
-	int num1 = ivalue(eval(stack[stack_top-2]));
+	int num2 = ivalue(stack[stack_top-1]);
+	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();

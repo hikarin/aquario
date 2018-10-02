@@ -82,8 +82,6 @@ void compileQuote(InstQueue* instQ, FILE* fp);
 void compileQuotedList(InstQueue* instQ, FILE* fp);
 void compileQuotedSymbol(InstQueue* instQ, char* symbol, FILE* fp);
 
-Cell eval(Cell c);
-
 int execute(char* buf, int start, int end);
 
 void printError(char *fmt, ...);
