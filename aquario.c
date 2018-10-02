@@ -106,7 +106,8 @@ Boolean notp(Cell c)
 
 void printCons(Cell c)
 {
-  if(type(car(c)) == T_SYMBOL && strcmp(symbolname(car(c)), "quote") == 0) {
+  if(CELL_P(car(c)) && type(car(c)) == T_SYMBOL &&
+     strcmp(symbolname(car(c)), "quote") == 0) {
     AQ_PRINTF("'");
     printCell(cadr(c));
     return;
@@ -369,7 +370,14 @@ void compileQuote(InstQueue* instQ, FILE* fp)
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
   if(token[0]=='('){
+    Inst* inst = createInstStr(PUSH_SYM, "quote");
+    addInstTail(instQ, inst);
+
     compileQuotedList(instQ, fp);
+    
+    addOneByteInstTail(instQ, PUSH_NIL);
+    addOneByteInstTail(instQ, CONS);
+    addOneByteInstTail(instQ, CONS);
   }
   else {
     compileQuotedSymbol(instQ, token, fp);
@@ -625,6 +633,8 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
       addOneByteInstTail(instQ, PUSH_NIL);
     } else if(strcmp(func, "quote") == 0) {
       compileQuote(instQ, fp);
+      addOneByteInstTail(instQ, CDR);
+      addOneByteInstTail(instQ, CAR);
       
       token = readToken(buf, sizeof(buf), fp);
       if(token[0]!=')'){
@@ -643,6 +653,9 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   }
   else if(token[0]=='\''){
     compileQuote(instQ, fp);
+
+    addOneByteInstTail(instQ, CDR);
+    addOneByteInstTail(instQ, CAR);
   }
   else if(token[0]==')'){
     printError("extra close parensis");
@@ -654,7 +667,6 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
 
 Cell eval(Cell c)
 {
-  //  printCell(c); AQ_PRINTF(" evalled\n");
   if(CELL_P(c)){
     switch(type(c)) {
     case T_CHAR:
@@ -663,6 +675,7 @@ Cell eval(Cell c)
     case T_PAIR:
       if(type(car(c)) == T_SYMBOL) {
 	if(strcmp(symbolname(car(c)), "quote") == 0) {
+	  printCell(cadr(c)); AQ_PRINTF(" returns\n");
 	  return cadr(c);
 	}
 	return c;
@@ -1126,7 +1139,7 @@ int execute(char* buf, int start, int end)
       break;
     case PRINT:
       {
-	printCell(eval(stack[stack_top-1]));
+	printCell(stack[stack_top-1]);
 	popArg();
 	AQ_PRINTF("\n");
 	pushArg((Cell)AQ_UNDEF);
@@ -1335,7 +1348,7 @@ int repl()
     size_t bufSize = writeInst(instQ.head, &buf[pc]);
     
     pc = execute(buf, pc, pc+bufSize);
-    printLineCell(eval(stack[stack_top-1]));
+    printLineCell(stack[stack_top-1]);
     popArg();
   }
   return 0;
