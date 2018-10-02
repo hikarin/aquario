@@ -12,7 +12,7 @@ function success() {
 
 function fail() {
     echo -n F
-    str="${str}Test($i) [${1}] failed.: ${2} expected, but got $3\n"
+    str="${str}Test($i) [${1}] failed: ${2} expected, but got $3\n"
 }
 
 function verify(){
@@ -65,14 +65,13 @@ verify "(define x 999)" x
 
 #string
 verify "(define str \"hoge\") str" \"hoge\"
-verify "(define str \"hoge\") (set! str \"fuga\") str" \"fuga\"
 verify "(define str \"hoge\") (eq? str str)" \#t
 verify "(define str \"hoge\") (eq? str \"fuga\")" \#f
 
 #symbol
 verify "'test" test
 verify "(quote a)" a
-verify "(quote (quote b))" "(quote b)"
+verify "(quote (quote b))" "'b"
 verify "(quote 10)" 10
 verify "(= (quote 1) 1)" \#t
 verify "\'(+ 1 2)" "(+ 1 2)"
@@ -82,7 +81,7 @@ verify "(define x 100) (define y x) y" 100
 #comment
 verify ";(define m 100)
   m" \#undef
-verify ";(define m 100) m" ""
+verify "(define m 100) ;m" "m"
 verify "(cons 1 ; 2)
   2)" "(1 . 2)"
 
