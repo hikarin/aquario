@@ -79,8 +79,8 @@ void compileToken(InstQueue* instQ, char* token, Cell symbolList);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileQuote(InstQueue* instQ, FILE* fp);
+void compileQuotedAtom(InstQueue* instQ, char* symbol, FILE* fp);
 void compileQuotedList(InstQueue* instQ, FILE* fp);
-void compileQuotedSymbol(InstQueue* instQ, char* symbol, FILE* fp);
 
 int execute(char* buf, int start, int end);
 

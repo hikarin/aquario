@@ -316,11 +316,12 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
   return n;
 }
 
-void compileQuotedSymbol(InstQueue* instQ, char* symbol, FILE* fp)
+void compileQuotedAtom(InstQueue* instQ, char* symbol, FILE* fp)
 {
-  if(strcmp(symbol, "'") == 0) {
-    compileQuote(instQ, fp);
-  } else {
+  if(isdigitstr(symbol)) {
+    int digit = atoi(symbol);
+    addPushTail(instQ, digit);
+  }else{
     Inst* inst = createInstStr(PUSH_SYM, symbol);
     addInstTail(instQ, inst);
   }
@@ -346,18 +347,18 @@ void compileQuotedList(InstQueue* instQ, FILE* fp)
     if(strcmp(token, "(") == 0) {
       compileQuotedList(instQ, fp);
     }
-    else {
-      compileQuotedSymbol(instQ, token, fp);
+    else if(strcmp(token, "'") == 0) {
+      compileQuote(instQ, fp);
+    } else {
+      compileQuotedAtom(instQ, token, fp);
     }
-    
     token = readToken(buf, sizeof(buf), fp);
     if(strcmp(token, ")") != 0) {
       printError("broken dot list");
     }
   }
   else {
-    Inst* inst = createInstStr(PUSH_SYM, token);
-    addInstTail(instQ, inst);
+    compileQuotedAtom(instQ, token, fp);
   
     compileQuotedList(instQ, fp);
     addOneByteInstTail(instQ, CONS);
@@ -375,8 +376,10 @@ void compileQuote(InstQueue* instQ, FILE* fp)
   if(token[0]=='('){
     compileQuotedList(instQ, fp);
   }
-  else {
-    compileQuotedSymbol(instQ, token, fp);
+  else if(strcmp(token, "'") == 0) {
+    compileQuote(instQ, fp);
+  } else {
+    compileQuotedAtom(instQ, token, fp);
   }
   
   addOneByteInstTail(instQ, PUSH_NIL);
