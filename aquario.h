@@ -82,6 +82,11 @@ void compileQuote(InstQueue* instQ, FILE* fp);
 void compileQuotedAtom(InstQueue* instQ, char* symbol, FILE* fp);
 void compileQuotedList(InstQueue* instQ, FILE* fp);
 
+void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList);
+void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList);
+void compileLambda(InstQueue* instQ, FILE* fp);
+void compileProcedure(char* func, int num, InstQueue* instQ);
+
 int execute(char* buf, int start, int end);
 
 void printError(char *fmt, ...);
