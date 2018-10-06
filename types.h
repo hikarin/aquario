@@ -64,7 +64,7 @@ typedef enum opcode{
 #define AQ_TRUE   ((VALUE)2)
 #define AQ_NIL    ((VALUE)14)
 #define AQ_UNDEF  ((VALUE)6)
-#define AQ_EOF    ((VALUE)10)
+#define AQ_SFRAME ((VALUE)10)
 
 typedef unsigned long VALUE;
 
@@ -77,7 +77,7 @@ typedef unsigned long VALUE;
 #define TRUE_P(v)     ((VALUE)(v) == AQ_TRUE)
 #define FALSE_P(v)    ((VALUE)(v) == AQ_FALSE)
 #define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
-#define EOF_P(v)      ((VALUE)(v) == AQ_EOF)
+ #define SFRAME_P(v)  ((VALUE)(v) == AQ_SFRAME)
 #define INTEGER_P(v)  ((VALUE)(v) & AQ_INTEGER_MASK)
 
 #define CELL_P(v)     ((v) != NULL && (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0))

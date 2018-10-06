@@ -144,9 +144,6 @@ void printCell(Cell c)
     else if(NIL_P(c)){
       AQ_PRINTF("()");
     }
-    else if(EOF_P(c)){
-      AQ_PRINTF("#<eof>");
-    }
     else if(TRUE_P(c)){
       AQ_PRINTF("#t");
     }
@@ -1011,6 +1008,7 @@ int execute(char* buf, int start, int end)
     case RET:
       {
 	Cell val = popArg();
+	while(!SFRAME_P(popArg())){}
 	int retAddr = ivalue(popArg());
 	int argNum = ivalue(popArg());
 	for(i=0; i<argNum; ++i) {
@@ -1112,7 +1110,6 @@ int execute(char* buf, int start, int end)
       {
 	printCell(stack[stack_top-1]);
 	popArg();
-	AQ_PRINTF("\n");
 	pushArg((Cell)AQ_UNDEF);
 	++pc;
       }
@@ -1199,6 +1196,7 @@ int execute(char* buf, int start, int end)
 	  }
 	  int retAddr  = pc + strlen(str) + 1;
 	  pushArg(makeInteger(retAddr));
+	  pushArg((Cell)AQ_SFRAME);
 	  updateOffsetReg();
 	  
 	  // jump
@@ -1232,6 +1230,7 @@ int execute(char* buf, int start, int end)
 	
 	int retAddr  = pc + 1;
 	pushArg(makeInteger(retAddr));
+	pushArg((Cell)AQ_SFRAME);
 	updateOffsetReg();
 	
 	// jump
@@ -1253,7 +1252,7 @@ int execute(char* buf, int start, int end)
     case LOAD:
       {
 	int offset = (int)getOperand(buf, ++pc);
-	int index = getOffsetReg() - offset - 3;
+	int index = getOffsetReg() - offset - 4;
 	Cell val = stack[index];
 	pushArg(val);
 	pc += sizeof(Cell);
