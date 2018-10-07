@@ -35,6 +35,7 @@
 #define lambdaexp(p)    cdr(p)
 #define lambdaAddr(p)     (car(p))
 #define lambdaParamNum(p) (cdr(p))
+#define lambdaFlag(p)   ((p)->_flag)
 
 Cell newCell(Type t, size_t size);
 
@@ -51,7 +52,7 @@ Cell charCell(char ch);
 Cell stringCell(char* str);
 Cell pairCell(Cell a, Cell d);
 Cell symbolCell(char* name);
-Cell lambdaCell(int addr, int paramNum);
+Cell lambdaCell(int addr, int paramNum, Boolean isDotList);
 Cell makeInteger(int val);
   
 Boolean isdigitstr(char* str);
@@ -86,6 +87,7 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileLambda(InstQueue* instQ, FILE* fp);
 void compileProcedure(char* func, int num, InstQueue* instQ);
+void compileSymbolList(char* var, Cell* symbolList);
 
 int execute(char* buf, int start, int end);
 

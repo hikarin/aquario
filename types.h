@@ -3,6 +3,11 @@
 
 #include <stdio.h>
 
+typedef enum boolean{
+  FALSE  = 0,
+  TRUE   = 1,
+}Boolean;
+
 typedef void (*opType)();
 typedef enum type{
   T_CHAR,	//0.
@@ -54,6 +59,7 @@ typedef enum opcode{
 
   PUSHS = 60,
   PUSH_SYM = 61,
+  FUNDD = 62,
 
   EQ    = 70,
   
@@ -95,6 +101,7 @@ typedef union cellUnion
 } CellUnion;
 struct cell{
   Type _type;
+  Boolean _flag;
   CellUnion _object;
 };
 
@@ -125,11 +132,6 @@ typedef struct _instQueue
   Inst* head;
   Inst* tail;
 }InstQueue;
-
-typedef enum boolean{
-  FALSE  = 0,
-  TRUE   = 1,
-}Boolean;
 
 typedef struct gc_init_info{
   void* (*gc_malloc) (size_t);               //malloc function;

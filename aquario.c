@@ -61,11 +61,12 @@ Cell symbolCell(char* symbol)
   return c;
 }
 
-Cell lambdaCell(int addr, int paramNum)
+Cell lambdaCell(int addr, int paramNum, Boolean isParamDList)
 {
   Cell l = newCell(T_LAMBDA, sizeof(struct cell));
   lambdaAddr(l) = makeInteger(addr);
   lambdaParamNum(l) = makeInteger(paramNum);
+  lambdaFlag(l) = isParamDList;
   return l;
 }
 
@@ -572,17 +573,25 @@ void compileLambda(InstQueue* instQ, FILE* fp)
     ungetc(c, fp);
     char buf[LINESIZE];
     char* var = readToken(buf, sizeof(buf), fp);
-    
-    Cell tmp = malloc(sizeof(struct cell));
-    size_t len = strlen(var)+1;
-    char* sym = malloc(len);
 
-    strcpy(sym, var);
-    car(tmp) = (Cell)sym;
-    cdr(tmp) = symbolList;
-    symbolList = tmp;
-    
-    index++;
+    if (strcmp(var, ".") == 0) {
+      var = readToken(buf, sizeof(buf), fp);
+      compileSymbolList(var, &symbolList);
+
+      var = readToken(buf, sizeof(buf), fp);
+      if (strcmp(var, ")") != 0) {
+	AQ_PRINTF("Too much elements are given to dot list.\n");
+	return;
+      }
+      
+      index++;
+      inst->op = FUNDD;
+      break;
+    } else {
+      compileSymbolList(var, &symbolList);
+      
+      index++;
+    }
   }
   compileList(instQ, fp, symbolList);  // body
   while(symbolList != (Cell)AQ_NIL) {
@@ -663,6 +672,18 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   else{
     compileToken(instQ, token, symbolList);
   }
+}
+
+void compileSymbolList(char* var, Cell* symbolList)
+{
+  Cell tmp = malloc(sizeof(struct cell));
+  size_t len = strlen(var) + 1;
+  char* sym = malloc(len);
+  
+  strcpy(sym, var);
+  car(tmp) = (Cell)sym;
+  cdr(tmp) = *symbolList;
+  *symbolList = tmp;
 }
 
 int hash(char* key)
@@ -860,6 +881,7 @@ size_t writeInst(Inst* inst, char* buf)
       }
       break;
     case FUND:
+    case FUNDD:
       {
 	int addr = ivalue(inst->operand._num);
 	memcpy(&buf[++size], &addr, sizeof(long));
@@ -1007,7 +1029,7 @@ int execute(char* buf, int start, int end)
       break;
     case RET:
       {
-	Cell val = popArg();
+	Cell val = stack[--stack_top];
 	while(!SFRAME_P(popArg())){}
 	int retAddr = ivalue(popArg());
 	int argNum = ivalue(popArg());
@@ -1016,7 +1038,7 @@ int execute(char* buf, int start, int end)
 	}
 	
 	updateOffsetReg();
-	pushArg(val);
+	stack[stack_top++] = val;
 	pc = retAddr;
       }
       break;
@@ -1189,10 +1211,28 @@ int execute(char* buf, int start, int end)
 	} else {
 	  int paramNum = ivalue(lambdaParamNum(func));
 	  int argNum = ivalue(stack[stack_top-1]);
-	  if(paramNum != argNum) {
-	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	    ++pc;
-	    break;
+	  Boolean isParamDList = lambdaFlag(func);
+	  if(isParamDList) {
+	    if (paramNum > argNum) {
+	      AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
+	      ++pc;
+	      break;
+	    }
+	    popArg();
+	    int num = argNum - paramNum + 1;
+	    Cell lst = (Cell)AQ_NIL;
+	    for(i=0; i<num; i++) {
+	      lst = pairCell(stack[stack_top-1], lst);
+	      popArg();
+	    }
+	    pushArg(lst);
+	    pushArg(makeInteger(paramNum));
+	  } else {
+	    if(paramNum != argNum) {
+	      AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
+	      ++pc;
+	      break;
+	    }
 	  }
 	  int retAddr  = pc + strlen(str) + 1;
 	  pushArg(makeInteger(retAddr));
@@ -1206,13 +1246,14 @@ int execute(char* buf, int start, int end)
       }
       break;
     case FUND:
+    case FUNDD:
       {
 	// jump
 	int defEnd = (int)getOperand(buf, ++pc);
 	int defStart = pc + sizeof(Cell) * 2;
 	pc += sizeof(Cell);
 	int paramNum = (int)getOperand(buf, pc);
-	Cell l = lambdaCell(defStart, paramNum);
+	Cell l = lambdaCell(defStart, paramNum, (op == FUNDD) ? TRUE : FALSE);
 	pushArg(l);
 	pc = defEnd;
       }
@@ -1222,10 +1263,28 @@ int execute(char* buf, int start, int end)
 	Cell l = popArg();
 	int argNum = ivalue(stack[stack_top-1]);
 	int paramNum = ivalue(lambdaParamNum(l));
-	if(paramNum != argNum) {
-	  AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	  ++pc;
-	  break;
+	Boolean isParamDList = lambdaFlag(l);
+	if(isParamDList) {
+	  if (paramNum > argNum) {
+	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
+	    ++pc;
+	    break;
+	  }
+	  popArg();
+	  int num = argNum - paramNum + 1;
+	  Cell lst = (Cell)AQ_NIL;
+	  for(i=0; i<num; i++) {
+	    lst = pairCell(stack[stack_top - 1], lst);
+	    popArg();
+	  }
+	  pushArg(lst);
+	  pushArg(makeInteger(paramNum));
+	} else {
+	  if(paramNum != argNum) {
+	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
+	    ++pc;
+	    break;
+	  }
 	}
 	
 	int retAddr  = pc + 1;
