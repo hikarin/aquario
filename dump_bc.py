@@ -54,8 +54,11 @@ while counter < size:
         print "PUSH_SYM ",
         string = concat()
         print '{:>6}'.format(string)
-    elif op == opcode.FUND:
-        print "FUND    ",
+    elif op == opcode.FUND or op == opcode.FUNDD:
+        if op == opcode.FUND:
+            print "FUND    ",
+        else:
+            print "FUNDD   ",
         operand = struct.unpack_from("<l", data, counter)[0]
         print '{0:6d}'.format(operand),
         counter += 8

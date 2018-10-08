@@ -41,6 +41,7 @@ SROT  = 58
 
 PUSHS = 60
 PUSH_SYM = 61
+FUNDD = 62
 
 EQ    = 70
 
