@@ -21,6 +21,13 @@ static void term();
 
 static int heap_size = HEAP_SIZE;
 
+#define FUNCTION_STACK_SIZE  (1024)
+static int functionStack[FUNCTION_STACK_SIZE];
+static int functionStackTop = 0;
+static void pushFunctionStack(int f);
+static int popFunctionStack();
+static int getFunctionStackTop();
+
 inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
@@ -760,16 +767,6 @@ void callProc(char* name)
   }
 }
 
-void updateOffsetReg()
-{
-  offsetReg = stack_top;
-}
-
-int getOffsetReg()
-{
-  return offsetReg;
-}
-
 void setParseError(char* str)
 {
   printError(str);
@@ -1036,8 +1033,8 @@ int execute(char* buf, int start, int end)
 	for(i=0; i<argNum; ++i) {
 	  popArg();
 	}
-	
-	updateOffsetReg();
+
+	popFunctionStack();
 	stack[stack_top++] = val;
 	pc = retAddr;
       }
@@ -1237,8 +1234,8 @@ int execute(char* buf, int start, int end)
 	  int retAddr  = pc + strlen(str) + 1;
 	  pushArg(makeInteger(retAddr));
 	  pushArg((Cell)AQ_SFRAME);
-	  updateOffsetReg();
-	  
+	  pushFunctionStack(stack_top);
+
 	  // jump
 	  int funcAddr = ivalue(lambdaAddr(func));
 	  pc = funcAddr;
@@ -1290,7 +1287,7 @@ int execute(char* buf, int start, int end)
 	int retAddr  = pc + 1;
 	pushArg(makeInteger(retAddr));
 	pushArg((Cell)AQ_SFRAME);
-	updateOffsetReg();
+	pushFunctionStack(stack_top);
 	
 	// jump
 	int funcAddr = ivalue(lambdaAddr(l));
@@ -1311,7 +1308,7 @@ int execute(char* buf, int start, int end)
     case LOAD:
       {
 	int offset = (int)getOperand(buf, ++pc);
-	int index = getOffsetReg() - offset - 4;
+	int index = getFunctionStackTop() - offset - 4;
 	Cell val = stack[index];
 	pushArg(val);
 	pc += sizeof(Cell);
@@ -1342,6 +1339,29 @@ void printError(char *fmt, ...) {
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   va_end(ap);
+}
+
+void pushFunctionStack(int f)
+{
+  if(functionStackTop >= FUNCTION_STACK_SIZE) {
+    printError( "Function Stack Overflow" );
+    return;
+  }
+  functionStack[functionStackTop++] = f;
+}
+
+int popFunctionStack()
+{
+  if(functionStackTop <= 0) {
+    printError( "Function Stack Unferflow" );
+    return -1;
+  }
+  return functionStack[--functionStackTop];
+}
+
+int getFunctionStackTop()
+{
+  return functionStack[functionStackTop-1];
 }
 
 Boolean isEndInput(int c)

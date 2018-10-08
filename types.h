@@ -83,7 +83,7 @@ typedef unsigned long VALUE;
 #define TRUE_P(v)     ((VALUE)(v) == AQ_TRUE)
 #define FALSE_P(v)    ((VALUE)(v) == AQ_FALSE)
 #define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
- #define SFRAME_P(v)  ((VALUE)(v) == AQ_SFRAME)
+#define SFRAME_P(v)  ((VALUE)(v) == AQ_SFRAME)
 #define INTEGER_P(v)  ((VALUE)(v) & AQ_INTEGER_MASK)
 
 #define CELL_P(v)     ((v) != NULL && (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0))
@@ -104,9 +104,6 @@ struct cell{
   Boolean _flag;
   CellUnion _object;
 };
-
-Cell retReg;
-int offsetReg;
 
 typedef union _operand
 {

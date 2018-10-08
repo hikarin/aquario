@@ -93,14 +93,7 @@ verify "(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2)" "1(1 .
 verify "(define list (lambda (x . y) (cons x y))) (list 1 2 3)" "(1 2 3)"
 verify "(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst)" "(1 2 (3 4 5))"
 verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) . 1)"
-verify "
-  (define <= (lambda (x y) (if (< x y) #t (= x y))))
-  (define tak (lambda (x y z)
-	  (if (<= x y) z
-	      (tak (tak (- x 1) y z)
-		  (tak (- y 1) z x)
-		  (tak (- z 1) x y)))))
-  (tak 4 2 0)" 1
+verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0)" 1
 
 echo ""
 if [ -n "$str" ]; then
