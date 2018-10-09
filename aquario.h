@@ -97,7 +97,7 @@ void printError(char *fmt, ...);
 Cell env[ENVSIZE];
 #define LINESIZE (1024)
 
-#define STACKSIZE (1024)
+#define STACKSIZE (1024 * 1024)
 Cell stack[ STACKSIZE ];
 int stack_top;
 

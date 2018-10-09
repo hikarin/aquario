@@ -1033,7 +1033,6 @@ int execute(char* buf, int start, int end)
 	for(i=0; i<argNum; ++i) {
 	  popArg();
 	}
-
 	popFunctionStack();
 	stack[stack_top++] = val;
 	pc = retAddr;
@@ -1235,7 +1234,7 @@ int execute(char* buf, int start, int end)
 	  pushArg(makeInteger(retAddr));
 	  pushArg((Cell)AQ_SFRAME);
 	  pushFunctionStack(stack_top);
-
+	  
 	  // jump
 	  int funcAddr = ivalue(lambdaAddr(func));
 	  pc = funcAddr;
