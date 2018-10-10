@@ -51,12 +51,12 @@ Cell stringCell(char* str)
   return c;
 }
 
-Cell pairCell(Cell a, Cell d)
+Cell pairCell(Cell* a, Cell* d)
 {
   Cell cons = newCell(T_PAIR, sizeof(struct cell));
 
-  gc_init_ptr(&cdr(cons), d);
-  gc_init_ptr(&car(cons), a);
+  gc_init_ptr(&cdr(cons), *d);
+  gc_init_ptr(&car(cons), *a);
   return cons;
 }
 
@@ -731,13 +731,13 @@ void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
   } else{
     pushArg(nameCell);
     pushArg(c);
-    Cell entry = pairCell(stack[stack_top-2], stack[stack_top-1]);
+    Cell entry = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
     popArg();
     popArg();
 
     pushArg(entry);
     pushArg(*env);
-    Cell p = pairCell(stack[stack_top-2], stack[stack_top-1]);
+    Cell p = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
     popArg();
     popArg();
   
@@ -1040,7 +1040,7 @@ int execute(char* buf, int start, int end)
       break;
     case CONS:
       {
-	Cell ret = pairCell(stack[stack_top-2], stack[stack_top-1]);
+	Cell ret = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
 	popArg();
 	popArg();
 
@@ -1218,7 +1218,9 @@ int execute(char* buf, int start, int end)
 	    int num = argNum - paramNum + 1;
 	    Cell lst = (Cell)AQ_NIL;
 	    for(i=0; i<num; i++) {
-	      lst = pairCell(stack[stack_top-1], lst);
+	      pushArg(lst);
+	      lst = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
+	      popArg();
 	      popArg();
 	    }
 	    pushArg(lst);
@@ -1270,7 +1272,9 @@ int execute(char* buf, int start, int end)
 	  int num = argNum - paramNum + 1;
 	  Cell lst = (Cell)AQ_NIL;
 	  for(i=0; i<num; i++) {
-	    lst = pairCell(stack[stack_top - 1], lst);
+	    pushArg(lst);
+	    lst = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
+	    popArg();
 	    popArg();
 	  }
 	  pushArg(lst);

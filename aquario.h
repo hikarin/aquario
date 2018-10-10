@@ -50,7 +50,7 @@ Cell newCell(Type t, size_t size);
 
 Cell charCell(char ch);
 Cell stringCell(char* str);
-Cell pairCell(Cell a, Cell d);
+Cell pairCell(Cell* a, Cell* d);
 Cell symbolCell(char* name);
 Cell lambdaCell(int addr, int paramNum, Boolean isDotList);
 Cell makeInteger(int val);
