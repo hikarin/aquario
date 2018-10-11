@@ -28,6 +28,11 @@ static void pushFunctionStack(int f);
 static int popFunctionStack();
 static int getFunctionStackTop();
 
+#define ERR_WRONG_NUMBER_ARGS(required, given)	\
+  AQ_PRINTF("ERROR: wrong number of argnuments: required %d, but given %d.\n", required, given); \
+  exec = FALSE;								\
+  break;								\
+
 inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
@@ -1210,10 +1215,8 @@ int execute(char* buf, int start, int end)
 	  int funcAddr = ivalue(lambdaAddr(func));
 	  Boolean isParamDList = lambdaFlag(func);
 	  if(isParamDList) {
-	    if (paramNum > argNum) {
-	      AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	      ++pc;
-	      break;
+	    if(paramNum > argNum) {
+	      ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
 	    }
 	    popArg();
 	    int num = argNum - paramNum + 1;
@@ -1228,9 +1231,7 @@ int execute(char* buf, int start, int end)
 	    pushArg(makeInteger(paramNum));
 	  } else {
 	    if(paramNum != argNum) {
-	      AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	      ++pc;
-	      break;
+	      ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
 	    }
 	  }
 	  int retAddr  = pc + strlen(str) + 1;
@@ -1265,9 +1266,7 @@ int execute(char* buf, int start, int end)
 	Boolean isParamDList = lambdaFlag(func);
 	if(isParamDList) {
 	  if (paramNum > argNum) {
-	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	    ++pc;
-	    break;
+	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
 	  }
 	  popArg();
 	  int num = argNum - paramNum + 1;
@@ -1282,9 +1281,7 @@ int execute(char* buf, int start, int end)
 	  pushArg(makeInteger(paramNum));
 	} else {
 	  if(paramNum != argNum) {
-	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
-	    ++pc;
-	    break;
+	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
 	  }
 	}
 	
