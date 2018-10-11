@@ -1207,6 +1207,7 @@ int execute(char* buf, int start, int end)
 	} else {
 	  int paramNum = ivalue(lambdaParamNum(func));
 	  int argNum = ivalue(stack[stack_top-1]);
+	  int funcAddr = ivalue(lambdaAddr(func));
 	  Boolean isParamDList = lambdaFlag(func);
 	  if(isParamDList) {
 	    if (paramNum > argNum) {
@@ -1238,7 +1239,6 @@ int execute(char* buf, int start, int end)
 	  pushFunctionStack(stack_top);
 	  
 	  // jump
-	  int funcAddr = ivalue(lambdaAddr(func));
 	  pc = funcAddr;
 	}
       }
@@ -1258,10 +1258,11 @@ int execute(char* buf, int start, int end)
       break;
     case FUNCS:
       {
-	Cell l = popArg();
+	Cell func = popArg();
 	int argNum = ivalue(stack[stack_top-1]);
-	int paramNum = ivalue(lambdaParamNum(l));
-	Boolean isParamDList = lambdaFlag(l);
+	int paramNum = ivalue(lambdaParamNum(func));
+	int funcAddr = ivalue(lambdaAddr(func));
+	Boolean isParamDList = lambdaFlag(func);
 	if(isParamDList) {
 	  if (paramNum > argNum) {
 	    AQ_PRINTF("param num is wrong: %d, %d\n", paramNum, argNum);
@@ -1293,7 +1294,6 @@ int execute(char* buf, int start, int end)
 	pushFunctionStack(stack_top);
 	
 	// jump
-	int funcAddr = ivalue(lambdaAddr(l));
 	pc = funcAddr;
       }
       break;
