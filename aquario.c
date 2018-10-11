@@ -33,6 +33,14 @@ static int getFunctionStackTop();
   exec = FALSE;								\
   break;								\
 
+#define CHECK_ERR_PAIR_NOT_GIVEN() \
+  if(!isPair(stack[stack_top-1])) { \
+    AQ_PRINTF("ERROR: pair required, but got "); printLineCell(stack[stack_top-1]); \
+    exec = FALSE; \
+    pushArg((Cell)AQ_UNDEF); \
+    break; \
+  }  \
+
 inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
@@ -1055,12 +1063,14 @@ int execute(char* buf, int start, int end)
       break;
     case CAR:
       {
+	CHECK_ERR_PAIR_NOT_GIVEN();
 	gc_write_barrier_root(&stack[stack_top-1], car(stack[stack_top-1]));
 	++pc;
       }
       break;
     case CDR:
       {
+	CHECK_ERR_PAIR_NOT_GIVEN();
 	gc_write_barrier_root(&stack[stack_top-1], cdr(stack[stack_top-1]));
 	++pc;
       }
