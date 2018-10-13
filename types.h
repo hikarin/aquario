@@ -27,6 +27,8 @@ typedef enum opcode{
   DIV   =  4,
   ADD1  =  5,
   SUB1  =  6,
+  ADD2  =  7,
+  SUB2  =  8,
   PRINT = 10,
   PUSH  = 20,
   POP   = 21,
