@@ -87,6 +87,10 @@ while counter < size:
         print "ADD     "
     elif op == opcode.SUB:
         print "SUB     "
+    elif op == opcode.ADD1:
+        print "ADD1    "
+    elif op == opcode.SUB1:
+        print "SUB1    "
     elif op == opcode.MUL:
         print "MUL     "
     elif op == opcode.DIV:

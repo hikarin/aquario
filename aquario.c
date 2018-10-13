@@ -303,6 +303,7 @@ size_t compile(FILE* fp, char* buf)
   InstQueue instQ;
   Inst inst;
   inst.op = NOP;
+  inst.prev = NULL;
   inst.next = NULL;
   inst.offset = 0;
   inst.size = 1;
@@ -453,6 +454,7 @@ Inst* createInst(OPCODE op, int size)
 {
   Inst* result = (Inst*)malloc(sizeof(Inst));
   result->op = op;
+  result->prev = NULL;
   result->next = NULL;
   result->operand._num  = (Cell)AQ_NIL;
   result->operand2._num = (Cell)AQ_NIL;
@@ -511,6 +513,7 @@ void addInstTail(InstQueue* queue, Inst* inst)
 {
   inst->offset = queue->tail->offset + queue->tail->size;
   queue->tail->next = inst;
+  inst->prev = queue->tail;
   queue->tail = inst;
 }
 
@@ -528,11 +531,27 @@ void addOneByteInstTail(InstQueue* instQ, OPCODE op)
 void compileProcedure(char* func, int num, InstQueue* instQ)
 {
     if(strcmp(func, "+") == 0) {
-      addPushTail(instQ, num);
-      addOneByteInstTail(instQ, ADD);
+      Inst* lastInst = instQ->tail;
+      if(lastInst && lastInst->op == PUSH && lastInst->operand._num == makeInteger(1)
+	 && num == 2 ) {
+	lastInst->op = ADD1;
+	lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
+	lastInst->size = 1;
+      } else {
+	addPushTail(instQ, num);
+	addOneByteInstTail(instQ, ADD);
+      }
     } else if(strcmp(func, "-") == 0) {
-      addPushTail(instQ, num);
-      addOneByteInstTail(instQ, SUB);
+      Inst* lastInst = instQ->tail;
+      if(lastInst && lastInst->op == PUSH && lastInst->operand._num == makeInteger(1)
+	 && num == 2 ) {
+	lastInst->op = SUB1;
+	lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
+	lastInst->size = 1;
+      } else {
+	addPushTail(instQ, num);
+	addOneByteInstTail(instQ, SUB);
+      }
     } else if(strcmp(func, "*") == 0) {
       addPushTail(instQ, num);
       addOneByteInstTail(instQ, MUL);
@@ -922,7 +941,9 @@ size_t writeInst(Inst* inst, char* buf)
       break;
     case NOP:
     case ADD:
+    case ADD1:
     case SUB:
+    case SUB1:
     case MUL:
     case DIV:
     case PRINT:
@@ -1001,6 +1022,15 @@ int execute(char* buf, int start, int end)
 	++pc;
       }
       break;
+    case ADD1:
+      {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	int ans = ivalue(stack[stack_top-1]) + 1;
+	popArg();
+	pushArg(makeInteger(ans));
+	pc++;
+      }
+      break;
     case SUB:
       {
 	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
@@ -1024,6 +1054,15 @@ int execute(char* buf, int start, int end)
 	  pushArg(makeInteger(ans));
 	}
 	++pc;
+      }
+      break;
+    case SUB1:
+      {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	int ans = ivalue(stack[stack_top-1]) - 1;
+	popArg();
+	pushArg(makeInteger(ans));
+	pc++;
       }
       break;
     case MUL:
@@ -1438,6 +1477,7 @@ int repl()
     InstQueue instQ;
     Inst inst;
     inst.op = NOP;
+    inst.prev = NULL;
     inst.next = NULL;
     inst.offset = pc;
     inst.size = 1;

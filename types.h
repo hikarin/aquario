@@ -25,6 +25,8 @@ typedef enum opcode{
   SUB   =  2,
   MUL   =  3,
   DIV   =  4,
+  ADD1  =  5,
+  SUB1  =  6,
   PRINT = 10,
   PUSH  = 20,
   POP   = 21,
@@ -121,6 +123,7 @@ struct _inst
   Operand operand2;
   int offset;
   int size;
+  struct _inst* prev;
   struct _inst* next;
 };
 
