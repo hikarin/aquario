@@ -28,19 +28,37 @@ static void pushFunctionStack(int f);
 static int popFunctionStack();
 static int getFunctionStackTop();
 
+static Boolean error = FALSE;
+
 #define ERR_WRONG_NUMBER_ARGS(required, given)	\
-  AQ_PRINTF("ERROR: wrong number of argnuments: required %d, but given %d.\n", required, given); \
-  exec = FALSE;								\
-  break;								\
+  stack_top = 0;						\
+  pushArg(makeInteger(required));				\
+  pushArg(symbolCell(", but given "));				\
+  pushArg(makeInteger(given));					\
+  pushArg(symbolCell("wrong number of argnuments: required "));	\
+  error = TRUE;							\
+  return 0;							\
+  
+#define CHECK_ERR_PAIR_NOT_GIVEN()			\
+  if(!isPair(stack[stack_top-1])) {			\
+    Cell t = stack[stack_top-1];			\
+    stack_top = 0;					\
+    pushArg(t);						\
+    pushArg(symbolCell("pair required, but given "));	\
+    error = TRUE;					\
+    return 0;						\
+  }							\
 
-#define CHECK_ERR_PAIR_NOT_GIVEN() \
-  if(!isPair(stack[stack_top-1])) { \
-    AQ_PRINTF("ERROR: pair required, but got "); printLineCell(stack[stack_top-1]); \
-    exec = FALSE; \
-    pushArg((Cell)AQ_UNDEF); \
-    break; \
-  }  \
-
+#define CHECK_ERR_INT_NOT_GIVEN(num)			\
+  if(!isInteger(num)) {					\
+    Cell t = num;					\
+    stack_top = 0;					\
+    pushArg(t);						\
+    pushArg(symbolCell("number required, but given "));	\
+    error = TRUE;					\
+    return 0;						\
+  } 							\
+  
 inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
@@ -970,10 +988,12 @@ int execute(char* buf, int start, int end)
       break;
     case ADD:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 0;
 	for(i=0; i<num; i++) {
+	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	}
@@ -983,18 +1003,22 @@ int execute(char* buf, int start, int end)
       break;
     case SUB:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
+	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  int ans = -ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  long ans = 0;
 	  for(i=0; i<num-1; i++) {
+	    CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	    ans -= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
+	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
@@ -1004,10 +1028,12 @@ int execute(char* buf, int start, int end)
       break;
     case MUL:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 1;
 	for(i=0; i<num; i++) {
+	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  ans *= ivalue(stack[stack_top-1]);
 	  popArg();
 	}
@@ -1017,18 +1043,22 @@ int execute(char* buf, int start, int end)
       break;
     case DIV:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
+	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  long ans = 1/ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  int div = 1;
 	  for(i=0; i<num-1; i++) {
+	    CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	    div *= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
+	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  long ans = ivalue(stack[stack_top-1]);
 	  popArg();
 	  ans = ans/div;
@@ -1077,6 +1107,8 @@ int execute(char* buf, int start, int end)
       break;
     case EQUAL:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1088,6 +1120,8 @@ int execute(char* buf, int start, int end)
       break;
     case GT:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1099,6 +1133,8 @@ int execute(char* buf, int start, int end)
       break;
     case GTE:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1110,6 +1146,8 @@ int execute(char* buf, int start, int end)
       break;
     case LT:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1121,6 +1159,8 @@ int execute(char* buf, int start, int end)
       break;
     case LTE:
       {
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1142,6 +1182,7 @@ int execute(char* buf, int start, int end)
     case PRINT:
       {
 	printCell(stack[stack_top-1]);
+	AQ_PRINTF("\n");
 	popArg();
 	pushArg((Cell)AQ_UNDEF);
 	++pc;
@@ -1407,9 +1448,18 @@ int repl()
     size_t bufSize = writeInst(instQ.head, &buf[pc]);
     
     pc = execute(buf, pc, pc+bufSize);
-    printLineCell(stack[stack_top-1]);
-    popArg();
+    if(error) {
+      while(stack_top > 0) {
+	printCell(stack[stack_top-1]);
+	popArg();
+      }
+      AQ_PRINTF("\n");
+    } else {
+      printLineCell(stack[stack_top-1]);
+      popArg();
+    }
   }
+
   return 0;
 }
 
