@@ -54,10 +54,10 @@ verify "(> 4 3)" \#t
 
 #list
 verify "'(a b c)" '(a b c)'
-verify "'(a b . c)" '(a b . c)'
+verify "'(x y . z)" '(x y . z)'
 verify "(car '(a . b))" a
 verify "(cdr '(a . b))" b
-verify "(define lst '(a b c)) (car (car lst))" \#undef
+verify "(define lst '(a b c)) (car (car lst))" "pair required, but given a"
 
 #define
 verify "(define m 100) (cons m m)" '(100 . 100)'
@@ -83,17 +83,17 @@ verify ";(define m 100)
   m" \#undef
 verify "(define m 100) ;m" "m"
 verify "(cons 1 ; 2)
-  2)" "(1 . 2)"
+  3)" "(1 . 3)"
 
 #lambda
 verify "(define null? (lambda (x) (eq? x nil))) (null? '())" \#t
+verify "(define prints (lambda (x y) (cons y x))) (prints 1 2)" "(2 . 1)"
 verify "(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4))" 4
 verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15)" 987
-verify "(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2)" "1(1 . 2)"
 verify "(define list (lambda (x . y) (cons x y))) (list 1 2 3)" "(1 2 3)"
 verify "(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst)" "(1 2 (3 4 5))"
 verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) . 1)"
-verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0)" 1
+verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 8 4 0)" 1
 
 echo ""
 if [ -n "$str" ]; then
