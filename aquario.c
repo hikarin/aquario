@@ -842,7 +842,6 @@ void set_gc(char* gc_char)
   GC_Init_Info gc_info;
   memset(&gc_info, 0, sizeof(GC_Init_Info));
   gc_init( gc_char, heap_size, &gc_info );
-  g_GC_stress = FALSE;
 }
 
 void load_file( const char* filename )
@@ -1525,17 +1524,19 @@ int repl()
 int handle_option(int argc, char *argv[])
 {
   int i = 1;
-  if( argc >= 3 && strcmp(argv[ 1 ], "-GC" ) == 0 ){
-    set_gc(argv[ 2 ]);
-    i += 2;
-  }else{
-    set_gc("");
+  for(; i<argc-1; i++) {
+    if(strcmp(argv[ i ], "-GC" ) == 0 ){
+      set_gc(argv[ ++i ]);
+    }else if(strcmp(argv[ i ], "-GC_STRESS" ) == 0 ){
+      g_GC_stress = TRUE;
+    }
   }
   return i;
 }
 
 int main(int argc, char *argv[])
 {
+  set_gc("");
   int i = handle_option(argc, argv);
   init();
   if( i >= argc ){

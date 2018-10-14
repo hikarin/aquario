@@ -3,8 +3,9 @@
 str=""
 i=0
 GC=$1
+OPTION=$2
 
-echo "[GC: ${GC}]"
+echo "[GC: ${GC} ${OPTION}]"
 
 function success() {
     echo -n .
@@ -17,7 +18,7 @@ function fail() {
 
 function verify(){
     i=`expr $i + 1`
-    result=$(echo "$1" | ./aquario -GC ${GC} 2> /dev/null | tail -1)
+    result=$(echo "$1" | ./aquario -${OPTION} -GC ${GC} 2> /dev/null | tail -1)
     if [ "$result" != "$2" ]; then
 	fail "$1" "$2" "$result" $i
     else

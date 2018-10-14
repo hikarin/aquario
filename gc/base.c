@@ -36,6 +36,7 @@ static void printMeasureInfo();
 #define GC_STR_GENERATIONAL    "gen"
 #define GC_STR_REFERENCE_COUNT "ref"
 #define GC_STR_MARK_SWEEP      "ms"
+static char* _gc_char = "";
 
 static int heap_size = 0;
 static GC_Measure_Info measure_info;
@@ -67,17 +68,23 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
   aq_heap = AQ_MALLOC(heap_size);
   if( strcmp( gc_char, GC_STR_COPYING ) == 0 ){
     gc_init_copy(gc_init);
+    _gc_char = GC_STR_COPYING;
   }else if( strcmp( gc_char, GC_STR_MARKCOMPACT ) == 0 ){
     gc_init_markcompact(gc_init);
+    _gc_char = GC_STR_MARKCOMPACT;
   }else if( strcmp( gc_char, GC_STR_GENERATIONAL ) == 0 ){
     gc_init_generational(gc_init);
+    _gc_char = GC_STR_GENERATIONAL;
   }else if( strcmp( gc_char, GC_STR_REFERENCE_COUNT ) == 0 ){
     gc_init_reference_count(gc_init);
+    _gc_char = GC_STR_REFERENCE_COUNT;
   }else if( strcmp( gc_char, GC_STR_MARK_SWEEP ) == 0 ){
     gc_init_marksweep(gc_init);
+    _gc_char = GC_STR_MARK_SWEEP;
   }else{
     //default.
     gc_init_marksweep(gc_init);
+    _gc_char = GC_STR_MARK_SWEEP;
   }
   if(!gc_init->gc_write_barrier){
     //option.
@@ -140,6 +147,7 @@ void gc_term_base()
 void printMeasureInfo()
 {
   AQ_PRINTF("\n\n");
+  AQ_PRINTF("GC Name: %s\n", _gc_char);
   AQ_PRINTF("GC count:             %8d\n", measure_info.gc_count);
   AQ_PRINTF("live object count:  %10d\n", measure_info.live_object_count);
   AQ_PRINTF("live object size:   %10d\n", measure_info.live_object_size);
