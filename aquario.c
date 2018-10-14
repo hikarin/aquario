@@ -535,39 +535,9 @@ void addOneByteInstTail(InstQueue* instQ, OPCODE op)
 void compileProcedure(char* func, int num, InstQueue* instQ)
 {
     if(strcmp(func, "+") == 0) {
-      Inst* lastInst = instQ->tail;
-      if(lastInst && lastInst->op == PUSH && num == 2 ) {
-	if(lastInst->operand._num == makeInteger(1)) {
-	  lastInst->op = ADD1;
-	  lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-	  lastInst->size = 1;
-	  return;
-	} else if(lastInst->operand._num == makeInteger(2)) {
-	  lastInst->op = ADD2;
-	  lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-	  lastInst->size = 1;
-	  return;
-	}
-      }
-      addPushTail(instQ, num);
-      addOneByteInstTail(instQ, ADD);
+      compileAdd(instQ, num);
     } else if(strcmp(func, "-") == 0) {
-      Inst* lastInst = instQ->tail;
-      if(lastInst && lastInst->op == PUSH && num == 2) {
-	if(lastInst->operand._num == makeInteger(1)) {
-	  lastInst->op = SUB1;
-	  lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-	  lastInst->size = 1;
-	  return;
-	} else if(lastInst->operand._num == makeInteger(2)) {
-	  lastInst->op = SUB2;
-	  lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-	  lastInst->size = 1;
-	  return;
-	}
-      }
-      addPushTail(instQ, num);
-      addOneByteInstTail(instQ, SUB);
+      compileSub(instQ, num);
     } else if(strcmp(func, "*") == 0) {
       addPushTail(instQ, num);
       addOneByteInstTail(instQ, MUL);
@@ -598,6 +568,46 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
       addPushTail(instQ, num);
       addInstTail(instQ, createInstStr(FUNC, func));
     }
+}
+
+void compileAdd(InstQueue* instQ, int num)
+{
+  Inst* lastInst = instQ->tail;
+  if(lastInst && lastInst->op == PUSH && num == 2 ) {
+    if(lastInst->operand._num == makeInteger(1)) {
+      lastInst->op = ADD1;
+      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
+      lastInst->size = 1;
+      return;
+    } else if(lastInst->operand._num == makeInteger(2)) {
+      lastInst->op = ADD2;
+      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
+      lastInst->size = 1;
+      return;
+    }
+  }
+  addPushTail(instQ, num);
+  addOneByteInstTail(instQ, ADD);
+}
+
+void compileSub(InstQueue* instQ, int num)
+{
+  Inst* lastInst = instQ->tail;
+  if(lastInst && lastInst->op == PUSH && num == 2) {
+    if(lastInst->operand._num == makeInteger(1)) {
+      lastInst->op = SUB1;
+      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
+      lastInst->size = 1;
+      return;
+    } else if(lastInst->operand._num == makeInteger(2)) {
+      lastInst->op = SUB2;
+      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
+      lastInst->size = 1;
+      return;
+    }
+  }
+  addPushTail(instQ, num);
+  addOneByteInstTail(instQ, SUB);
 }
 
 void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
