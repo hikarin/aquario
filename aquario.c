@@ -1167,8 +1167,8 @@ int execute(char* buf, int start, int end)
       {
 	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
-	int num2 = ivalue(stack[stack_top-1]);
-	int num1 = ivalue(stack[stack_top-2]);
+	Cell num2 = stack[stack_top-1];
+	Cell num1 = stack[stack_top-2];
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
