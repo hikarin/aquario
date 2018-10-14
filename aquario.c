@@ -817,23 +817,6 @@ Cell getChain(char* name, int* key)
   return chain;
 }
 
-void callProc(char* name)
-{
-  Cell proc = getVar(name);
-  if(isProc(proc)){
-    opType op = procvalue(proc);
-    op();
-  }
-  else{
-    printError("unknown proc");
-  }
-}
-
-void setParseError(char* str)
-{
-  printError(str);
-}
-
 void init()
 {
   int i;
