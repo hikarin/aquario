@@ -257,8 +257,12 @@ char* readToken(char *buf, int len, FILE* fp)
       while(c != '\n' && c != EOF ){
 	c = fgetc(fp);
       }
-      ungetc(c, fp);
-      break;
+      if(token == buf) {
+	break;
+      } else {
+	*token = '\0';
+	return buf;
+      }
     case '(':
     case ')':
     case '\'':

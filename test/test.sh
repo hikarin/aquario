@@ -81,7 +81,10 @@ verify "(define x 100) (define y x) y" 100
 #comment
 verify ";(define m 100)
   m" \#undef
-verify "(define m 100) ;m" "m"
+verify "(define m 100) ;100" "#undef"
+verify "(define m 100) m;100" "100"
+verify "(cons 1; 2)
+  3)" "(1 . 3)"
 verify "(cons 1 ; 2)
   3)" "(1 . 3)"
 
