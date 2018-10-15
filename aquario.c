@@ -28,37 +28,27 @@ static void pushFunctionStack(int f);
 static int popFunctionStack();
 static int getFunctionStackTop();
 
-static Boolean error = FALSE;
+static ErrorType errType = ERR_TYPE_NONE;
 
-#define ERR_WRONG_NUMBER_ARGS(required, given)	\
-  stack_top = 0;						\
+#define ERR_WRONG_NUMBER_ARGS(required, given)			\
   pushArg(makeInteger(required));				\
-  pushArg(symbolCell(", but given "));				\
   pushArg(makeInteger(given));					\
-  pushArg(symbolCell("wrong number of argnuments: required "));	\
-  error = TRUE;							\
+  errType = ERR_TYPE_WRONG_NUMBER_ARG;				\
   return 0;							\
   
 #define CHECK_ERR_PAIR_NOT_GIVEN()			\
   if(!isPair(stack[stack_top-1])) {			\
-    Cell t = stack[stack_top-1];			\
-    stack_top = 0;					\
-    pushArg(t);						\
-    pushArg(symbolCell("pair required, but given "));	\
-    error = TRUE;					\
+    errType = ERR_TYPE_PAIR_NOT_GIVEN;			\
     return 0;						\
   }							\
 
 #define CHECK_ERR_INT_NOT_GIVEN(num)			\
   if(!isInteger(num)) {					\
-    Cell t = num;					\
-    stack_top = 0;					\
-    pushArg(t);						\
-    pushArg(symbolCell("number required, but given "));	\
-    error = TRUE;					\
+    pushArg(num);					\
+    errType = ERR_TYPE_INT_NOT_GIVEN;			\
     return 0;						\
   } 							\
-  
+
 inline Cell newCell(Type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
@@ -314,9 +304,13 @@ size_t compile(FILE* fp, char* buf)
   instQ.head = &inst;
   instQ.tail = &inst;
   char chr = 0;
-  while((chr = fgetc(fp)) != EOF) {
+  while((chr = fgetc(fp)) != EOF && !isError()) {
     ungetc(chr, fp);
     compileElem(&instQ, fp, NULL);
+  }
+
+  if(isError()) {
+    return 0;
   }
 
   return writeInst(instQ.head, buf);
@@ -889,12 +883,16 @@ void load_file( const char* filename )
     fp = fopen(filename, "r");
     if(fp) {
       size_t fileSize = compile(fp, buf);
-      execute(buf, 0, fileSize);
-      fclose(fp);
+      if(fileSize > 0) {
+	execute(buf, 0, fileSize);
+	fclose(fp);
       
-      FILE* outputFile = fopen(abcFileName, "wb");
-      fwrite(buf, fileSize, 1, outputFile);
-      fclose(outputFile);
+	FILE* outputFile = fopen(abcFileName, "wb");
+	fwrite(buf, fileSize, 1, outputFile);
+	fclose(outputFile);
+      } else {
+	fclose(fp);
+      }
     } else {
       AQ_PRINTF("[ERROR] %s: not found\n", filename);
     }
@@ -1459,6 +1457,39 @@ void printError(char *fmt, ...) {
   va_end(ap);
 }
 
+Boolean isError() {
+  return (errType != ERR_TYPE_NONE);
+}
+
+void handleError()
+{
+  switch(errType) {
+  case ERR_TYPE_WRONG_NUMBER_ARG:
+    AQ_PRINTF("wrong number of argnuments: required ");
+    printCell(stack[stack_top-2]);
+    AQ_PRINTF(", but given ");
+    printLineCell(stack[stack_top-1]);
+    break;
+  case ERR_TYPE_PAIR_NOT_GIVEN:
+    AQ_PRINTF("pair required, but given ");
+      printLineCell(stack[stack_top-1]);
+    break;
+  case ERR_TYPE_INT_NOT_GIVEN:
+    {
+      AQ_PRINTF("number required, but given ");
+      printLineCell(stack[stack_top-1]);
+    }
+    break;
+  case ERR_TYPE_NONE:
+    return;
+  }
+
+  while(stack_top > 0) {
+    popArg();
+  }
+  errType = ERR_TYPE_NONE;
+}
+
 void pushFunctionStack(int f)
 {
   if(functionStackTop >= FUNCTION_STACK_SIZE) {
@@ -1488,7 +1519,7 @@ Boolean isEndInput(int c)
   if(c == EOF || c == '\n') return TRUE;
 #else
   if(c == EOF) return TRUE;
-#endif
+ #endif
   return FALSE;
 }
 
@@ -1513,15 +1544,17 @@ int repl()
     instQ.tail = &inst;
     
     compileElem(&instQ, stdin, NULL);
+    if(isError()) {
+      handleError();
+      pc = 0;
+      continue;
+    }
+    
     size_t bufSize = writeInst(instQ.head, &buf[pc]);
     
     pc = execute(buf, pc, pc+bufSize);
-    if(error) {
-      while(stack_top > 0) {
-	printCell(stack[stack_top-1]);
-	popArg();
-      }
-      AQ_PRINTF("\n");
+    if(isError()) {
+      handleError();
     } else {
       printLineCell(stack[stack_top-1]);
       popArg();

@@ -158,4 +158,16 @@ typedef struct gc_measure_info{
   int live_object_size;
 }GC_Measure_Info;
 
+typedef enum errorType{
+  ERR_TYPE_NONE = -1,
+  ERR_TYPE_WRONG_NUMBER_ARG = 0,
+  ERR_TYPE_PAIR_NOT_GIVEN,
+  ERR_TYPE_INT_NOT_GIVEN,
+ 
+}ErrorType;
+
+Boolean isError();
+void handleError();
+
+
 #endif	//!defined( __TYPES_H__ )
