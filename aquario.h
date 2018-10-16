@@ -91,7 +91,7 @@ void compileLambda(InstQueue* instQ, FILE* fp);
 void compileProcedure(char* func, int num, InstQueue* instQ);
 void compileSymbolList(char* var, Cell* symbolList);
 
-int execute(char* buf, int start, int end);
+void execute(char* buf, int* start, int end);
 
 void printError(char *fmt, ...);
 

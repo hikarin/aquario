@@ -30,23 +30,33 @@ static int getFunctionStackTop();
 
 static ErrorType errType = ERR_TYPE_NONE;
 
-#define ERR_WRONG_NUMBER_ARGS(required, given)			\
-  pushArg(makeInteger(required));				\
-  pushArg(makeInteger(given));					\
-  errType = ERR_TYPE_WRONG_NUMBER_ARG;				\
-  return 0;							\
+#define ERR_WRONG_NUMBER_ARGS_BASE(required, given)		\
+    pushArg(makeInteger(required));				\
+    pushArg(makeInteger(given));				\
+    errType = ERR_TYPE_WRONG_NUMBER_ARG;			\
+    return;							\
+    
+#define ERR_WRONG_NUMBER_ARGS(required, given)				\
+  if(required != given) {						\
+    ERR_WRONG_NUMBER_ARGS_BASE(required, given);			\
+  }									\
   
-#define CHECK_ERR_PAIR_NOT_GIVEN()			\
+#define ERR_WRONG_NUMBER_ARGS_DLIST(required, given)		\
+  if(required > given) {					\
+    ERR_WRONG_NUMBER_ARGS_BASE(required, given);		\
+  }								\
+
+#define ERR_PAIR_NOT_GIVEN()				\
   if(!isPair(stack[stack_top-1])) {			\
     errType = ERR_TYPE_PAIR_NOT_GIVEN;			\
-    return 0;						\
+    return;						\
   }							\
 
-#define CHECK_ERR_INT_NOT_GIVEN(num)			\
+#define ERR_INT_NOT_GIVEN(num)				\
   if(!isInteger(num)) {					\
     pushArg(num);					\
     errType = ERR_TYPE_INT_NOT_GIVEN;			\
-    return 0;						\
+    return;						\
   } 							\
 
 inline Cell newCell(Type t, size_t size)
@@ -541,22 +551,31 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
     } else if(strcmp(func, "print") == 0) {
       addOneByteInstTail(instQ, PRINT);
     } else if(strcmp(func, "cons") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, CONS);
     } else if(strcmp(func, "car") == 0) {
+      ERR_WRONG_NUMBER_ARGS(1, num);
       addOneByteInstTail(instQ, CAR);
     } else if(strcmp(func, "cdr") == 0) {
+      ERR_WRONG_NUMBER_ARGS(1, num);
       addOneByteInstTail(instQ, CDR);
     } else if(strcmp(func, ">") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, GT);
     } else if(strcmp(func, "<") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, LT);
     } else if(strcmp(func, "<=") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, LTE);
     } else if(strcmp(func, ">=") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, GTE);
     } else if(strcmp(func, "=") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, EQUAL);
     } else if(strcmp(func, "eq?") == 0) {
+      ERR_WRONG_NUMBER_ARGS(2, num);
       addOneByteInstTail(instQ, EQ);
     } else {
       addPushTail(instQ, num);
@@ -870,11 +889,12 @@ void load_file( const char* filename )
 		       abcInfo.st_ctime > lspInfo.st_ctime);
   
   char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
+  int pc = 0;
   if(noCompile) {
     fp = fopen(abcFileName, "rb");
     if(fp) {
       fread(buf, abcInfo.st_size, 1, fp);
-      execute(buf, 0, abcInfo.st_size);
+      execute(buf, &pc, abcInfo.st_size);
       fclose(fp);
     } else {
       AQ_PRINTF("[ERROR] %s: cannot open.\n", abcFileName);
@@ -884,7 +904,7 @@ void load_file( const char* filename )
     if(fp) {
       size_t fileSize = compile(fp, buf);
       if(fileSize > 0) {
-	execute(buf, 0, fileSize);
+	execute(buf, &pc, fileSize);
 	fclose(fp);
       
 	FILE* outputFile = fopen(abcFileName, "wb");
@@ -987,149 +1007,148 @@ Cell getOperand(char* buf, int pc)
   return (Cell)(*(Cell*)&buf[pc]);
 }
 
-int execute(char* buf, int start, int end)
+void execute(char* buf, int* pc, int end)
 {
   Boolean exec = TRUE;
   stack_top = 0;
-  int pc = start;
   int i = 0;
-  while(exec != FALSE && pc < end) {
-    OPCODE op = buf[pc];
+  while(exec != FALSE && (*pc) < end) {
+    OPCODE op = buf[*pc];
     switch(op) {
     case PUSH:
       {
-	int value = (int)getOperand(buf, ++pc);
+	int value = (int)getOperand(buf, ++(*pc));
 	pushArg(makeInteger(value));
-	pc += sizeof(Cell);
+	*pc += sizeof(Cell);
       }
       break;
     case PUSH_NIL:
       pushArg((Cell)AQ_NIL);
-      ++pc;
+      ++(*pc);
       break;
     case PUSH_TRUE:
       pushArg((Cell)AQ_TRUE);
-      ++pc;
+      ++(*pc);
       break;
     case PUSH_FALSE:
       pushArg((Cell)AQ_FALSE);
-      ++pc;
+      ++(*pc);
       break;
     case ADD:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 0;
 	for(i=0; i<num; i++) {
-	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	}
 	pushArg(makeInteger(ans));
-	++pc;
+	++(*pc);
       }
       break;
     case ADD1:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int ans = ivalue(stack[stack_top-1]) + 1;
 	popArg();
 	pushArg(makeInteger(ans));
-	pc++;
+	++(*pc);
       }
       break;
     case ADD2:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int ans = ivalue(stack[stack_top-1]) + 2;
 	popArg();
 	pushArg(makeInteger(ans));
-	pc++;
+	++(*pc);
       }
       break;
     case SUB:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
-	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  int ans = -ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  long ans = 0;
 	  for(i=0; i<num-1; i++) {
-	    CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	    ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	    ans -= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
-	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	}
-	++pc;
+	++(*pc);
       }
       break;
     case SUB1:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int ans = ivalue(stack[stack_top-1]) - 1;
 	popArg();
 	pushArg(makeInteger(ans));
-	pc++;
+	++(*pc);
       }
       break;
     case SUB2:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int ans = ivalue(stack[stack_top-1]) - 2;
 	popArg();
 	pushArg(makeInteger(ans));
-	pc++;
+	++(*pc);
       }
       break;
     case MUL:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 1;
 	for(i=0; i<num; i++) {
-	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  ans *= ivalue(stack[stack_top-1]);
 	  popArg();
 	}
 	pushArg(makeInteger(ans));
-	++pc;
+	++(*pc);
       }
       break;
     case DIV:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
-	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  long ans = 1/ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  int div = 1;
 	  for(i=0; i<num-1; i++) {
-	    CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	    ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	    div *= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
-	  CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
 	  long ans = ivalue(stack[stack_top-1]);
 	  popArg();
 	  ans = ans/div;
 	  pushArg(makeInteger(ans));
 	}
-	++pc;
+	++(*pc);
       }
       break;
     case RET:
@@ -1143,7 +1162,7 @@ int execute(char* buf, int start, int end)
 	}
 	popFunctionStack();
 	stack[stack_top++] = val;
-	pc = retAddr;
+	*pc = retAddr;
       }
       break;
     case CONS:
@@ -1153,86 +1172,86 @@ int execute(char* buf, int start, int end)
 	popArg();
 
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case CAR:
       {
-	CHECK_ERR_PAIR_NOT_GIVEN();
+	ERR_PAIR_NOT_GIVEN();
 	gc_write_barrier_root(&stack[stack_top-1], car(stack[stack_top-1]));
-	++pc;
+	++(*pc);
       }
       break;
     case CDR:
       {
-	CHECK_ERR_PAIR_NOT_GIVEN();
+	ERR_PAIR_NOT_GIVEN();
 	gc_write_barrier_root(&stack[stack_top-1], cdr(stack[stack_top-1]));
-	++pc;
+	++(*pc);
       }
       break;
     case EQUAL:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	Cell num2 = stack[stack_top-1];
 	Cell num1 = stack[stack_top-2];
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case GT:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case GTE:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case LT:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case LTE:
       {
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	CHECK_ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	popArg();
 	popArg();
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case EQ:
@@ -1241,7 +1260,7 @@ int execute(char* buf, int start, int end)
 	Cell p2 = popArg();
 	Cell ret = (p1 == p2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
 	pushArg(ret);
-	++pc;
+	++(*pc);
       }
       break;
     case PRINT:
@@ -1250,58 +1269,58 @@ int execute(char* buf, int start, int end)
 	AQ_PRINTF("\n");
 	popArg();
 	pushArg((Cell)AQ_UNDEF);
-	++pc;
+	++(*pc);
       }
       break;
     case JNEQ:
       {
 	Cell c = stack[stack_top-1];
 	popArg();
-	++pc;
+	++(*pc);
 	if(!truep(c)) {
-	  int addr = (int)getOperand(buf, pc);
-	  pc = addr;
+	  int addr = (int)getOperand(buf, *pc);
+	  *pc = addr;
 	} else {
-	  pc += sizeof(Cell);
+	  *pc += sizeof(Cell);
 	}
       }
       break;
     case JMP:
       {
-	int addr = (int)getOperand(buf, ++pc);
-	pc = addr;
+	int addr = (int)getOperand(buf, ++(*pc));
+	*pc = addr;
       }
       break;
     case SET:
       {
 	// this is for on-memory
 	Cell val = stack[stack_top-1];
-	char* str = &buf[++pc];
+	char* str = &buf[++(*pc)];
 	setVar(str, val);
 	popArg();
 	pushArg(symbolCell(str));
-	pc += (strlen(str)+1);
+	*pc += (strlen(str)+1);
       }
       break;
     case PUSHS:
       {
-	char* str = &buf[++pc];
+	char* str = &buf[++(*pc)];
 	Cell strCell = stringCell(str);
 	pushArg(strCell);
-	pc += (strlen(str)+1);
+	*pc += (strlen(str)+1);
       }
       break;
     case PUSH_SYM:
       {
-	char* sym = &buf[++pc];
+	char* sym = &buf[++(*pc)];
 	Cell symCell = symbolCell(sym);
 	pushArg(symCell);
-	pc += (strlen(sym)+1);
+	*pc += (strlen(sym)+1);
       }
       break;
     case REF:
       {
-	char* str = &buf[++pc];
+	char* str = &buf[++(*pc)];
 	Cell ret = getVar(str);
 	if(UNDEF_P(ret)) {
 	  printError("[REF] undefined symbol: %s", str);
@@ -1309,13 +1328,13 @@ int execute(char* buf, int start, int end)
 	  exec = FALSE;
 	} else {
 	  pushArg(ret);
-	  pc += (strlen(str)+1);
+	  *pc += (strlen(str)+1);
 	}
       }
       break;
     case FUNC:
       {
-	char* str = &buf[++pc];
+	char* str = &buf[++(*pc)];
 	Cell func = getVar(str);
 	if(UNDEF_P(func)) {
 	  printError("[FUNC] undefined function: %s", str);
@@ -1331,9 +1350,7 @@ int execute(char* buf, int start, int end)
 	  int funcAddr = ivalue(lambdaAddr(func));
 	  Boolean isParamDList = lambdaFlag(func);
 	  if(isParamDList) {
-	    if(paramNum > argNum) {
-	      ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
-	    }
+	    ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum);
 	    popArg();
 	    int num = argNum - paramNum + 1;
 	    Cell lst = (Cell)AQ_NIL;
@@ -1346,17 +1363,15 @@ int execute(char* buf, int start, int end)
 	    pushArg(lst);
 	    pushArg(makeInteger(paramNum));
 	  } else {
-	    if(paramNum != argNum) {
-	      ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
-	    }
+	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
 	  }
-	  int retAddr  = pc + strlen(str) + 1;
+	  int retAddr  = *pc + strlen(str) + 1;
 	  pushArg(makeInteger(retAddr));
 	  pushArg((Cell)AQ_SFRAME);
 	  pushFunctionStack(stack_top);
 	  
 	  // jump
-	  pc = funcAddr;
+	  *pc = funcAddr;
 	}
       }
       break;
@@ -1364,13 +1379,13 @@ int execute(char* buf, int start, int end)
     case FUNDD:
       {
 	// jump
-	int defEnd = (int)getOperand(buf, ++pc);
-	int defStart = pc + sizeof(Cell) * 2;
-	pc += sizeof(Cell);
-	int paramNum = (int)getOperand(buf, pc);
+	int defEnd = (int)getOperand(buf, ++(*pc));
+	int defStart = *pc + sizeof(Cell) * 2;
+	*pc += sizeof(Cell);
+	int paramNum = (int)getOperand(buf, *pc);
 	Cell l = lambdaCell(defStart, paramNum, (op == FUNDD) ? TRUE : FALSE);
 	pushArg(l);
-	pc = defEnd;
+	*pc = defEnd;
       }
       break;
     case FUNCS:
@@ -1381,9 +1396,7 @@ int execute(char* buf, int start, int end)
 	int funcAddr = ivalue(lambdaAddr(func));
 	Boolean isParamDList = lambdaFlag(func);
 	if(isParamDList) {
-	  if (paramNum > argNum) {
-	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
-	  }
+	  ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum);
 	  popArg();
 	  int num = argNum - paramNum + 1;
 	  Cell lst = (Cell)AQ_NIL;
@@ -1396,47 +1409,45 @@ int execute(char* buf, int start, int end)
 	  pushArg(lst);
 	  pushArg(makeInteger(paramNum));
 	} else {
-	  if(paramNum != argNum) {
-	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
-	  }
+	  ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
 	}
 	
-	int retAddr  = pc + 1;
+	int retAddr  = *pc + 1;
 	pushArg(makeInteger(retAddr));
 	pushArg((Cell)AQ_SFRAME);
 	pushFunctionStack(stack_top);
 	
 	// jump
-	pc = funcAddr;
+	*pc = funcAddr;
       }
       break;
     case SROT:
       {
-	int n = (int)getOperand(buf, ++pc);
+	int n = (int)getOperand(buf, ++(*pc));
 	Cell val = stack[stack_top-(n+1)];
 	for(i=n; i>0; i--) {
 	  stack[stack_top-(i+1)] = stack[stack_top-i];
 	}
 	stack[stack_top-1] = val;
-	pc += sizeof(Cell);
+	*pc += sizeof(Cell);
       }
       break;
     case LOAD:
       {
-	int offset = (int)getOperand(buf, ++pc);
+	int offset = (int)getOperand(buf, ++(*pc));
 	int index = getFunctionStackTop() - offset - 4;
 	Cell val = stack[index];
 	pushArg(val);
-	pc += sizeof(Cell);
+	*pc += sizeof(Cell);
       }
       break;
     case NOP:
       // do nothing
-      ++pc;
+      ++(*pc);
       break;
     case HALT:
       exec = FALSE;
-      ++pc;
+      ++(*pc);
       break;
     default:
       AQ_PRINTF("Unknown opcode: %d\n", op);
@@ -1444,8 +1455,6 @@ int execute(char* buf, int start, int end)
       break;
     }
   }
-
-  return pc;
 }
 
 void printError(char *fmt, ...) {
@@ -1552,7 +1561,7 @@ int repl()
     
     size_t bufSize = writeInst(instQ.head, &buf[pc]);
     
-    pc = execute(buf, pc, pc+bufSize);
+    execute(buf, &pc, pc+bufSize);
     if(isError()) {
       handleError();
     } else {
