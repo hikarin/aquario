@@ -32,7 +32,7 @@ debug: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_DEBUG -D_MEASURE -g $(LIBS)
 
 opt: $(CSOURCES)
-	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -O2 $(LIBS)
+	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -O3 -fomit-frame-pointer $(LIBS)
 
 prof: $(CSOURCES)
 	$(CC) $(CSOURCES) -o $(TARGET) $(CFLAGS) -D_MEASURE -pg $(LIBS)
