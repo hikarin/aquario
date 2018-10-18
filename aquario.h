@@ -115,6 +115,8 @@ void setReturn(Cell c);
 void updateOffsetReg();
 int getOffsetReg();
 
+Boolean isEndInput(int c);
+
 int repl();
 
 #if defined( _WIN32 ) || defined( _WIN64 )

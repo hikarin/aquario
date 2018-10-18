@@ -30,6 +30,10 @@ static int getFunctionStackTop();
 
 static ErrorType errType = ERR_TYPE_NONE;
 
+#define SET_COMPILE_ERROR(err)	   \
+  errType = err;		   \
+  return;			   \
+
 #define ERR_WRONG_NUMBER_ARGS_BASE(required, given)		\
     pushArg(makeInteger(required));				\
     pushArg(makeInteger(given));				\
@@ -399,7 +403,8 @@ void compileQuotedList(InstQueue* instQ, FILE* fp)
     }
     token = readToken(buf, sizeof(buf), fp);
     if(strcmp(token, ")") != 0) {
-      printError("broken dot list");
+      errType = ERR_TYPE_MALFORMED_DOT_LIST;
+      compileList(instQ, fp, NULL);
     }
   }
   else {
@@ -538,49 +543,49 @@ void addOneByteInstTail(InstQueue* instQ, OPCODE op)
 
 void compileProcedure(char* func, int num, InstQueue* instQ)
 {
-    if(strcmp(func, "+") == 0) {
-      compileAdd(instQ, num);
-    } else if(strcmp(func, "-") == 0) {
-      compileSub(instQ, num);
-    } else if(strcmp(func, "*") == 0) {
-      addPushTail(instQ, num);
-      addOneByteInstTail(instQ, MUL);
-    } else if(strcmp(func, "/") == 0) {
-      addPushTail(instQ, num);
-      addOneByteInstTail(instQ, DIV);
-    } else if(strcmp(func, "print") == 0) {
-      addOneByteInstTail(instQ, PRINT);
-    } else if(strcmp(func, "cons") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, CONS);
-    } else if(strcmp(func, "car") == 0) {
-      ERR_WRONG_NUMBER_ARGS(1, num);
-      addOneByteInstTail(instQ, CAR);
-    } else if(strcmp(func, "cdr") == 0) {
-      ERR_WRONG_NUMBER_ARGS(1, num);
+  if(strcmp(func, "+") == 0) {
+    compileAdd(instQ, num);
+  } else if(strcmp(func, "-") == 0) {
+    compileSub(instQ, num);
+  } else if(strcmp(func, "*") == 0) {
+    addPushTail(instQ, num);
+    addOneByteInstTail(instQ, MUL);
+  } else if(strcmp(func, "/") == 0) {
+    addPushTail(instQ, num);
+    addOneByteInstTail(instQ, DIV);
+  } else if(strcmp(func, "print") == 0) {
+    addOneByteInstTail(instQ, PRINT);
+  } else if(strcmp(func, "cons") == 0) {
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, CONS);
+  } else if(strcmp(func, "car") == 0) {
+    ERR_WRONG_NUMBER_ARGS(1, num);
+    addOneByteInstTail(instQ, CAR);
+  } else if(strcmp(func, "cdr") == 0) {
+    ERR_WRONG_NUMBER_ARGS(1, num);
       addOneByteInstTail(instQ, CDR);
-    } else if(strcmp(func, ">") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, GT);
-    } else if(strcmp(func, "<") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, LT);
+  } else if(strcmp(func, ">") == 0) {
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, GT);
+  } else if(strcmp(func, "<") == 0) {
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, LT);
     } else if(strcmp(func, "<=") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, LTE);
-    } else if(strcmp(func, ">=") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, GTE);
-    } else if(strcmp(func, "=") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, EQUAL);
-    } else if(strcmp(func, "eq?") == 0) {
-      ERR_WRONG_NUMBER_ARGS(2, num);
-      addOneByteInstTail(instQ, EQ);
-    } else {
-      addPushTail(instQ, num);
-      addInstTail(instQ, createInstStr(FUNC, func));
-    }
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, LTE);
+  } else if(strcmp(func, ">=") == 0) {
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, GTE);
+  } else if(strcmp(func, "=") == 0) {
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, EQUAL);
+  } else if(strcmp(func, "eq?") == 0) {
+    ERR_WRONG_NUMBER_ARGS(2, num);
+    addOneByteInstTail(instQ, EQ);
+  } else {
+    addPushTail(instQ, num);
+    addInstTail(instQ, createInstStr(FUNC, func));
+  }
 }
 
 void compileAdd(InstQueue* instQ, int num)
@@ -644,11 +649,10 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
   }
   
   jmpInst->operand._num = makeInteger(instQ->tail->offset + instQ->tail->size);
-
-  char buf[LINESIZE];
-  char* token = readToken(buf, sizeof(buf), fp);
-  if(token[0] !=')' ){
-    AQ_PRINTF("too many expressions\n");
+  
+  int num = compileList(instQ, fp, symbolList);
+  if(num > 0) {
+    SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_IF);
   }
 }
 
@@ -659,8 +663,8 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 
   int c = fgetc(fp);
   if(c != '(') {
-    AQ_PRINTF("symbol list is not goven\n");
-    return;
+    while((c = fgetc(fp)) != ')') {}
+    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN);
   }
   
   int index = 0;
@@ -676,8 +680,7 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 
       var = readToken(buf, sizeof(buf), fp);
       if (strcmp(var, ")") != 0) {
-	AQ_PRINTF("Too much elements are given to dot list.\n");
-	return;
+	SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_DOT_LIST);
       }
       
       index++;
@@ -713,7 +716,8 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   
   char* token = readToken(buf, sizeof(buf), fp);
   if(token[0] !=')' ){
-    AQ_PRINTF("too many expressions\n");
+    while(fgetc(fp) != ')') {}
+    SET_COMPILE_ERROR(ERR_TYPE_TOO_MANY_EXPRESSIONS);
   }
 }
 
@@ -763,7 +767,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
     addOneByteInstTail(instQ, CAR);
   }
   else if(token[0]==')'){
-    printError("extra close parensis");
+    SET_COMPILE_ERROR(ERR_TYPE_EXTRA_CLOSE_PARENTHESIS);
   }
   else{
     compileToken(instQ, token, symbolList);
@@ -912,6 +916,7 @@ void load_file( const char* filename )
 	fclose(outputFile);
       } else {
 	fclose(fp);
+	handleError();
       }
     } else {
       AQ_PRINTF("[ERROR] %s: not found\n", filename);
@@ -1487,6 +1492,31 @@ void handleError()
     {
       AQ_PRINTF("number required, but given ");
       printLineCell(stack[stack_top-1]);
+    }
+    break;
+  case ERR_TYPE_MALFORMED_IF:
+    {
+      AQ_PRINTF("malformed if\n");
+    }
+    break;
+  case ERR_TYPE_SYMBOL_LIST_NOT_GIVEN:
+    {
+      AQ_PRINTF("symbol list is not goven\n");
+    }
+    break;
+  case ERR_TYPE_MALFORMED_DOT_LIST:
+    {
+      AQ_PRINTF("malformed dot list\n");
+    }
+    break;
+  case ERR_TYPE_TOO_MANY_EXPRESSIONS:
+    {
+      AQ_PRINTF("too many expressions given\n");
+    }
+    break;
+  case ERR_TYPE_EXTRA_CLOSE_PARENTHESIS:
+    {
+      AQ_PRINTF("extra close parenthesis\n");
     }
     break;
   case ERR_TYPE_NONE:
