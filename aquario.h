@@ -68,6 +68,7 @@ Inst* createInst(OPCODE op, int size);
 Inst* createInstChar(OPCODE op, char c);
 Inst* createInstStr(OPCODE op, char* str);
 Inst* createInstNum(OPCODE op, int num);
+Inst* createInstToken(InstQueue* instQ, char* token);
 
 void addInstHead(InstQueue* queue, Inst* inst);
 void addInstTail(InstQueue* queue, Inst* inst);

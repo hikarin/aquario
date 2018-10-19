@@ -367,10 +367,10 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
 
 void compileQuotedAtom(InstQueue* instQ, char* symbol, FILE* fp)
 {
-  if(isdigitstr(symbol)) {
-    int digit = atoi(symbol);
-    addPushTail(instQ, digit);
-  }else{
+  Inst* inst = createInstToken(instQ, symbol);
+  if(inst) {
+    addInstTail(instQ, inst);
+  } else {
     Inst* inst = createInstStr(PUSH_SYM, symbol);
     addInstTail(instQ, inst);
   }
@@ -477,33 +477,41 @@ Inst* createInst(OPCODE op, int size)
   return result;
 }
 
-void compileToken(InstQueue* instQ, char* token, Cell symbolList)
+Inst* createInstToken(InstQueue* instQ, char* token)
 {
   if(isdigitstr(token)) {
     int digit = atoi(token);
-    addPushTail(instQ, digit);
+    return createInstNum(PUSH, digit);
   }
   else if(strcmp(token, "nil") == 0) {
-    addOneByteInstTail(instQ, PUSH_NIL);
+    return createInst(PUSH_NIL, 1);
   }  
   else if(token[0] == '"'){
-    Inst* inst = createInstStr(PUSHS, &token[1]);
-    addInstTail(instQ, inst);
+    return createInstStr(PUSHS, &token[1]);
   }
   else if(token[0] == '#'){
     if(token[1] == '\\' && strlen(token)==3){
-      addInstTail(instQ, createInstChar(PUSH, token[2])); // TODO: PUSHC
+      return createInstChar(PUSH, token[2]); // TODO: PUSHC
     }
     else if(strcmp(&token[1], "t") == 0){
-      addOneByteInstTail(instQ, PUSH_TRUE);
+      return createInst(PUSH_TRUE, 1);
     }
     else if(strcmp(&token[1], "f") == 0){
-      addOneByteInstTail(instQ, PUSH_FALSE);
+      return createInst(PUSH_FALSE, 1);
     }
     else{
-      Inst* inst = createInstStr(PUSHS, token);
-      addInstTail(instQ, inst);
+      return createInstStr(PUSHS, token);
     }
+  } else {
+    return NULL;
+  }
+}
+
+void compileToken(InstQueue* instQ, char* token, Cell symbolList)
+{
+  Inst* inst = createInstToken(instQ, token);
+  if(inst) {
+    return addInstTail(instQ, inst);
   } else {
     int index = 0;
     while(symbolList && !NIL_P(symbolList)) {
@@ -710,12 +718,19 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   char buf[LINESIZE];
   char* var = readToken(buf, sizeof(buf), fp);
-  
   compileElem(instQ, fp, symbolList);
-  addInstTail(instQ, createInstStr(SET, var));
+
+  Inst* inst = createInstToken(instQ, var);
+  if(!inst) {
+    inst = createInstStr(SET, var);
+    addInstTail(instQ, inst);
+  } else {
+    while(fgetc(fp) != ')') {}
+    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN);
+  }
   
-  char* token = readToken(buf, sizeof(buf), fp);
-  if(token[0] !=')' ){
+  var = readToken(buf, sizeof(buf), fp);
+  if(strcmp(var, ")") != 0) {
     while(fgetc(fp) != ')') {}
     SET_COMPILE_ERROR(ERR_TYPE_TOO_MANY_EXPRESSIONS);
   }
@@ -1517,6 +1532,17 @@ void handleError()
   case ERR_TYPE_EXTRA_CLOSE_PARENTHESIS:
     {
       AQ_PRINTF("extra close parenthesis\n");
+    }
+    break;
+  case ERR_TYPE_SYMBOL_NOT_GIVEN:
+    {
+      AQ_PRINTF("symbol not given\n");
+    }
+    break;
+  case ERR_TYPE_GENERAL_ERROR:
+    {
+      // Not expected to reach here.
+      AQ_PRINTF("error\n");
     }
     break;
   case ERR_TYPE_NONE:
