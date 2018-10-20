@@ -147,74 +147,74 @@ Boolean notp(Cell c)
   return FALSE_P(c)?TRUE:FALSE;
 }
 
-void printCons(Cell c)
+void printCons(FILE* fp, Cell c)
 {
   if(CELL_P(car(c)) && type(car(c)) == T_SYMBOL &&
      strcmp(symbolname(car(c)), "quote") == 0) {
-    AQ_PRINTF("'");
-    printCell(cadr(c));
+    AQ_FPRINTF(fp, "'");
+    printCell(fp, cadr(c));
     return;
   }
-  AQ_PRINTF("(");
+  AQ_FPRINTF(fp, "(");
   while(isPair(cdr(c))){
-    printCell(car(c));
+    printCell(fp, car(c));
     c = cdr(c);
     if( isPair(c) && !nullp(car(c)) ){
-      AQ_PRINTF(" ");
+      AQ_FPRINTF(fp, " ");
     }
   }
 
-  printCell(car(c));
+  printCell(fp, car(c));
   if(!nullp(cdr(c))){
-    AQ_PRINTF(" . ");
-    printCell(cdr(c));
+    AQ_FPRINTF(fp, " . ");
+    printCell(fp, cdr(c));
   }
-  AQ_PRINTF(")");
+  AQ_FPRINTF(fp, ")");
 }
 
-void printLineCell(Cell c)
+void printLineCell(FILE* fp, Cell c)
 {
-  printCell(c);
-  AQ_PRINTF("\n");
+  printCell(fp, c);
+  AQ_FPRINTF(fp, "\n");
 }
 
-void printCell(Cell c)
+void printCell(FILE* fp, Cell c)
 {
   if(!CELL_P(c)){
     if(UNDEF_P(c)){
-      AQ_PRINTF("#undef");
+      AQ_FPRINTF(fp, "#undef");
     }
     else if(NIL_P(c)){
-      AQ_PRINTF("()");
+      AQ_FPRINTF(fp, "()");
     }
     else if(TRUE_P(c)){
-      AQ_PRINTF("#t");
+      AQ_FPRINTF(fp, "#t");
     }
     else if(FALSE_P(c)){
-      AQ_PRINTF("#f");
+      AQ_FPRINTF(fp, "#f");
     }
     else if(INTEGER_P(c)){
-      AQ_PRINTF("%d", ivalue(c));
+      AQ_FPRINTF(fp, "%d", ivalue(c));
     }
   }else{
     switch(type(c)){
     case T_CHAR:
-      AQ_PRINTF("#\\%c", chvalue(c));
+      AQ_FPRINTF(fp, "#\\%c", chvalue(c));
       break;
     case T_STRING:
-      AQ_PRINTF("\"%s\"", strvalue(c));
+      AQ_FPRINTF(fp, "\"%s\"", strvalue(c));
       break;
     case T_SYMBOL:
-      AQ_PRINTF("%s", symbolname(c));
+      AQ_FPRINTF(fp, "%s", symbolname(c));
       break;
     case T_PAIR:
-      printCons(c);
+      printCons(fp, c);
       break;
     case T_LAMBDA:
-      AQ_PRINTF("#closure");
+      AQ_FPRINTF(fp, "#closure");
       break;
     default:
-      AQ_FPRINTF(stderr, "\nunknown cell");
+      AQ_FPRINTF(fp, "\nunknown cell");
       break;
     }
   }
@@ -1286,7 +1286,7 @@ void execute(char* buf, int* pc, int end)
       break;
     case PRINT:
       {
-	printCell(stack[stack_top-1]);
+	printCell(stdout, stack[stack_top-1]);
 	AQ_PRINTF("\n");
 	popArg();
 	pushArg((Cell)AQ_UNDEF);
@@ -1493,57 +1493,58 @@ Boolean isError() {
 
 void handleError()
 {
+  FILE* fp = stdout; // TODO
   switch(errType) {
   case ERR_TYPE_WRONG_NUMBER_ARG:
-    AQ_PRINTF("wrong number of argnuments: required ");
-    printCell(stack[stack_top-2]);
-    AQ_PRINTF(", but given ");
-    printLineCell(stack[stack_top-1]);
+    AQ_FPRINTF(fp, "wrong number of argnuments: required ");
+    printCell(fp, stack[stack_top-2]);
+    AQ_FPRINTF(fp, ", but given ");
+    printLineCell(fp, stack[stack_top-1]);
     break;
   case ERR_TYPE_PAIR_NOT_GIVEN:
-    AQ_PRINTF("pair required, but given ");
-      printLineCell(stack[stack_top-1]);
+    AQ_FPRINTF(fp, "pair required, but given ");
+    printLineCell(fp,  stack[stack_top-1]);
     break;
   case ERR_TYPE_INT_NOT_GIVEN:
     {
-      AQ_PRINTF("number required, but given ");
-      printLineCell(stack[stack_top-1]);
+      AQ_FPRINTF(fp, "number required, but given ");
+      printLineCell(fp, stack[stack_top-1]);
     }
     break;
   case ERR_TYPE_MALFORMED_IF:
     {
-      AQ_PRINTF("malformed if\n");
+      AQ_FPRINTF(fp, "malformed if\n");
     }
     break;
   case ERR_TYPE_SYMBOL_LIST_NOT_GIVEN:
     {
-      AQ_PRINTF("symbol list is not goven\n");
+      AQ_FPRINTF(stdout, "symbol list is not goven\n");
     }
     break;
   case ERR_TYPE_MALFORMED_DOT_LIST:
     {
-      AQ_PRINTF("malformed dot list\n");
+      AQ_FPRINTF(stdout, "malformed dot list\n");
     }
     break;
   case ERR_TYPE_TOO_MANY_EXPRESSIONS:
     {
-      AQ_PRINTF("too many expressions given\n");
+      AQ_FPRINTF(stdout, "too many expressions given\n");
     }
     break;
   case ERR_TYPE_EXTRA_CLOSE_PARENTHESIS:
     {
-      AQ_PRINTF("extra close parenthesis\n");
+      AQ_FPRINTF(stdout, "extra close parenthesis\n");
     }
     break;
   case ERR_TYPE_SYMBOL_NOT_GIVEN:
     {
-      AQ_PRINTF("symbol not given\n");
+      AQ_FPRINTF(stdout, "symbol not given\n");
     }
     break;
   case ERR_TYPE_GENERAL_ERROR:
     {
       // Not expected to reach here.
-      AQ_PRINTF("error\n");
+      AQ_FPRINTF(stdout, "error\n");
     }
     break;
   case ERR_TYPE_NONE:
@@ -1617,7 +1618,7 @@ int repl()
     if(isError()) {
       handleError();
     } else {
-      printLineCell(stack[stack_top-1]);
+      printLineCell(stdout, stack[stack_top-1]);
       popArg();
     }
   }

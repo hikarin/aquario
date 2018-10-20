@@ -4,13 +4,14 @@
 #include <stddef.h>
 #include "types.h"
 
+#define AQ_FPRINTF      fprintf
+#define AQ_PRINTF(...)  AQ_FPRINTF(stdout, __VA_ARGS__)
+
 #if defined( _TEST )
 #define AQ_PRINTF_GUIDE(x) (void)0
 #else
-#define AQ_PRINTF_GUIDE(x) printf(x)
+#define AQ_PRINTF_GUIDE(x) AQ_PRINTF(x)
 #endif
-#define AQ_PRINTF          printf
-#define AQ_FPRINTF         fprintf
 
 #define type(p)         ((p)->_type)
 #define car(p)          ((p)->_object._cons._car)
@@ -60,9 +61,9 @@ Boolean nullp(Cell c);
 Boolean truep(Cell c);
 Boolean notp(Cell c);
 
-void printPair(Cell c);
-void printCell(Cell c);
-void printLineCell(Cell c);
+void printPair(FILE* fp, Cell c);
+void printCell(FILE* fp, Cell c);
+void printLineCell(FILE* fp, Cell c);
 
 Inst* createInst(OPCODE op, int size);
 Inst* createInstChar(OPCODE op, char c);
