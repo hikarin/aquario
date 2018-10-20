@@ -716,21 +716,27 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 
 void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
-  char buf[LINESIZE];
-  char* var = readToken(buf, sizeof(buf), fp);
-  compileElem(instQ, fp, symbolList);
-
-  Inst* inst = createInstToken(instQ, var);
-  if(!inst) {
-    inst = createInstStr(SET, var);
-    addInstTail(instQ, inst);
-  } else {
+  Inst* lastInst = instQ->tail;
+  compileElem(instQ, fp, NULL);
+  if(instQ->tail->op != REF) {
     while(fgetc(fp) != ')') {}
     SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN);
   }
+
+  instQ->tail = lastInst;
+  lastInst = lastInst->next;
+  compileElem(instQ, fp, symbolList);
+  if(isError()) {
+    while(fgetc(fp) != ')') {}
+    return;
+  }
+
+  lastInst->op = SET;
+  addInstTail(instQ, lastInst);
   
-  var = readToken(buf, sizeof(buf), fp);
-  if(strcmp(var, ")") != 0) {
+  char buf[LINESIZE];
+  char* token = readToken(buf, sizeof(buf), fp);
+  if(strcmp(token, ")") != 0) {
     while(fgetc(fp) != ')') {}
     SET_COMPILE_ERROR(ERR_TYPE_TOO_MANY_EXPRESSIONS);
   }
