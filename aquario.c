@@ -308,15 +308,10 @@ char* readToken(char *buf, int len, FILE* fp)
 
 size_t compile(FILE* fp, char* buf)
 {
+  Inst* inst = createInst(NOP, 1);
   InstQueue instQ;
-  Inst inst;
-  inst.op = NOP;
-  inst.prev = NULL;
-  inst.next = NULL;
-  inst.offset = 0;
-  inst.size = 1;
-  instQ.head = &inst;
-  instQ.tail = &inst;
+  instQ.head = inst;
+  instQ.tail = inst;
   char chr = 0;
   while((chr = fgetc(fp)) != EOF && !isError()) {
     ungetc(chr, fp);
@@ -1604,15 +1599,10 @@ int repl()
     if(isEndInput(c)) break;
     ungetc(c, stdin);
     
+    Inst* inst = createInst(NOP, 1);
     InstQueue instQ;
-    Inst inst;
-    inst.op = NOP;
-    inst.prev = NULL;
-    inst.next = NULL;
-    inst.offset = pc;
-    inst.size = 1;
-    instQ.head = &inst;
-    instQ.tail = &inst;
+    instQ.head = inst;
+    instQ.tail = inst;
     
     compileElem(&instQ, stdin, NULL);
     if(isError()) {
