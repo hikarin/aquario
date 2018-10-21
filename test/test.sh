@@ -123,26 +123,61 @@ verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (
 
 #error
 verify "\"hogehog" "[ERROR] unexpected token: EOF"
+
 verify "(cons 1 2" "[ERROR] unexpected token: EOF"
+
 verify "(if 1)" "[ERROR] malformed if"
 verify "(if 1 2 3 4)" "[ERROR] malformed if"
+
 verify "(define)" "[ERROR] define: symbol not given"
 verify "(define x)" "[ERROR] define: syntax error"
 verify "(define 1)" "[ERROR] define: symbol not given"
 verify "(define x 0 0)" "[ERROR] define: too many expressions given"
 verify "(define x '(a b c d e)) y" "[ERROR] undefined symbol: y"
-verify "(define lst '(a b c)) (car (car lst))" "[ERROR] car: pair required, but given a"
-verify "(define lst '(a b c)) (cdr (car lst))" "[ERROR] cdr: pair required, but given a"
 verify ";(define m 100)
   m" "[ERROR] undefined symbol: m"
+
+verify "'(a . b c)" "[ERROR] : malformed dot list"
+verify "(quote a b c)" "[ERROR] quote: wrong number of argnuments: required 1, but given 3"
+#TODO
+#verify "'(a . )" "[ERROR] : malformed dot list"
+
+verify "(cons 'a)" "[ERROR] cons: wrong number of argnuments: required 2, but given 1"
+verify "(cons 1 2 3)" "[ERROR] cons: wrong number of argnuments: required 2, but given 3"
+
+verify "(define lst '(a b c)) (car (car lst))" "[ERROR] car: pair required, but given a"
+verify "(define lst '(a b c)) (cdr (car lst))" "[ERROR] cdr: pair required, but given a"
+verify "(car 1 2)" "[ERROR] car: wrong number of argnuments: required 1, but given 2"
+verify "(cdr 1 2 3)" "[ERROR] cdr: wrong number of argnuments: required 1, but given 3"
+
 verify "(+ ''1 2 3)" "[ERROR] +: number required, but given '1"
 verify "(+ 1 (cons 20 30) 3)" "[ERROR] +: number required, but given (20 . 30)"
+
 verify "(- ''4 5)" "[ERROR] -: number required, but given '4"
 verify "(- 4 'a)" "[ERROR] -: number required, but given a"
+
 verify "(* (cons 1 2) 3)" "[ERROR] *: number required, but given (1 . 2)"
 verify "(* (car (cons 1 2)) 'hoge)" "[ERROR] *: number required, but given hoge"
+
 verify "(/ '30 (lambda (x) (cons x x)))" "[ERROR] /: number required, but given #closure"
 verify "(/ (lambda (x) (cons x x)) 2)" "[ERROR] /: number required, but given #closure"
+
+verify "(< 1 'a)" "[ERROR] <: number required, but given a"
+verify "(< 1 2 3)" "[ERROR] <: wrong number of argnuments: required 2, but given 3"
+
+verify "(<= (cons 'a 'b) 3)" "[ERROR] <=: number required, but given (a . b)"
+verify "(<= 10)" "[ERROR] <=: wrong number of argnuments: required 2, but given 1"
+
+verify "(> (lambda () (cons 1 2)) 1)" "[ERROR] >: number required, but given #closure"
+verify "(> 10 20 30 40 50)" "[ERROR] >: wrong number of argnuments: required 2, but given 5"
+
+verify "(>= 1 '(x y z))" "[ERROR] >=: number required, but given (x y z)"
+verify "(>= 1000)" "[ERROR] >=: wrong number of argnuments: required 2, but given 1"
+
+verify "(= (lambda (x) (cons x x)) 2)" "[ERROR] =: number required, but given #closure"
+verify "(= 1000 1 2 3 4 5)" "[ERROR] =: wrong number of argnuments: required 2, but given 6"
+
+verify "(eq? 'a 'a (cons 1 2))" "[ERROR] eq?: wrong number of argnuments: required 2, but given 3"
 
 echo ""
 if [ -n "$str" ]; then
