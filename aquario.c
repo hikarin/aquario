@@ -30,7 +30,7 @@ static int getFunctionStackTop();
 
 static ErrorType errType = ERR_TYPE_NONE;
 
-#define SET_COMPILE_ERROR(err, str)	   \
+#define SET_ERROR_WITH_STR(err, str)	   \
   errType = err;			   \
   pushArg(stringCell(str));		   \
   return;				   \
@@ -242,7 +242,8 @@ char* readTokenInDQuot(char* buf, int len, FILE* fp)
 	break;
       }
     case EOF:
-      printError("End Of File ...");
+      set_error(ERR_TYPE_UNEXPECTED_TOKEN);
+      pushArg(stringCell("EOF"));
       return NULL;
     default:
       *strp = c;
@@ -332,7 +333,6 @@ size_t compile(FILE* fp, char* buf)
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   char c;
-  char buf[LINESIZE];
   int n = 0;
   while(1){
     c = fgetc(fp);
@@ -340,18 +340,16 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
     case ')':
       return n;
     case '.':
-      readToken(buf, sizeof(buf), fp);
-      if(strcmp(buf, ")")!=0){
-	printError("unknown token '%s' after '.'", buf);
-	return n;
-      }
+      set_error(ERR_TYPE_UNEXPECTED_TOKEN);
+      pushArg(stringCell("."));
       return n;
     case ' ':
     case '\n':
     case '\t':
       continue;
     case EOF:
-      printError("EOF");
+      set_error(ERR_TYPE_UNEXPECTED_TOKEN);
+      pushArg(stringCell("EOF"));
       return n;
     default:
       {
@@ -403,7 +401,7 @@ void compileQuotedList(InstQueue* instQ, FILE* fp)
     token = readToken(buf, sizeof(buf), fp);
     if(strcmp(token, ")") != 0) {
       compileList(instQ, fp, NULL);
-      SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_DOT_LIST, "");
+      SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_DOT_LIST, "");
     }
   }
   else {
@@ -659,7 +657,7 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
   
   int num = compileList(instQ, fp, symbolList);
   if(num > 0) {
-    SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_IF, "if");
+    SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_IF, "if");
   }
 }
 
@@ -667,10 +665,10 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 {
   int c = fgetc(fp);
   if(c == ')') {
-    SET_COMPILE_ERROR(ERR_TYPE_SYNTAX_ERROR, "lambda");
+    SET_ERROR_WITH_STR(ERR_TYPE_SYNTAX_ERROR, "lambda");
   } else if(c != '(') {
     while((c = fgetc(fp)) != ')') {}
-    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN, "lambda");
+    SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN, "lambda");
   }
   
   Inst* inst = createInst(FUND, 1 + sizeof(Cell)*2);
@@ -691,7 +689,7 @@ void compileLambda(InstQueue* instQ, FILE* fp)
       if (strcmp(var, ")") != 0) {
 	compileList(instQ, fp, NULL);
 	compileList(instQ, fp, NULL);
-	SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_DOT_LIST, "lambda");
+	SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_DOT_LIST, "lambda");
       }
       
       index++;
@@ -722,19 +720,19 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   Inst* lastInst = instQ->tail;
   int c = fgetc(fp);
   if(c == ')') {
-    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
+    SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
   ungetc(c, fp);
   
   compileElem(instQ, fp, NULL);
   if(instQ->tail->op != REF){
     while(fgetc(fp) != ')') {}
-    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
+    SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
 
   c = fgetc(fp);
   if(c == ')') {
-    SET_COMPILE_ERROR(ERR_TYPE_SYNTAX_ERROR, "define");
+    SET_ERROR_WITH_STR(ERR_TYPE_SYNTAX_ERROR, "define");
   }
   ungetc(c, fp);
 
@@ -753,7 +751,7 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   char* token = readToken(buf, sizeof(buf), fp);
   if(strcmp(token, ")") != 0) {
     while(fgetc(fp) != ')') {}
-    SET_COMPILE_ERROR(ERR_TYPE_TOO_MANY_EXPRESSIONS, "define");
+    SET_ERROR_WITH_STR(ERR_TYPE_TOO_MANY_EXPRESSIONS, "define");
   }
 }
 
@@ -804,7 +802,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
     addOneByteInstTail(instQ, CAR);
   }
   else if(token[0]==')'){
-    SET_COMPILE_ERROR(ERR_TYPE_EXTRA_CLOSE_PARENTHESIS, "");
+    SET_ERROR_WITH_STR(ERR_TYPE_EXTRA_CLOSE_PARENTHESIS, "");
   }
   else{
     compileToken(instQ, token, symbolList);
@@ -1365,7 +1363,7 @@ void execute(char* buf, int* pc, int end)
 	char* str = &buf[++(*pc)];
 	Cell ret = getVar(str);
 	if(UNDEF_P(ret)) {
-	  printError("[REF] undefined symbol: %s", str);
+	  SET_ERROR_WITH_STR(ERR_UNDEFINED_SYMBOL, str);
 	  pushArg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
@@ -1379,7 +1377,7 @@ void execute(char* buf, int* pc, int end)
 	char* str = &buf[++(*pc)];
 	Cell func = getVar(str);
 	if(UNDEF_P(func)) {
-	  printError("[FUNC] undefined function: %s", str);
+	  SET_ERROR_WITH_STR(ERR_UNDEFINED_SYMBOL, str);
 	  int num = ivalue(popArg());
 	  for(i=0; i<num; i++) {
 	    popArg();
@@ -1499,15 +1497,6 @@ void execute(char* buf, int* pc, int end)
   }
 }
 
-void printError(char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  fprintf(stderr, "[ERROR]");
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  va_end(ap);
-}
-
 Boolean isError() {
   return (errType != ERR_TYPE_NONE);
 }
@@ -1601,6 +1590,23 @@ void handleError()
   case ERR_STACK_UNDERFLOW:
     {
       AQ_FPRINTF(fp, "stack underflow\n");
+    }
+    break;
+  case ERR_TYPE_UNEXPECTED_TOKEN:
+    {
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "unexpected token: %s\n", strvalue(str));
+    }
+    break;
+  case ERR_UNDEFINED_SYMBOL:
+    {
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "undefined symbol: %s\n", strvalue(str));
+    }
+    break;
+  case ERR_HEAP_EXHAUSTED:
+    {
+      AQ_FPRINTF(fp, "heap exhausted\n");
     }
     break;
   case ERR_TYPE_NONE:

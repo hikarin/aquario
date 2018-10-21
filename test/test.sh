@@ -79,14 +79,13 @@ verify "(cons 'x (cons 'y 'z))" '(x y . z)'
 verify "(cons (cons 'a (cons 'b (cons 'c nil))) (cons (cons 'd (cons 'e (cons 'f nil))) nil))" '((a b c) (d e f))'
 verify "(car '(a . b))" a
 verify "(cdr '(a . b))" b
-verify "(car (cdr (cdr '(a b (c d e) f g (h i j k) l)))" '(c d e)'
+verify "(car (cdr (cdr '(a b (c d e) f g (h i j k) l))))" '(c d e)'
 verify "(car (cdr (cdr (cdr (cdr (cdr '(a b (c d e) f g (h i j k) l)))))))" '(h i j k)'
 
 #define
 verify "(define m 100) (cons m m)" '(100 . 100)'
 verify "(define x 999)" x
 verify "(define lst '(a b c d e)) lst" '(a b c d e)'
-verify "(define x '(a b c d e)) y" \#undef
 
 #string
 verify "(define str \"hoge\") str" \"hoge\"
@@ -105,8 +104,6 @@ verify "(define x 'n) x" n
 verify "(define x 100) (define y x) y" 100
 
 #comment
-verify ";(define m 100)
-  m" \#undef
 verify "(define m 100) ;100" "#undef"
 verify "(define m 100) m;100" "100"
 verify "(cons 1; 2)
@@ -125,8 +122,11 @@ verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) 
 verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 8 4 0)" 1
 
 #error
+verify "(define x '(a b c d e)) y" "[ERROR] undefined symbol: y"
 verify "(define lst '(a b c)) (car (car lst))" "[ERROR] car: pair required, but given a"
 verify "(define lst '(a b c)) (cdr (car lst))" "[ERROR] cdr: pair required, but given a"
+verify ";(define m 100)
+  m" "[ERROR] undefined symbol: m"
 verify "(+ ''1 2 3)" "[ERROR] +: number required, but given '1"
 
 echo ""

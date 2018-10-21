@@ -250,7 +250,7 @@ inline void add_remembered_set(Cell obj)
   if( remembered_set_top >= REMEMBERED_SET_SIZE ){
     clean_remembered_set();
     if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-      printError("remembered set full");
+      AQ_FPRINTF(stderr, "remembered set full\n");
       exit(-1);
     }
   }
@@ -320,7 +320,7 @@ void mark_object(Cell* objp)
   if( obj && !IS_MARKED(obj) ){
     SET_MARK(obj);
     if(mark_stack_top >= MARK_STACK_SIZE){
-      printError("[GC] mark stack overflow.");
+      AQ_FPRINTF(stderr, "[GC] mark stack overflow\n");
       exit(-1);
     }
     mark_stack[mark_stack_top++] = obj;
@@ -381,7 +381,7 @@ void update_pointer()
       trace_object(cell, update_forwarding);
       if( trace_object_bool(cell, is_nersary_obj) ){
 	if( remembered_set_top >= REMEMBERED_SET_SIZE ){
-	  printError("remembered set full.\n");
+	  AQ_FPRINTF(stderr, "remembered set full\n");
 	  exit(-1);
 	}
 	SET_REMEMBERED(cell);

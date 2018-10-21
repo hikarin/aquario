@@ -420,7 +420,8 @@ Cell popArg ()
 
 void heap_exhausted_error()
 {
-  printError("Heap Exhausted");
+  set_error(ERR_HEAP_EXHAUSTED);
+  handleError();
   printMeasureInfo();
   exit(-1);
 }

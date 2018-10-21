@@ -95,8 +95,6 @@ void compileSymbolList(char* var, Cell* symbolList);
 
 void execute(char* buf, int* start, int end);
 
-void printError(char *fmt, ...);
-
 #define ENVSIZE (3000)
 Cell env[ENVSIZE];
 #define LINESIZE (1024)
