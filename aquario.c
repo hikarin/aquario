@@ -30,36 +30,40 @@ static int getFunctionStackTop();
 
 static ErrorType errType = ERR_TYPE_NONE;
 
-#define SET_COMPILE_ERROR(err)	   \
-  errType = err;		   \
-  return;			   \
+#define SET_COMPILE_ERROR(err, str)	   \
+  errType = err;			   \
+  pushArg(stringCell(str));		   \
+  return;				   \
 
-#define ERR_WRONG_NUMBER_ARGS_BASE(required, given)		\
-    pushArg(makeInteger(required));				\
-    pushArg(makeInteger(given));				\
-    errType = ERR_TYPE_WRONG_NUMBER_ARG;			\
-    return;							\
+#define ERR_WRONG_NUMBER_ARGS_BASE(required, given, str)		\
+  errType = ERR_TYPE_WRONG_NUMBER_ARG;					\
+  pushArg(makeInteger(required));					\
+  pushArg(makeInteger(given));						\
+  pushArg(stringCell(str));						\
+  return;								\
     
-#define ERR_WRONG_NUMBER_ARGS(required, given)				\
+#define ERR_WRONG_NUMBER_ARGS(required, given, str)			\
   if(required != given) {						\
-    ERR_WRONG_NUMBER_ARGS_BASE(required, given);			\
+    ERR_WRONG_NUMBER_ARGS_BASE(required, given, str);			\
   }									\
   
-#define ERR_WRONG_NUMBER_ARGS_DLIST(required, given)		\
+#define ERR_WRONG_NUMBER_ARGS_DLIST(required, given, str)	\
   if(required > given) {					\
-    ERR_WRONG_NUMBER_ARGS_BASE(required, given);		\
+    ERR_WRONG_NUMBER_ARGS_BASE(required, given, str);		\
   }								\
 
-#define ERR_PAIR_NOT_GIVEN()				\
+#define ERR_PAIR_NOT_GIVEN(str)				\
   if(!isPair(stack[stack_top-1])) {			\
     errType = ERR_TYPE_PAIR_NOT_GIVEN;			\
+    pushArg(stringCell(str));				\
     return;						\
   }							\
 
-#define ERR_INT_NOT_GIVEN(num)				\
+#define ERR_INT_NOT_GIVEN(num, str)			\
   if(!isInteger(num)) {					\
-    pushArg(num);					\
     errType = ERR_TYPE_INT_NOT_GIVEN;			\
+    pushArg(num);					\
+    pushArg(stringCell(str));				\
     return;						\
   } 							\
 
@@ -398,8 +402,8 @@ void compileQuotedList(InstQueue* instQ, FILE* fp)
     }
     token = readToken(buf, sizeof(buf), fp);
     if(strcmp(token, ")") != 0) {
-      errType = ERR_TYPE_MALFORMED_DOT_LIST;
       compileList(instQ, fp, NULL);
+      SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_DOT_LIST, "");
     }
   }
   else {
@@ -559,31 +563,31 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
   } else if(strcmp(func, "print") == 0) {
     addOneByteInstTail(instQ, PRINT);
   } else if(strcmp(func, "cons") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, "cons");
     addOneByteInstTail(instQ, CONS);
   } else if(strcmp(func, "car") == 0) {
-    ERR_WRONG_NUMBER_ARGS(1, num);
+    ERR_WRONG_NUMBER_ARGS(1, num, "car");
     addOneByteInstTail(instQ, CAR);
   } else if(strcmp(func, "cdr") == 0) {
-    ERR_WRONG_NUMBER_ARGS(1, num);
-      addOneByteInstTail(instQ, CDR);
+    ERR_WRONG_NUMBER_ARGS(1, num, "cdr");
+    addOneByteInstTail(instQ, CDR);
   } else if(strcmp(func, ">") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, ">");
     addOneByteInstTail(instQ, GT);
   } else if(strcmp(func, "<") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, "<");
     addOneByteInstTail(instQ, LT);
     } else if(strcmp(func, "<=") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, "<=");
     addOneByteInstTail(instQ, LTE);
   } else if(strcmp(func, ">=") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, ">=");
     addOneByteInstTail(instQ, GTE);
   } else if(strcmp(func, "=") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, "=");
     addOneByteInstTail(instQ, EQUAL);
   } else if(strcmp(func, "eq?") == 0) {
-    ERR_WRONG_NUMBER_ARGS(2, num);
+    ERR_WRONG_NUMBER_ARGS(2, num, "eq?");
     addOneByteInstTail(instQ, EQ);
   } else {
     addPushTail(instQ, num);
@@ -655,20 +659,22 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
   
   int num = compileList(instQ, fp, symbolList);
   if(num > 0) {
-    SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_IF);
+    SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_IF, "if");
   }
 }
 
 void compileLambda(InstQueue* instQ, FILE* fp)
 {
+  int c = fgetc(fp);
+  if(c == ')') {
+    SET_COMPILE_ERROR(ERR_TYPE_SYNTAX_ERROR, "lambda");
+  } else if(c != '(') {
+    while((c = fgetc(fp)) != ')') {}
+    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN, "lambda");
+  }
+  
   Inst* inst = createInst(FUND, 1 + sizeof(Cell)*2);
   addInstTail(instQ, inst);
-
-  int c = fgetc(fp);
-  if(c != '(') {
-    while((c = fgetc(fp)) != ')') {}
-    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN);
-  }
   
   int index = 0;
   Cell symbolList = (Cell)AQ_NIL;
@@ -683,7 +689,9 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 
       var = readToken(buf, sizeof(buf), fp);
       if (strcmp(var, ")") != 0) {
-	SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_DOT_LIST);
+	compileList(instQ, fp, NULL);
+	compileList(instQ, fp, NULL);
+	SET_COMPILE_ERROR(ERR_TYPE_MALFORMED_DOT_LIST, "lambda");
       }
       
       index++;
@@ -712,11 +720,23 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   Inst* lastInst = instQ->tail;
-  compileElem(instQ, fp, NULL);
-  if(instQ->tail->op != REF) {
-    while(fgetc(fp) != ')') {}
-    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN);
+  int c = fgetc(fp);
+  if(c == ')') {
+    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
+  ungetc(c, fp);
+  
+  compileElem(instQ, fp, NULL);
+  if(instQ->tail->op != REF){
+    while(fgetc(fp) != ')') {}
+    SET_COMPILE_ERROR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
+  }
+
+  c = fgetc(fp);
+  if(c == ')') {
+    SET_COMPILE_ERROR(ERR_TYPE_SYNTAX_ERROR, "define");
+  }
+  ungetc(c, fp);
 
   instQ->tail = lastInst;
   lastInst = lastInst->next;
@@ -733,7 +753,7 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   char* token = readToken(buf, sizeof(buf), fp);
   if(strcmp(token, ")") != 0) {
     while(fgetc(fp) != ')') {}
-    SET_COMPILE_ERROR(ERR_TYPE_TOO_MANY_EXPRESSIONS);
+    SET_COMPILE_ERROR(ERR_TYPE_TOO_MANY_EXPRESSIONS, "define");
   }
 }
 
@@ -762,8 +782,9 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
       addOneByteInstTail(instQ, CAR);
       
       token = readToken(buf, sizeof(buf), fp);
-      if(token[0]!=')'){
-	printError("broken quote");
+      if(strcmp(token, ")") != 0) {
+	int num = compileList(instQ, fp, NULL);
+	ERR_WRONG_NUMBER_ARGS(1, num+2, "quote");
       }
     }else if(strcmp(func, "if") == 0) {
       compileIf(instQ, fp, symbolList);
@@ -783,7 +804,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
     addOneByteInstTail(instQ, CAR);
   }
   else if(token[0]==')'){
-    SET_COMPILE_ERROR(ERR_TYPE_EXTRA_CLOSE_PARENTHESIS);
+    SET_COMPILE_ERROR(ERR_TYPE_EXTRA_CLOSE_PARENTHESIS, "");
   }
   else{
     compileToken(instQ, token, symbolList);
@@ -932,12 +953,12 @@ void load_file( const char* filename )
 	fclose(outputFile);
       } else {
 	fclose(fp);
-	handleError();
       }
     } else {
       AQ_PRINTF("[ERROR] %s: not found\n", filename);
     }
   }
+  handleError();
 
   free(abcFileName);
   free(buf);
@@ -1057,12 +1078,12 @@ void execute(char* buf, int* pc, int end)
       break;
     case ADD:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 0;
 	for(i=0; i<num; i++) {
-	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
 	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	}
@@ -1072,7 +1093,7 @@ void execute(char* buf, int* pc, int end)
       break;
     case ADD1:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
 	int ans = ivalue(stack[stack_top-1]) + 1;
 	popArg();
 	pushArg(makeInteger(ans));
@@ -1081,7 +1102,7 @@ void execute(char* buf, int* pc, int end)
       break;
     case ADD2:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
 	int ans = ivalue(stack[stack_top-1]) + 2;
 	popArg();
 	pushArg(makeInteger(ans));
@@ -1090,22 +1111,22 @@ void execute(char* buf, int* pc, int end)
       break;
     case SUB:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
-	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
 	  int ans = -ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  long ans = 0;
 	  for(i=0; i<num-1; i++) {
-	    ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	    ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
 	    ans -= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
-	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
 	  ans += ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
@@ -1115,7 +1136,7 @@ void execute(char* buf, int* pc, int end)
       break;
     case SUB1:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
 	int ans = ivalue(stack[stack_top-1]) - 1;
 	popArg();
 	pushArg(makeInteger(ans));
@@ -1124,7 +1145,7 @@ void execute(char* buf, int* pc, int end)
       break;
     case SUB2:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
 	int ans = ivalue(stack[stack_top-1]) - 2;
 	popArg();
 	pushArg(makeInteger(ans));
@@ -1133,12 +1154,12 @@ void execute(char* buf, int* pc, int end)
       break;
     case MUL:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "*");
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	long ans = 1;
 	for(i=0; i<num; i++) {
-	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "*");
 	  ans *= ivalue(stack[stack_top-1]);
 	  popArg();
 	}
@@ -1148,22 +1169,22 @@ void execute(char* buf, int* pc, int end)
       break;
     case DIV:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
 	int num = ivalue(stack[stack_top-1]);
 	popArg();
 	if(num == 1) {
-	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
 	  long ans = 1/ivalue(stack[stack_top-1]);
 	  popArg();
 	  pushArg(makeInteger(ans));
 	} else {
 	  int div = 1;
 	  for(i=0; i<num-1; i++) {
-	    ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	    ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
 	    div *= ivalue(stack[stack_top-1]);
 	    popArg();
 	  }
-	  ERR_INT_NOT_GIVEN(stack[stack_top-1]);
+	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
 	  long ans = ivalue(stack[stack_top-1]);
 	  popArg();
 	  ans = ans/div;
@@ -1198,22 +1219,22 @@ void execute(char* buf, int* pc, int end)
       break;
     case CAR:
       {
-	ERR_PAIR_NOT_GIVEN();
+	ERR_PAIR_NOT_GIVEN("car");
 	gc_write_barrier_root(&stack[stack_top-1], car(stack[stack_top-1]));
 	++(*pc);
       }
       break;
     case CDR:
       {
-	ERR_PAIR_NOT_GIVEN();
+	ERR_PAIR_NOT_GIVEN("cdr");
 	gc_write_barrier_root(&stack[stack_top-1], cdr(stack[stack_top-1]));
 	++(*pc);
       }
       break;
     case EQUAL:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "=");
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], "=");
 	Cell num2 = stack[stack_top-1];
 	Cell num1 = stack[stack_top-2];
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1225,8 +1246,8 @@ void execute(char* buf, int* pc, int end)
       break;
     case GT:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], ">");
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], ">");
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1238,8 +1259,8 @@ void execute(char* buf, int* pc, int end)
       break;
     case GTE:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], ">=");
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], ">=");
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1251,8 +1272,8 @@ void execute(char* buf, int* pc, int end)
       break;
     case LT:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "<");
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], "<");
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1264,8 +1285,8 @@ void execute(char* buf, int* pc, int end)
       break;
     case LTE:
       {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1]);
-	ERR_INT_NOT_GIVEN(stack[stack_top-2]);
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], "<=");
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], "<=");
 	int num2 = ivalue(stack[stack_top-1]);
 	int num1 = ivalue(stack[stack_top-2]);
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
@@ -1371,7 +1392,7 @@ void execute(char* buf, int* pc, int end)
 	  int funcAddr = ivalue(lambdaAddr(func));
 	  Boolean isParamDList = lambdaFlag(func);
 	  if(isParamDList) {
-	    ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum);
+	    ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum, "str");
 	    popArg();
 	    int num = argNum - paramNum + 1;
 	    Cell lst = (Cell)AQ_NIL;
@@ -1384,7 +1405,7 @@ void execute(char* buf, int* pc, int end)
 	    pushArg(lst);
 	    pushArg(makeInteger(paramNum));
 	  } else {
-	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
+	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum, "str");
 	  }
 	  int retAddr  = *pc + strlen(str) + 1;
 	  pushArg(makeInteger(retAddr));
@@ -1417,7 +1438,7 @@ void execute(char* buf, int* pc, int end)
 	int funcAddr = ivalue(lambdaAddr(func));
 	Boolean isParamDList = lambdaFlag(func);
 	if(isParamDList) {
-	  ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum);
+	  ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum, "lambda");
 	  popArg();
 	  int num = argNum - paramNum + 1;
 	  Cell lst = (Cell)AQ_NIL;
@@ -1430,7 +1451,7 @@ void execute(char* buf, int* pc, int end)
 	  pushArg(lst);
 	  pushArg(makeInteger(paramNum));
 	} else {
-	  ERR_WRONG_NUMBER_ARGS(paramNum, argNum);
+	  ERR_WRONG_NUMBER_ARGS(paramNum, argNum, "lambda");
 	}
 	
 	int retAddr  = *pc + 1;
@@ -1493,21 +1514,32 @@ Boolean isError() {
 
 void handleError()
 {
+  if(!isError()) return;
+
   FILE* fp = stdout; // TODO
+  AQ_FPRINTF(fp, "[ERROR] ");
+  
   switch(errType) {
   case ERR_TYPE_WRONG_NUMBER_ARG:
-    AQ_FPRINTF(fp, "wrong number of argnuments: required ");
-    printCell(fp, stack[stack_top-2]);
-    AQ_FPRINTF(fp, ", but given ");
-    printLineCell(fp, stack[stack_top-1]);
+    {
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: wrong number of argnuments: required ", strvalue(str));
+      printCell(fp, stack[stack_top-2]);
+      AQ_FPRINTF(fp, ", but given ");
+      printLineCell(fp, stack[stack_top-1]);
+    }
     break;
   case ERR_TYPE_PAIR_NOT_GIVEN:
-    AQ_FPRINTF(fp, "pair required, but given ");
-    printLineCell(fp,  stack[stack_top-1]);
+    {
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: pair required, but given ", strvalue(str));
+      printLineCell(fp, stack[stack_top-1]);
+    }
     break;
   case ERR_TYPE_INT_NOT_GIVEN:
     {
-      AQ_FPRINTF(fp, "number required, but given ");
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: number required, but given ", strvalue(str));
       printLineCell(fp, stack[stack_top-1]);
     }
     break;
@@ -1518,33 +1550,42 @@ void handleError()
     break;
   case ERR_TYPE_SYMBOL_LIST_NOT_GIVEN:
     {
-      AQ_FPRINTF(stdout, "symbol list is not goven\n");
+      AQ_FPRINTF(fp, "symbol list is not goven\n");
     }
     break;
   case ERR_TYPE_MALFORMED_DOT_LIST:
     {
-      AQ_FPRINTF(stdout, "malformed dot list\n");
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: malformed dot list\n", strvalue(str));
     }
     break;
   case ERR_TYPE_TOO_MANY_EXPRESSIONS:
     {
-      AQ_FPRINTF(stdout, "too many expressions given\n");
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: too many expressions given\n", strvalue(str));
     }
     break;
   case ERR_TYPE_EXTRA_CLOSE_PARENTHESIS:
     {
-      AQ_FPRINTF(stdout, "extra close parenthesis\n");
+      AQ_FPRINTF(fp, "extra close parenthesis\n");
     }
     break;
   case ERR_TYPE_SYMBOL_NOT_GIVEN:
     {
-      AQ_FPRINTF(stdout, "symbol not given\n");
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: symbol not given\n", strvalue(str));
+    }
+    break;
+  case ERR_TYPE_SYNTAX_ERROR:
+    {
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: syntax error\n", strvalue(str));
     }
     break;
   case ERR_TYPE_GENERAL_ERROR:
     {
       // Not expected to reach here.
-      AQ_FPRINTF(stdout, "error\n");
+      AQ_FPRINTF(fp, "error\n");
     }
     break;
   case ERR_TYPE_NONE:

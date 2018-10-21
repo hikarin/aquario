@@ -100,7 +100,6 @@ verify "(quote (quote b))" "'b"
 verify "(quote 10)" 10
 verify "(= (quote 1) 1)" \#t
 verify "(+ '1 '2 '3)" 6
-verify "(+ ''1 2 3)" "number required, but given '1"
 verify "\'(+ 1 2)" "(+ 1 2)"
 verify "(define x 'n) x" n
 verify "(define x 100) (define y x) y" 100
@@ -126,7 +125,9 @@ verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) 
 verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 8 4 0)" 1
 
 #error
-verify "(define lst '(a b c)) (car (car lst))" "pair required, but given a"
+verify "(define lst '(a b c)) (car (car lst))" "[ERROR] car: pair required, but given a"
+verify "(define lst '(a b c)) (cdr (car lst))" "[ERROR] cdr: pair required, but given a"
+verify "(+ ''1 2 3)" "[ERROR] +: number required, but given '1"
 
 echo ""
 if [ -n "$str" ]; then
