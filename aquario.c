@@ -640,6 +640,9 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
   Inst* jneqInst = createInstNum(JNEQ, 0 /* placeholder */);
   addInstTail(instQ, jneqInst);
   compileElem(instQ, fp, symbolList);  // statement (TRUE)
+  if(isError()) {
+    SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_IF, "if");
+  }
   
   Inst* jmpInst = createInstNum(JMP, 0/* placeholder */);
   addInstTail(instQ, jmpInst);
