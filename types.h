@@ -161,8 +161,6 @@ typedef struct gc_measure_info{
 typedef enum errorType{
   ERR_TYPE_NONE = -1,
   ERR_TYPE_WRONG_NUMBER_ARG = 0,
-  ERR_TYPE_PAIR_NOT_GIVEN,
-  ERR_TYPE_INT_NOT_GIVEN,
   
   // compile error
   ERR_TYPE_MALFORMED_IF,
@@ -173,11 +171,17 @@ typedef enum errorType{
   ERR_TYPE_SYMBOL_NOT_GIVEN,
   ERR_TYPE_SYNTAX_ERROR,
 
+  // runtime error
+  ERR_TYPE_PAIR_NOT_GIVEN,
+  ERR_TYPE_INT_NOT_GIVEN,
+  ERR_STACK_OVERFLOW,
+  ERR_STACK_UNDERFLOW,
+
   ERR_TYPE_GENERAL_ERROR,
 }ErrorType;
 
 Boolean isError();
 void handleError();
-
+void set_error(ErrorType e);
 
 #endif	//!defined( __TYPES_H__ )

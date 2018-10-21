@@ -1054,7 +1054,7 @@ void execute(char* buf, int* pc, int end)
   Boolean exec = TRUE;
   stack_top = 0;
   int i = 0;
-  while(exec != FALSE && (*pc) < end) {
+  while(exec != FALSE && (*pc) < end && !isError()) {
     OPCODE op = buf[*pc];
     switch(op) {
     case PUSH:
@@ -1512,6 +1512,11 @@ Boolean isError() {
   return (errType != ERR_TYPE_NONE);
 }
 
+void set_error(ErrorType e)
+{
+  errType = e;
+}
+
 void handleError()
 {
   if(!isError()) return;
@@ -1588,10 +1593,19 @@ void handleError()
       AQ_FPRINTF(fp, "error\n");
     }
     break;
+  case ERR_STACK_OVERFLOW:
+    {
+      AQ_FPRINTF(fp, "stack overflow\n");
+    }
+    break;
+  case ERR_STACK_UNDERFLOW:
+    {
+      AQ_FPRINTF(fp, "stack underflow\n");
+    }
+    break;
   case ERR_TYPE_NONE:
     return;
   }
-
   while(stack_top > 0) {
     popArg();
   }
@@ -1601,7 +1615,7 @@ void handleError()
 void pushFunctionStack(int f)
 {
   if(functionStackTop >= FUNCTION_STACK_SIZE) {
-    printError( "Function Stack Overflow" );
+    errType = ERR_STACK_OVERFLOW;
     return;
   }
   functionStack[functionStackTop++] = f;
@@ -1610,7 +1624,7 @@ void pushFunctionStack(int f)
 int popFunctionStack()
 {
   if(functionStackTop <= 0) {
-    printError( "Function Stack Unferflow" );
+    errType = ERR_STACK_UNDERFLOW;
     return -1;
   }
   return functionStack[--functionStackTop];

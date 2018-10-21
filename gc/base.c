@@ -160,21 +160,11 @@ void printMeasureInfo()
 Cell popArg_default()
 {
   Cell c = stack[ --stack_top ];
-#if defined( _DEBUG )
-  if( stack_top < 0 ){
-    printError("Stack Underflow");
-  }
-#endif //_DEBUG
-
   return c;
 }
 
 void pushArg_default(Cell c)
 {
-  if( stack_top >= STACKSIZE ){
-    printError( "Stack Overflow" );
-    return;
-  }
   stack[stack_top++] = c;
 }
 
@@ -414,11 +404,18 @@ void gc_term ()
 void pushArg (Cell c)
 {
   _pushArg(c);
+  if(stack_top >= STACKSIZE) {
+    set_error(ERR_STACK_OVERFLOW);
+  }
 }
 
 Cell popArg ()
 {
-  return _popArg();
+  Cell c = _popArg();
+  if(stack_top < 0) {
+    set_error(ERR_STACK_UNDERFLOW);
+  }
+  return c;
 }
 
 void heap_exhausted_error()
