@@ -906,7 +906,7 @@ void set_gc(char* gc_char)
   gc_init( gc_char, heap_size, &gc_info );
 }
 
-void load_file( const char* filename )
+void load_file(char* filename )
 {
   FILE* fp = NULL;
 #if defined( _WIN32 ) || defined( _WIN64 )
@@ -936,7 +936,8 @@ void load_file( const char* filename )
       execute(buf, &pc, abcInfo.st_size);
       fclose(fp);
     } else {
-      AQ_PRINTF("[ERROR] %s: cannot open.\n", abcFileName);
+      set_error(ERR_FILE_NOT_FOUND);
+      pushArg(stringCell(abcFileName));
     }
   } else {
     fp = fopen(filename, "r");
@@ -953,7 +954,8 @@ void load_file( const char* filename )
 	fclose(fp);
       }
     } else {
-      AQ_PRINTF("[ERROR] %s: not found\n", filename);
+      set_error(ERR_FILE_NOT_FOUND);
+      pushArg(stringCell(filename));
     }
   }
   handleError();
@@ -1607,6 +1609,12 @@ void handleError()
   case ERR_HEAP_EXHAUSTED:
     {
       AQ_FPRINTF(fp, "heap exhausted\n");
+    }
+    break;
+  case  ERR_FILE_NOT_FOUND:
+    {
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "cannot open file: %s\n", strvalue(str));
     }
     break;
   case ERR_TYPE_NONE:
