@@ -122,12 +122,27 @@ verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) 
 verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 8 4 0)" 1
 
 #error
+verify "\"hogehog" "[ERROR] unexpected token: EOF"
+verify "(cons 1 2" "[ERROR] unexpected token: EOF"
+verify "(if 1)" "[ERROR] malformed if"
+verify "(if 1 2 3 4)" "[ERROR] malformed if"
+verify "(define)" "[ERROR] define: symbol not given"
+verify "(define x)" "[ERROR] define: syntax error"
+verify "(define 1)" "[ERROR] define: symbol not given"
+verify "(define x 0 0)" "[ERROR] define: too many expressions given"
 verify "(define x '(a b c d e)) y" "[ERROR] undefined symbol: y"
 verify "(define lst '(a b c)) (car (car lst))" "[ERROR] car: pair required, but given a"
 verify "(define lst '(a b c)) (cdr (car lst))" "[ERROR] cdr: pair required, but given a"
 verify ";(define m 100)
   m" "[ERROR] undefined symbol: m"
 verify "(+ ''1 2 3)" "[ERROR] +: number required, but given '1"
+verify "(+ 1 (cons 20 30) 3)" "[ERROR] +: number required, but given (20 . 30)"
+verify "(- ''4 5)" "[ERROR] -: number required, but given '4"
+verify "(- 4 'a)" "[ERROR] -: number required, but given a"
+verify "(* (cons 1 2) 3)" "[ERROR] *: number required, but given (1 . 2)"
+verify "(* (car (cons 1 2)) 'hoge)" "[ERROR] *: number required, but given hoge"
+verify "(/ '30 (lambda (x) (cons x x)))" "[ERROR] /: number required, but given #closure"
+verify "(/ (lambda (x) (cons x x)) 2)" "[ERROR] /: number required, but given #closure"
 
 echo ""
 if [ -n "$str" ]; then
