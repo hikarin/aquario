@@ -137,8 +137,11 @@ verify "(define x '(a b c d e)) y" "[ERROR] undefined symbol: y"
 verify ";(define m 100)
   m" "[ERROR] undefined symbol: m"
 
+verify "(lambda x 1)" "[ERROR] lambda: symbol list not goven"
+
 verify "'(a . b c)" "[ERROR] : malformed dot list"
 verify "(quote a b c)" "[ERROR] quote: wrong number of argnuments: required 1, but given 3"
+
 #TODO
 #verify "'(a . )" "[ERROR] : malformed dot list"
 

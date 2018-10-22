@@ -704,6 +704,7 @@ void compileLambda(InstQueue* instQ, FILE* fp)
       index++;
     }
   }
+
   compileList(instQ, fp, symbolList);  // body
   while(symbolList != (Cell)AQ_NIL) {
     Cell tmp = symbolList;
@@ -1549,7 +1550,8 @@ void handleError()
     break;
   case ERR_TYPE_SYMBOL_LIST_NOT_GIVEN:
     {
-      AQ_FPRINTF(fp, "symbol list is not goven\n");
+      Cell str = popArg();
+      AQ_FPRINTF(fp, "%s: symbol list not goven\n", strvalue(str));
     }
     break;
   case ERR_TYPE_MALFORMED_DOT_LIST:
