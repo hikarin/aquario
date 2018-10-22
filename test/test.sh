@@ -119,6 +119,7 @@ verify "(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2))))))
 verify "(define list (lambda (x . y) (cons x y))) (list 1 2 3)" "(1 2 3)"
 verify "(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst)" "(1 2 (3 4 5))"
 verify "(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5)" "((2 3 4 5) . 1)"
+verify "((lambda (a . b) (cons b a)) 1 2 3 4 5)" "((2 3 4 5) . 1)"
 verify "(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 8 4 0)" 1
 
 #error
@@ -137,7 +138,10 @@ verify "(define x '(a b c d e)) y" "[ERROR] undefined symbol: y"
 verify ";(define m 100)
   m" "[ERROR] undefined symbol: m"
 
+#verify "(lambda)" "[ERROR] lambda: symbol list not goven"
 verify "(lambda x 1)" "[ERROR] lambda: symbol list not goven"
+verify "((lambda (x) 1))" "[ERROR] lambda: wrong number of argnuments: required 1, but given 0"
+verify "((lambda (x y) (cons y x)) 2 3 4)" "[ERROR] lambda: wrong number of argnuments: required 2, but given 3"
 
 verify "'(a . b c)" "[ERROR] : malformed dot list"
 verify "(quote a b c)" "[ERROR] quote: wrong number of argnuments: required 1, but given 3"

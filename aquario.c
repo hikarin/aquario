@@ -1436,11 +1436,12 @@ void execute(char* buf, int* pc, int end)
       break;
     case FUNCS:
       {
-	Cell func = popArg();
-	int argNum = ivalue(stack[stack_top-1]);
-	int paramNum = ivalue(lambdaParamNum(func));
+	Cell func = stack[stack_top-1];
+      	int paramNum = ivalue(lambdaParamNum(func));
 	int funcAddr = ivalue(lambdaAddr(func));
 	Boolean isParamDList = lambdaFlag(func);
+	popArg();
+	int argNum = ivalue(stack[stack_top-1]);
 	if(isParamDList) {
 	  ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum, "lambda");
 	  popArg();
