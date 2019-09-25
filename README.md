@@ -32,6 +32,12 @@ Aquario is a GC-oriented Lisp interpreter.
 
   So far, Aquario accepts "ms", "copy", "mc", "ref" and "gen" with -GC option.
 
+## How to test Aquario
+
+  To ensure that all GCs are working properly, you can do:
+
+    $ make tests
+
 ## Future work
 
 * More supports for GC such as Read Barrier
