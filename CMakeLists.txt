@@ -29,3 +29,21 @@ else()
 endif()
 
 add_subdirectory(gc)
+add_executable(testie test.c)
+
+enable_testing()
+
+add_test(
+  NAME Int-Test1
+  COMMAND testie 1 1
+)
+
+add_test(
+  NAME Int-Test2
+  COMMAND testie 1 2
+)
+
+add_test(
+  NAME Int-Test3
+  COMMAND testie 1 1
+)
