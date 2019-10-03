@@ -6,11 +6,18 @@
 
 #if defined( _TEST )
 #define AQ_PRINTF_GUIDE(x) (void)0
-#else
-#define AQ_PRINTF_GUIDE(x) printf(x)
-#endif
+//void AQ_PRINTF(const char * format, ...);
 #define AQ_PRINTF          printf
 #define AQ_FPRINTF         fprintf
+#define AQ_FGETC           aq_fgetc
+#define AQ_UNGETC          aq_ungetc
+#else
+#define AQ_PRINTF_GUIDE(x) printf(x)
+#define AQ_PRINTF          printf
+#define AQ_FPRINTF         fprintf
+#define AQ_FGETC           fgetc
+#define AQ_UNGETC          ungetc
+#endif
 
 #define type(p)         ((p)->_type)
 #define car(p)          ((p)->_object._cons._car)

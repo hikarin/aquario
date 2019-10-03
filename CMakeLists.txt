@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.3)
 project(aquario C)
 
+#add_executable(aquario aquario.c test.c)
 add_executable(aquario aquario.c)
 target_link_libraries(aquario gc)
+
+set(CMAKE_C_FLAGS "-D_TEST")
 
 target_compile_options(aquario PUBLIC
   $<$<CONFIG:Release>:-O3>             # Release
@@ -29,21 +32,18 @@ else()
 endif()
 
 add_subdirectory(gc)
-add_executable(testie test.c)
 
+#Configuration for Test
+#add_executable(testie test.c)
 enable_testing()
 
-add_test(
-  NAME Int-Test1
-  COMMAND testie 1 1
-)
-
-add_test(
-  NAME Int-Test2
-  COMMAND testie 1 2
-)
-
-add_test(
-  NAME Int-Test3
-  COMMAND testie 1 1
-)
+file(STRINGS test/test.txt texts)
+foreach(text IN ITEMS ${texts})
+  list(GET text 0 name)
+  list(GET text 1 value)
+  list(GET text 2 result)
+  add_test(
+    NAME ${name}
+    COMMAND aquario ${value} ${result}
+  )
+endforeach()

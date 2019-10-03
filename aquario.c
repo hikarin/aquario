@@ -32,6 +32,22 @@ static void term();
 
 static int heap_size = HEAP_SIZE;
 
+#if defined( _TEST )
+static char in_buf[1024 * 32];
+static char out_buf[1024];
+static int buf_index = 0;
+int aq_fgetc(FILE* fp)
+{
+    int c = (int)in_buf[buf_index++];
+    return (c == '\0') ? EOF : c;
+}
+
+void aq_ungetc(int c, FILE* fp)
+{
+    buf_index--;
+}
+#endif
+
 #define UNDEF_RETURN(x)         \
   if( UNDEF_P(x) ){             \
     setReturn((Cell)AQ_UNDEF);  \
@@ -576,7 +592,7 @@ char* readTokenInDQuot(char* buf, int len, FILE* fp)
   char *strp = buf;
   *strp = '"';
   for(++strp;(strp-buf)<len-1;++strp){
-    int c = fgetc(fp);
+    int c = AQ_FGETC(fp);
     switch(c){
     case '"':
       if(prev!='\\'){
@@ -605,19 +621,19 @@ char* readToken(char *buf, int len, FILE* fp)
 {
   char *token = buf;
   for(;(token-buf)<len-1;){
-    int c = fgetc(fp);
+    int c = AQ_FGETC(fp);
     switch(c){
     case ';':
       while(c != '\n' && c != EOF ){
-	c = fgetc(fp);
+	c = AQ_FGETC(fp);
       }
-      ungetc(c, fp);
+      AQ_UNGETC(c, fp);
       break;
     case '(':
     case ')':
     case '\'':
       if(token-buf > 0){
-	ungetc(c, fp);
+	AQ_UNGETC(c, fp);
       }
       else{
 	*token = c;
@@ -627,7 +643,7 @@ char* readToken(char *buf, int len, FILE* fp)
       return buf;
     case '"':
       if(token-buf > 0){
-	ungetc(c, fp);
+	AQ_UNGETC(c, fp);
 	*token = '\0';
 	return buf;
       }
@@ -641,6 +657,10 @@ char* readToken(char *buf, int len, FILE* fp)
       }
       break;
     case EOF:
+      if(token-buf > 0){
+	*token = '\0';
+	return buf;
+      }
       return NULL;
     default:
       *token = c;
@@ -659,7 +679,7 @@ Cell readList(FILE* fp)
   char buf[LINESIZE];
   while(1){
     Cell exp = (Cell)AQ_NIL;
-    c = fgetc(fp);
+    c = AQ_FGETC(fp);
     switch(c){
     case ')':
       return list;
@@ -680,7 +700,7 @@ Cell readList(FILE* fp)
       printError("EOF");
       return NULL;
     default:
-      ungetc(c, fp);
+      AQ_UNGETC(c, fp);
       PUSH_ARGS2(&list, &exp);
       // => [... list exp]
       gc_write_barrier_root(stack[stack_top-1]/*exp*/, readElem(fp));
@@ -1390,12 +1410,32 @@ int handle_option(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
   int i = handle_option(argc, argv);
+  set_gc("");
   init();
+
+#if defined(_TEST)
+  {
+    strcpy(in_buf, argv[1]);
+    setbuf(stdout, out_buf);
+    repl();
+    
+    int result = (strcmp(out_buf, argv[2]) == 0) ? 0 : 1;
+    if(result) {
+      FILE* fp = fopen("temp.txt", "w");
+      fwrite(argv[2], strlen(argv[2]), 1, fp);
+      fwrite(out_buf, sizeof(out_buf) + 1, 1, fp);
+      fclose(fp);
+    }
+    term();
+    return result;
+  }
+#else
   if( i >= argc ){
     repl();
   }else{
     load_file( argv[ i ] );
   }
+#endif
   term();
   return 0;
 }
