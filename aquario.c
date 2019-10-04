@@ -1418,15 +1418,17 @@ int main(int argc, char *argv[])
   init();
 
 #if defined(_TEST)
+  if (argc < 5)
   {
-    strcpy(in_buf, argv[1]);
+	  return 1;
+  }
+  else
+  {
+    strcpy(in_buf, argv[3]);
     setbuf(stdout, out_buf);
     repl();
-    
-    int result = (strcmp(out_buf, argv[2]) == 0) ? 0 : 1;
-    printf("[%s]\n", out_buf);
     term();
-    return result;
+    return (strcmp(out_buf, argv[4]) == 0) ? 0 : 1;
   }
 #else
   if( i >= argc ){
