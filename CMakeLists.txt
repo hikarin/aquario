@@ -39,6 +39,10 @@ enable_testing()
 
 file(STRINGS test/test.txt texts)
 foreach(text IN ITEMS ${texts})
+  list(LENGTH text len)
+  if(len LESS 3)
+    continue()
+  endif()
   list(GET text 0 name)
   list(GET text 1 value)
   list(GET text 2 result)
@@ -46,4 +50,6 @@ foreach(text IN ITEMS ${texts})
     NAME ${name}
     COMMAND aquario ${value} ${result}
   )
+  message("${value}")
+  message("${result}")
 endforeach()

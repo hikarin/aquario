@@ -1389,7 +1389,11 @@ int repl()
     pushArg(&pair);
 
     callProc("eval");
+#if defined( _TEST )
+    printCell(getReturn());
+#else
     printLineCell(getReturn());
+#endif
   }
   return 0;
 }
@@ -1420,12 +1424,7 @@ int main(int argc, char *argv[])
     repl();
     
     int result = (strcmp(out_buf, argv[2]) == 0) ? 0 : 1;
-    if(result) {
-      FILE* fp = fopen("temp.txt", "w");
-      fwrite(argv[2], strlen(argv[2]), 1, fp);
-      fwrite(out_buf, sizeof(out_buf) + 1, 1, fp);
-      fclose(fp);
-    }
+    printf("[%s]\n", out_buf);
     term();
     return result;
   }
