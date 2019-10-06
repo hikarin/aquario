@@ -1,11 +1,8 @@
 cmake_minimum_required(VERSION 3.3)
 project(aquario C)
 
-#add_executable(aquario aquario.c test.c)
 add_executable(aquario aquario.c)
 target_link_libraries(aquario gc)
-
-set(CMAKE_C_FLAGS "-D_TEST")
 
 target_compile_options(aquario PUBLIC
   $<$<CONFIG:Release>:-O3>             # Release
@@ -19,21 +16,15 @@ target_compile_definitions(aquario PUBLIC
 
 if(MSVC)
   set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT aquario)
-else()
-  add_custom_target(debug
-    COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Debug ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
-  )
-
-  add_custom_target(release
-    COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
-  )
 endif()
 
 add_subdirectory(gc)
 
 #Configuration for Test
+add_executable(aq_test aquario.c)
+target_compile_options(aq_test PUBLIC -D_TEST)
+target_link_libraries(aq_test gc)
+
 enable_testing()
 
 macro(do_test gc gcname)
@@ -48,7 +39,7 @@ macro(do_test gc gcname)
     list(GET text 2 result)
     add_test(
       NAME ${gcname}-${name}
-	  COMMAND aquario -GC ${gc} ${value} ${result}
+	  COMMAND aq_test -GC ${gc} ${value} ${result}
     )
   endforeach()
 endmacro()
