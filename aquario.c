@@ -1414,7 +1414,6 @@ int handle_option(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
   int i = handle_option(argc, argv);
-  set_gc("");
   init();
 
 #if defined(_TEST)
