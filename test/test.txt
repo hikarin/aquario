@@ -61,3 +61,5 @@ Lambda4;(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2);prints1
 Lambda5;(define list (lambda (x . y) (cons x y))) (list 1 2 3);list(1 2 3)
 Lambda6;(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst);listlst(1 2 (3 4 5))
 Lambda7;(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5);func((2 3 4 5) . 1)
+Lambda8;(define fib (lambda (n) (if (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 13);fib233
+Lambda9;(define <= (lambda (x y) (if (< x y) #t (= x y)))) (define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0);<=tak1
