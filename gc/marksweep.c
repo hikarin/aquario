@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include <sys/time.h>
-#include <sys/resource.h>
-
 typedef struct marksweep_gc_header{
   int obj_size;
   Boolean mark_bit;
@@ -186,14 +183,8 @@ void printMeasureMS()
 //Start Garbage Collection.
 void gc_start_marksweep()
 {
-
-  MEASURE_START();
   mark();
-  MEASURE_END(measure.mark_elapsed_time);
-
-  MEASURE_START();
   sweep();
-  MEASURE_END(measure.mark_elapsed_time);
 }
 
 //term.

@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include <sys/time.h>
-#include <sys/resource.h>
-
 typedef struct markcompact_gc_header{
   int obj_size;
   Cell forwarding;
@@ -212,29 +209,11 @@ void gc_start_markcompact()
   //initialization.
   mark_stack_top = 0;
 
-  struct rusage usage;
-  struct timeval ut1;
-  struct timeval ut2;
-  
-  getrusage(RUSAGE_SELF, &usage );
-  ut1 = usage.ru_utime;
-  
   //mark phase.
   mark();
 
-  getrusage(RUSAGE_SELF, &usage );
-  ut2 = usage.ru_utime;
-  measure.mark_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
-
-  getrusage(RUSAGE_SELF, &usage );
-  ut1 = usage.ru_utime;
-
   //compaction phase.
   compact();
-
-  getrusage(RUSAGE_SELF, &usage );
-  ut2 = usage.ru_utime;
-  measure.compaction_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
 }
 
 //term.

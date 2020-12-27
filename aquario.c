@@ -447,7 +447,7 @@ Inst* createInstStr(OPCODE op, char* str)
   int len = strlen(str)+1;
   Inst* result = createInst(op, len+1);
   result->operand._string = malloc(sizeof(char)*len);
-  strcpy(result->operand._string, str);
+  STRCPY(result->operand._string, str);
 
   return result;
 }
@@ -819,7 +819,7 @@ void compileSymbolList(char* var, Cell* symbolList)
   size_t len = strlen(var) + 1;
   char* sym = malloc(len);
   
-  strcpy(sym, var);
+  STRCPY(sym, var);
   car(tmp) = (Cell)sym;
   cdr(tmp) = *symbolList;
   *symbolList = tmp;
@@ -918,7 +918,7 @@ void load_file(char* filename )
 #else
   int len = strlen(filename);
   char* abcFileName = malloc(sizeof(char*) * (len + 3));
-  strcpy(abcFileName, filename);
+  STRCPY(abcFileName, filename);
   char* ext = strrchr(abcFileName, '.');
   if(ext) {
     *ext = '\0';
@@ -994,7 +994,7 @@ size_t writeInst(Inst* inst, char* buf)
     case PUSH_SYM:
       {
 	char* str = inst->operand._string;
-	strcpy(&buf[++size], str);
+    STRCPY(&buf[++size], str);
 	size += (strlen(str)+1);
 	free(inst->operand._string);
       }

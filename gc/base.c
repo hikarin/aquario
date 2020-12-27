@@ -10,9 +10,6 @@
 #include "generational.h"
 #include "marksweep.h"
 
-#include <sys/time.h>
-#include <sys/resource.h>
-
 static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //write barrier;
 static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
@@ -362,18 +359,7 @@ void* gc_malloc(size_t size)
 
 void gc_start ()
 {
-  struct rusage usage;
-  struct timeval ut1, ut2;
-  getrusage(RUSAGE_SELF, &usage );
-  ut1 = usage.ru_utime;
-  
   _gc_start();
-  measure_info.gc_count++;
-  
-  getrusage(RUSAGE_SELF, &usage );
-  ut2 = usage.ru_utime;
-  
-  measure_info.gc_elapsed_time += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6;
 }
 
 void gc_write_barrier (Cell cell, Cell* cellp, Cell newcell)
