@@ -1,5 +1,11 @@
 language: C
 compiler:
-  - clang
   - gcc
-script: "./run-test.sh"
+before_script:
+  - mkdir build
+  - cd build
+  - cmake ..
+
+script:
+ - make
+ - make test
