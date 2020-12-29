@@ -1679,6 +1679,7 @@ int repl()
     InstQueue instQ;
     instQ.head = inst;
     instQ.tail = inst;
+    inst->offset = pc;
     
     compileElem(&instQ, stdin, NULL);
     if(isError()) {
