@@ -983,8 +983,8 @@ size_t writeInst(Inst* inst, char* buf)
     case LOAD:
       {
 	long val = ivalue(inst->operand._num);
-	memcpy(&buf[++size], &val, sizeof(long));
-	size += sizeof(long);
+	memcpy(&buf[++size], &val, sizeof(Cell));
+	size += sizeof(Cell);
       }
       break;
     case SET:
@@ -1003,12 +1003,12 @@ size_t writeInst(Inst* inst, char* buf)
     case FUNDD:
       {
 	int addr = ivalue(inst->operand._num);
-	memcpy(&buf[++size], &addr, sizeof(long));
-	size += sizeof(long);
+	memcpy(&buf[++size], &addr, sizeof(Cell));
+	size += sizeof(Cell);
 	
 	int paramNum = ivalue(inst->operand2._num);
-	memcpy(&buf[size], &paramNum, sizeof(long));
-	size += sizeof(long);
+	memcpy(&buf[size], &paramNum, sizeof(Cell));
+	size += sizeof(Cell);
       }
       break;
     case NOP:
