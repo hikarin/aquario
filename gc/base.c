@@ -7,6 +7,7 @@
 #include "copy.h"
 #include "markcompact.h"
 #include "reference_count.h"
+#include "rc_zct.h"
 #include "generational.h"
 #include "marksweep.h"
 
@@ -32,6 +33,7 @@ static void printMeasureInfo();
 #define GC_STR_MARKCOMPACT     "mc"
 #define GC_STR_GENERATIONAL    "gen"
 #define GC_STR_REFERENCE_COUNT "ref"
+#define GC_STR_RC_ZCT          "zct"
 #define GC_STR_MARK_SWEEP      "ms"
 static char* _gc_char = "";
 
@@ -75,6 +77,10 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
   }else if( strcmp( gc_char, GC_STR_REFERENCE_COUNT ) == 0 ){
     gc_init_reference_count(gc_init);
     _gc_char = GC_STR_REFERENCE_COUNT;
+  }else if( strcmp( gc_char, GC_STR_RC_ZCT ) == 0 ){
+    gc_init_rc_zct(gc_init);
+    printf("ZCT\n");
+    _gc_char = GC_STR_RC_ZCT;
   }else if( strcmp( gc_char, GC_STR_MARK_SWEEP ) == 0 ){
     gc_init_marksweep(gc_init);
     _gc_char = GC_STR_MARK_SWEEP;

@@ -7,4 +7,5 @@ add_library(gc
   markcompact.c
   marksweep.c
   reference_count.c
+  rc_zct.c
 )
