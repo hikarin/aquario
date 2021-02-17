@@ -36,15 +36,6 @@ static void mark();
 static void sweep();
 int get_obj_size( size_t size );
 
-typedef struct ms_measure
-{
-  double mark_elapsed_time;
-  double sweep_elapsed_time;
-}MS_Measure;
-
-static MS_Measure measure;
-static void printMeasureMS();
-
 void mark_object(Cell* objp)
 {
   Cell obj = *objp;
@@ -81,10 +72,6 @@ void gc_init_marksweep(GC_Init_Info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_marksweep;
-
-  gc_info->printMeasure     = printMeasureMS;
-  measure.mark_elapsed_time  = 0.0;
-  measure.sweep_elapsed_time = 0.0;
 }
 
 //Allocation.
@@ -167,17 +154,9 @@ void sweep()
       }
     }else{
       CLEAR_MARK(obj);
-      get_measure_info()->live_object_count++;
     }
     scan += obj_size;
   }
-}
-
-void printMeasureMS()
-{
-  AQ_PRINTF("------------------------------\n");
-  AQ_PRINTF("mark elapsed time:  %.8f\n", measure.mark_elapsed_time);
-  AQ_PRINTF("sweep elapsed time: %.8f\n", measure.sweep_elapsed_time);
 }
 
 //Start Garbage Collection.

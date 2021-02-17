@@ -15,17 +15,12 @@ static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //writ
 static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
 static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
-static void printMeasure_default();
 
 Cell popArg_default();
 void pushArg_default(Cell c);
 
 #if defined( _DEBUG )
 static int total_malloc_size;
-#endif
-
-#if defined( _MEASURE )
-static void printMeasureInfo();
 #endif
 
 //definitions of Garbage Collectors' name.
@@ -50,8 +45,6 @@ static void (*_gc_term) ();
 static void (*_pushArg) (Cell c);
 static Cell (*_popArg) ();
 static void (*_gc_write_barrier_root) (Cell* srcp, Cell dst);
-static void (*_printMeasure) ();
-
 
 int get_heap_size()
 {
@@ -115,10 +108,6 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
     //option.
     gc_init->gc_popArg = popArg_default;
   }
-  if(!gc_init->printMeasure){
-    //option.
-    gc_init->printMeasure = printMeasure_default;
-  }
 
   _gc_malloc        = gc_init->gc_malloc;
   _gc_start         = gc_init->gc_start;
@@ -129,35 +118,11 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
   _gc_term          = gc_init->gc_term;
   _pushArg          = gc_init->gc_pushArg;
   _popArg           = gc_init->gc_popArg;
-
-  _printMeasure     = gc_init->printMeasure;
-
-  measure_info.gc_count = 0;
-  measure_info.live_object_count = 0;
-  measure_info.live_object_size = 0;
-  measure_info.gc_elapsed_time = 0.0f;
-  measure_info.total_elapsed_time = 0.0f;
 }
 
 void gc_term_base()
 {
   AQ_FREE(aq_heap);
-#if defined( _MEASURE )
-  printMeasureInfo();
-#endif
-}
-
-void printMeasureInfo()
-{
-  AQ_PRINTF("\n\n");
-  AQ_PRINTF("GC Name: %s\n", _gc_char);
-  AQ_PRINTF("GC count:             %8d\n", measure_info.gc_count);
-  AQ_PRINTF("live object count:  %10d\n", measure_info.live_object_count);
-  AQ_PRINTF("live object size:   %10d\n", measure_info.live_object_size);
-  AQ_PRINTF("GC elapsed time:    %.8f\n", measure_info.gc_elapsed_time);
-  AQ_PRINTF("Total elapsed time: %.8f\n", measure_info.total_elapsed_time);
-
-  _printMeasure();
 }
 
 Cell popArg_default()
@@ -414,18 +379,7 @@ void heap_exhausted_error()
 {
   set_error(ERR_HEAP_EXHAUSTED);
   handleError();
-  printMeasureInfo();
   exit(-1);
-}
-
-void printMeasure_default()
-{
-  //Noting.
-}
-
-GC_Measure_Info* get_measure_info()
-{
-  return &measure_info;
 }
 
 void increase_live_object(int size_delta, int count_delta)
