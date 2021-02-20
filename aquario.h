@@ -77,7 +77,7 @@ size_t writeInst(Inst* inst, char* buf);
 void addPushTail(InstQueue* instQ, int num);
 void addOneByteInstTail(InstQueue* instQ, OPCODE op);
 
-size_t compile(FILE* fp, char* buf);
+size_t compile(FILE* fp, char* buf, int offset);
 void compileToken(InstQueue* instQ, char* token, Cell symbolList);
 int compileList(InstQueue* instQ, FILE* fp, Cell symbolList);
 void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList);
@@ -117,7 +117,7 @@ int getOffsetReg();
 
 Boolean isEndInput(int c);
 
-int repl();
+void repl();
 
 #if defined( _WIN32 ) || defined( _WIN64 )
 #define STRCPY(mem, str)	strcpy_s(mem, sizeof(char) * (strlen(str)+1), str)

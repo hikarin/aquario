@@ -311,22 +311,25 @@ char* readToken(char *buf, int len, FILE* fp)
   return buf;
 }
 
-size_t compile(FILE* fp, char* buf)
+size_t compile(FILE* fp, char* buf, int offset)
 {
+  int c = fgetc(fp);
+  if(c == EOF) return 0;
+  ungetc(c, fp);
+	    
   Inst* inst = createInst(NOP, 1);
   InstQueue instQ;
   instQ.head = inst;
   instQ.tail = inst;
+  inst->offset = offset;
   char chr = 0;
-  while((chr = fgetc(fp)) != EOF && !isError()) {
-    ungetc(chr, fp);
-    compileElem(&instQ, fp, NULL);
-  }
 
+  compileElem(&instQ, fp, NULL);
+    
   if(isError()) {
-    return 0;
+      return 0;
   }
-
+  
   return writeInst(instQ.head, buf);
 }
 
@@ -927,18 +930,19 @@ void load_file(char* filename )
   
   struct stat abcInfo;
   struct stat lspInfo;
-  Boolean noCompile = (stat(abcFileName, &abcInfo) == 0 &&
+  Boolean compiled = (stat(abcFileName, &abcInfo) == 0 &&
 		       stat(filename, &lspInfo) == 0 &&
 		       abcInfo.st_ctime > lspInfo.st_ctime);
   
   char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
   int pc = 0;
-  if(noCompile) {
+  size_t fileSize = 0;
+  if(compiled) {
     fp = fopen(abcFileName, "rb");
     if(fp) {
       fread(buf, abcInfo.st_size, 1, fp);
-      execute(buf, &pc, abcInfo.st_size);
       fclose(fp);
+      fileSize = abcInfo.st_size;
     } else {
       set_error(ERR_FILE_NOT_FOUND);
       pushArg(stringCell(abcFileName));
@@ -946,24 +950,32 @@ void load_file(char* filename )
   } else {
     fp = fopen(filename, "r");
     if(fp) {
-      size_t fileSize = compile(fp, buf);
-      if(fileSize > 0) {
-	execute(buf, &pc, fileSize);
+	size_t delta = 0;
+	do {
+	    delta = compile(fp, &buf[fileSize], fileSize);
+	    fileSize += delta;
+	}
+	while(delta > 0);
 	fclose(fp);
-      
+	
 	FILE* outputFile = fopen(abcFileName, "wb");
 	fwrite(buf, fileSize, 1, outputFile);
 	fclose(outputFile);
-      } else {
-	fclose(fp);
-      }
+
     } else {
-      set_error(ERR_FILE_NOT_FOUND);
-      pushArg(stringCell(filename));
+	set_error(ERR_FILE_NOT_FOUND);
+	pushArg(stringCell(filename));
     }
   }
-  handleError();
-
+  if(!isError())
+  {
+      execute(buf, &pc, fileSize);
+  }
+  else
+  {
+      handleError();
+   }
+  
   free(abcFileName);
   free(buf);
 #endif
@@ -1661,35 +1673,17 @@ Boolean isEndInput(int c)
   if(c == EOF || c == '\n') return TRUE;
 #else
   if(c == EOF) return TRUE;
- #endif
+#endif
   return FALSE;
 }
 
-int repl()
+void repl()
 {
   char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
   int pc = 0;
   while(1) {
     AQ_PRINTF_GUIDE(">");
-    int c = fgetc(stdin);
-    if(isEndInput(c)) break;
-    ungetc(c, stdin);
-    
-    Inst* inst = createInst(NOP, 1);
-    InstQueue instQ;
-    instQ.head = inst;
-    instQ.tail = inst;
-    inst->offset = pc;
-    
-    compileElem(&instQ, stdin, NULL);
-    if(isError()) {
-      handleError();
-      pc = 0;
-      continue;
-    }
-    
-    size_t bufSize = writeInst(instQ.head, &buf[pc]);
-    
+    size_t bufSize = compile(stdin, &buf[pc], pc);
     execute(buf, &pc, pc+bufSize);
     if(isError()) {
       handleError();
@@ -1698,8 +1692,7 @@ int repl()
       popArg();
     }
   }
-
-  return 0;
+  free(buf);
 }
 
 int handle_option(int argc, char *argv[])
