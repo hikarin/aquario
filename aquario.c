@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <stdarg.h>
 #include <sys/stat.h>
 
 #include "aquario.h"
@@ -66,6 +65,23 @@ static ErrorType errType = ERR_TYPE_NONE;
     pushArg(stringCell(str));				\
     return;						\
   } 							\
+
+#if defined(_TEST)
+static char outbuf[1024 * 1024];
+static int outbuf_index = 0;
+static char inbuf[1024 * 1024];
+static int inbuf_index = 0;
+
+int aq_fgetc()
+{
+    return inbuf[inbuf_index++];
+}
+
+void aq_ungetc(int c, FILE* fp)
+{
+    inbuf[--inbuf_index] = c;
+}
+#endif
 
 inline Cell newCell(Type t, size_t size)
 {
@@ -230,7 +246,7 @@ char* readTokenInDQuot(char* buf, int len, FILE* fp)
   char *strp = buf;
   *strp = '"';
   for(++strp;(strp-buf)<len-1;++strp){
-    int c = fgetc(fp);
+    int c = AQ_FGETC(fp);
     switch(c){
     case '"':
       if(prev!='\\'){
@@ -260,11 +276,11 @@ char* readToken(char *buf, int len, FILE* fp)
 {
   char *token = buf;
   for(;(token-buf)<len-1;){
-    int c = fgetc(fp);
+    int c = AQ_FGETC(fp);
     switch(c){
     case ';':
       while(c != '\n' && c != EOF ){
-	c = fgetc(fp);
+	c = AQ_FGETC(fp);
       }
       if(token == buf) {
 	break;
@@ -276,7 +292,7 @@ char* readToken(char *buf, int len, FILE* fp)
     case ')':
     case '\'':
       if(token-buf > 0){
-	ungetc(c, fp);
+	AQ_UNGETC(c, fp);
       }
       else{
 	*token = c;
@@ -286,7 +302,7 @@ char* readToken(char *buf, int len, FILE* fp)
       return buf;
     case '"':
       if(token-buf > 0){
-	ungetc(c, fp);
+	AQ_UNGETC(c, fp);
 	*token = '\0';
 	return buf;
       }
@@ -300,7 +316,12 @@ char* readToken(char *buf, int len, FILE* fp)
       }
       break;
     case EOF:
-      return NULL;
+	if(token-buf > 0){
+	    *token = '\0';
+	    AQ_UNGETC(EOF, fp);
+	    return buf;
+	}
+	return NULL;
     default:
       *token = c;
       ++token;
@@ -313,23 +334,20 @@ char* readToken(char *buf, int len, FILE* fp)
 
 size_t compile(FILE* fp, char* buf, int offset)
 {
-  int c = fgetc(fp);
+  int c = AQ_FGETC(fp);
   if(c == EOF) return 0;
-  ungetc(c, fp);
-	    
+  AQ_UNGETC(c, fp);
+  
   Inst* inst = createInst(NOP, 1);
   InstQueue instQ;
   instQ.head = inst;
   instQ.tail = inst;
   inst->offset = offset;
-  char chr = 0;
-
   compileElem(&instQ, fp, NULL);
     
   if(isError()) {
       return 0;
   }
-  
   return writeInst(instQ.head, buf);
 }
 
@@ -338,7 +356,7 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
   char c;
   int n = 0;
   while(1){
-    c = fgetc(fp);
+    c = AQ_FGETC(fp);
     switch(c){
     case ')':
       return n;
@@ -356,7 +374,7 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
       return n;
     default:
       {
-	ungetc(c, fp);
+	AQ_UNGETC(c, fp);
 	compileElem(instQ, fp, symbolList);
 	n++;
       }
@@ -651,8 +669,8 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
   addInstTail(instQ, jmpInst);
   jneqInst->operand._num = makeInteger(instQ->tail->offset + instQ->tail->size);
   
-  int c = fgetc(fp);
-  ungetc(c, fp);
+  int c = AQ_FGETC(fp);
+  AQ_UNGETC(c, fp);
   if(c ==')' ){
     addOneByteInstTail(instQ, PUSH_NIL);
   } else {
@@ -669,11 +687,11 @@ void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
 
 void compileLambda(InstQueue* instQ, FILE* fp)
 {
-  int c = fgetc(fp);
+  int c = AQ_FGETC(fp);
   if(c == ')') {
     SET_ERROR_WITH_STR(ERR_TYPE_SYNTAX_ERROR, "lambda");
   } else if(c != '(') {
-    while((c = fgetc(fp)) != ')') {}
+    while((c = AQ_FGETC(fp)) != ')') {}
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN, "lambda");
   }
   
@@ -682,8 +700,8 @@ void compileLambda(InstQueue* instQ, FILE* fp)
   
   int index = 0;
   Cell symbolList = (Cell)AQ_NIL;
-  while((c = fgetc(fp)) != ')') {
-    ungetc(c, fp);
+  while((c = AQ_FGETC(fp)) != ')') {
+    AQ_UNGETC(c, fp);
     char buf[LINESIZE];
     char* var = readToken(buf, sizeof(buf), fp);
 
@@ -725,29 +743,29 @@ void compileLambda(InstQueue* instQ, FILE* fp)
 void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
 {
   Inst* lastInst = instQ->tail;
-  int c = fgetc(fp);
+  int c = AQ_FGETC(fp);
   if(c == ')') {
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
-  ungetc(c, fp);
+  AQ_UNGETC(c, fp);
   
   compileElem(instQ, fp, NULL);
   if(instQ->tail->op != REF){
-    while(fgetc(fp) != ')') {}
+    while(AQ_FGETC(fp) != ')') {}
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
 
-  c = fgetc(fp);
+  c = AQ_FGETC(fp);
   if(c == ')') {
     SET_ERROR_WITH_STR(ERR_TYPE_SYNTAX_ERROR, "define");
   }
-  ungetc(c, fp);
+  AQ_UNGETC(c, fp);
 
   instQ->tail = lastInst;
   lastInst = lastInst->next;
   compileElem(instQ, fp, symbolList);
   if(isError()) {
-    while(fgetc(fp) != ')') {}
+    while(AQ_FGETC(fp) != ')') {}
     return;
   }
 
@@ -757,7 +775,7 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   char buf[LINESIZE];
   char* token = readToken(buf, sizeof(buf), fp);
   if(strcmp(token, ")") != 0) {
-    while(fgetc(fp) != ')') {}
+    while(AQ_FGETC(fp) != ')') {}
     SET_ERROR_WITH_STR(ERR_TYPE_TOO_MANY_EXPRESSIONS, "define");
   }
 }
@@ -772,7 +790,7 @@ void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
   else if(token[0]=='('){
     char* func = readToken(buf, sizeof(buf), fp);
     if(strcmp(func, "(") == 0) {
-      ungetc('(', fp);
+      AQ_UNGETC('(', fp);
       compileElem(instQ, fp, symbolList);
       int num = compileList(instQ, fp, symbolList);
       addPushTail(instQ, num);
@@ -951,11 +969,10 @@ void load_file(char* filename )
     fp = fopen(filename, "r");
     if(fp) {
 	size_t delta = 0;
-	do {
-	    delta = compile(fp, &buf[fileSize], fileSize);
+	while((delta = compile(fp, &buf[fileSize], fileSize)) > 0)
+	{		
 	    fileSize += delta;
 	}
-	while(delta > 0);
 	fclose(fp);
 	
 	FILE* outputFile = fopen(abcFileName, "wb");
@@ -980,6 +997,32 @@ void load_file(char* filename )
   free(buf);
 #endif
 }
+
+#if defined(_TEST)
+int do_test(char* input, char* correct_output)
+{
+    int strlength = strlen(input);
+    strcpy(inbuf, input);
+    inbuf[strlength] = EOF;
+    char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
+
+    size_t bufSize = 0;
+    size_t delta = 0;
+    int pc = 0;
+    while((bufSize = compile(stdin, &buf[pc], pc)) > 0)
+    {
+	execute(buf, &pc, pc+bufSize);
+	if(isError()) {
+	    handleError();
+	} else {
+	    printCell(stdout, stack[stack_top-1]);
+	    popArg();
+	}
+    }
+
+    return strcmp(outbuf, correct_output);
+}
+#endif
 
 size_t writeInst(Inst* inst, char* buf)
 {
@@ -1682,7 +1725,7 @@ void repl()
   char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
   int pc = 0;
   while(1) {
-    AQ_PRINTF_GUIDE(">");
+    AQ_PRINTF(">");
     size_t bufSize = compile(stdin, &buf[pc], pc);
     execute(buf, &pc, pc+bufSize);
     if(isError()) {
@@ -1713,11 +1756,15 @@ int main(int argc, char *argv[])
   set_gc("");
   int i = handle_option(argc, argv);
   init();
+#if defined(_TEST)
+  return do_test(argv[i-1], argv[i]);
+#else
   if( i >= argc ){
     repl();
   }else{
     load_file( argv[ i ] );
   }
+#endif
   term();
-  return 0;
+  return isError();
 }

@@ -4,13 +4,16 @@
 #include <stddef.h>
 #include "types.h"
 
-#define AQ_FPRINTF      fprintf
-#define AQ_PRINTF(...)  AQ_FPRINTF(stdout, __VA_ARGS__)
-
 #if defined( _TEST )
-#define AQ_PRINTF_GUIDE(x) (void)0
+#define AQ_FPRINTF(x, ...)  (outbuf_index += sprintf(&outbuf[outbuf_index], __VA_ARGS__))
+#define AQ_PRINTF(...)      AQ_FPRINTF(stdout, __VA_ARGS__)
+#define AQ_FGETC(x)         aq_fgetc()
+#define AQ_UNGETC           aq_ungetc
 #else
-#define AQ_PRINTF_GUIDE(x) AQ_PRINTF(x)
+#define AQ_FPRINTF          fprintf
+#define AQ_PRINTF(...)      AQ_FPRINTF(stdout, __VA_ARGS__)
+#define AQ_FGETC            fgetc
+#define AQ_UNGETC           ungetc
 #endif
 
 #define type(p)         ((p)->_type)
