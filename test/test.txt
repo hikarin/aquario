@@ -29,7 +29,7 @@ List1;'(a b c);(a b c)
 List2;'(a b . c);(a b . c)
 List3;(car '(a . b));a
 List4;(cdr '(a . b));b
-List5;(define lst '(a b c)) (car (car lst));lst#undef
+List5;(define lst '(a b c)) (car (cdr lst));lstb
 
 #define
 Define1;(define m 100) (cons m m);m(100 . 100)
@@ -37,14 +37,13 @@ Define2;(define x 999);x
 
 #string
 String1;(define str "hoge") str;str"hoge"
-String2;(define str "hoge") (set! str "fuga") str;str"fuga""fuga"
-String3;(define str "hoge") (eq? str str);str#t
-String4;(define str "hoge") (eq? str "fuga");str#f
+String2;(define str "hoge") (eq? str str);str#t
+String3;(define str "hoge") (eq? str "fuga");str#f
 
 #symbol
 Symbol1;'test;test
 Symbol2;(quote a);a
-Symbol3;(quote (quote b));(quote b)
+Symbol3;(quote (quote b));'b
 Symbol4;(quote 10);10
 Symbol5;(= (quote 1) 1);#t
 Symbol6;'(+ 1 2);(+ 1 2)
