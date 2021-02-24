@@ -28,21 +28,6 @@ void heap_exhausted_error();
 size_t get_total_malloc_size();
 #endif //defined( _DEBUG )
 
-#define MEASURE_START()               \
-  {                                   \
-    struct rusage usage;              \
-    struct timeval ut1;               \
-    struct timeval ut2;               \
-                                      \
-    getrusage(RUSAGE_SELF, &usage );  \
-    ut1 = usage.ru_utime;
-
-#define MEASURE_END(lval)             \
-    getrusage(RUSAGE_SELF, &usage );  \
-    ut2 = usage.ru_utime;             \
-    lval += (ut2.tv_sec - ut1.tv_sec)+(double)(ut2.tv_usec-ut1.tv_usec)*1e-6; \
-  }
-
 int get_heap_size();
 
 char* aq_heap;
@@ -59,6 +44,3 @@ extern void gc_memcpy (char* dst, char* src, size_t size);
 extern void gc_term ();
 extern void pushArg (Cell c);
 extern Cell popArg ();
-
-extern GC_Measure_Info* get_measure_info();
-extern void increase_live_object(int size_delta, int count_delta);

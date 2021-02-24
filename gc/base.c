@@ -33,7 +33,6 @@ static int total_malloc_size;
 static char* _gc_char = "";
 
 static int heap_size = 0;
-static GC_Measure_Info measure_info;
 
 // variable
 static void* (*_gc_malloc) (size_t size);
@@ -380,12 +379,6 @@ void heap_exhausted_error()
   set_error(ERR_HEAP_EXHAUSTED);
   handleError();
   exit(-1);
-}
-
-void increase_live_object(int size_delta, int count_delta)
-{
-  measure_info.live_object_size += size_delta;
-  measure_info.live_object_count += count_delta;
 }
 
 #if defined( _DEBUG )

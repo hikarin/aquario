@@ -48,7 +48,6 @@ typedef struct mc_measure
 }MC_Measure;
 
 static MC_Measure measure;
-static void printMeasureMC();
 
 void mark_object(Cell* objp)
 {
@@ -60,8 +59,6 @@ void mark_object(Cell* objp)
       exit(-1);
     }
     mark_stack[mark_stack_top++] = obj;
-
-    increase_live_object(GET_OBJECT_SIZE(obj), 1);
   }
 }
 
@@ -95,7 +92,6 @@ void gc_init_markcompact(GC_Init_Info* gc_info)
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_markcompact;
   
-  gc_info->printMeasure     = printMeasureMC;
   measure.mark_elapsed_time  = 0.0;
   measure.compaction_elapsed_time = 0.0;
 }
@@ -195,13 +191,6 @@ void compact()
   calc_new_address();
   update_pointer();
   slide();
-}
-
-void printMeasureMC()
-{
-  AQ_PRINTF("------------------------------\n");
-  AQ_PRINTF("mark elapsed time:  %.8f\n", measure.mark_elapsed_time);
-  AQ_PRINTF("compation elapsed time: %.8f\n", measure.compaction_elapsed_time);
 }
 
 void gc_start_markcompact()

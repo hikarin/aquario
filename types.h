@@ -145,18 +145,7 @@ typedef struct gc_init_info{
   void  (*gc_term) ();                       //terminate;
   void  (*gc_pushArg) (Cell c);
   Cell (*gc_popArg) ();
-  void  (*printMeasure) ();
 }GC_Init_Info;
-
-typedef struct gc_measure_info{
-  int gc_count;
-  double gc_elapsed_time;
-  double total_elapsed_time;
-  int write_barrier_count;
-  double write_barrier_elapsed_time;
-  int live_object_count;
-  int live_object_size;
-}GC_Measure_Info;
 
 typedef enum errorType{
   ERR_TYPE_NONE = -1,

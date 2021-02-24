@@ -49,7 +49,6 @@ void* copy_object(Cell obj)
   FORWARDING(obj) = new_cell;
   FORWARDING(new_cell) = new_cell;
 
-  increase_live_object(size, 1);
   return new_cell;
 }
 
