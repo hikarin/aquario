@@ -1,8 +1,5 @@
 #include "base.h"
-#include "markcompact.h"
-#include "../aquario.h"
-#include <stdio.h>
-#include <stdint.h>
+#include <string.h>
 
 typedef struct markcompact_gc_header{
   int obj_size;

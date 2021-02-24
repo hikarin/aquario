@@ -1,12 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <sys/stat.h>
 
 #include "aquario.h"
 #include "gc/base.h"
-#include "gc/copy.h"
-#include "gc/markcompact.h"
 
 static void set_gc(char*);
 

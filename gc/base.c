@@ -1,15 +1,8 @@
 #if !defined( __GC_BASE_H__ )
 #define __GC_BASE_H__
 
-#include <stdlib.h>
-#include "../aquario.h"
 #include "base.h"
-#include "copy.h"
-#include "markcompact.h"
-#include "reference_count.h"
-#include "rc_zct.h"
-#include "generational.h"
-#include "marksweep.h"
+#include <string.h>
 
 static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //write barrier;
 static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
@@ -25,13 +18,24 @@ static int total_malloc_size;
 
 //definitions of Garbage Collectors' name.
 #define GC_STR_COPYING         "copy"
-#define GC_STR_MARKCOMPACT     "mc"
-#define GC_STR_GENERATIONAL    "gen"
-#define GC_STR_REFERENCE_COUNT "ref"
-#define GC_STR_RC_ZCT          "zct"
-#define GC_STR_MARK_SWEEP      "ms"
-static char* _gc_char = "";
+void gc_init_copy(GC_Init_Info* gc_init);
 
+#define GC_STR_MARKCOMPACT     "mc"
+void gc_init_markcompact(GC_Init_Info* gc_info);
+
+#define GC_STR_GENERATIONAL    "gen"
+void gc_init_generational(GC_Init_Info* gc_info);
+
+#define GC_STR_REFERENCE_COUNT "ref"
+void gc_init_reference_count(GC_Init_Info* gc_info);
+
+#define GC_STR_RC_ZCT          "zct"
+void gc_init_rc_zct(GC_Init_Info* gc_info);
+
+#define GC_STR_MARK_SWEEP      "ms"
+void gc_init_marksweep(GC_Init_Info* gc_info);
+
+static char* _gc_char = "";
 static int heap_size = 0;
 
 // variable

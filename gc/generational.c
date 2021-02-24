@@ -1,8 +1,5 @@
 #include "base.h"
-#include "generational.h"
-#include <stdio.h>
-#include <stdint.h>
-#include "../aquario.h"
+#include <string.h>
 
 typedef struct generational_gc_header{
   Cell forwarding;

@@ -1,8 +1,4 @@
 #include "base.h"
-#include "marksweep.h"
-#include "../aquario.h"
-#include <stdio.h>
-#include <stdint.h>
 
 typedef struct marksweep_gc_header{
   int obj_size;

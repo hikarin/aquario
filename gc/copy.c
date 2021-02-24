@@ -1,7 +1,5 @@
 #include "base.h"
-#include "copy.h"
-#include <stdio.h>
-#include <stdint.h>
+#include <string.h>
 
 typedef struct copy_gc_header{
   int obj_size;

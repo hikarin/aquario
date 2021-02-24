@@ -1,9 +1,5 @@
 #include "base.h"
-#include "reference_count.h"
-#include <stdio.h>
-#include <stdint.h>
-
-#include "../aquario.h"
+#include <string.h>
 
 typedef struct reference_count_header{
   int obj_size;
