@@ -56,7 +56,7 @@ Symbol8;(define x 100) (define y x) y;xy100
 Lambda1;(define null? (lambda (x) (eq? x nil))) (null? '());null?#t
 Lambda2;(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4));len4
 Lambda3;(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15);fib987
-Lambda4;(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2);prints1(1 . 2)
+Lambda4;(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2);prints1\n(1 . 2)
 Lambda5;(define list (lambda (x . y) (cons x y))) (list 1 2 3);list(1 2 3)
 Lambda6;(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst);listlst(1 2 (3 4 5))
 Lambda7;(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5);func((2 3 4 5) . 1)

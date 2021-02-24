@@ -1001,9 +1001,22 @@ void load_file(char* filename )
 #if defined(_TEST)
 int do_test(char* input, char* correct_output)
 {
-    int strlength = strlen(input);
+    int outputLen = strlen(correct_output);
+    int i=outputLen-1;
+    while(i>0)
+    {
+	if(correct_output[i] == 'n' && correct_output[i-1] == '\\')
+	{
+	    correct_output[i-1] = '\n';
+	    memcpy(&correct_output[i], &correct_output[i+1], outputLen-i);
+	    outputLen--;
+	}
+	i--;
+    }
+
+    int inputLen = strlen(input);
     strcpy(inbuf, input);
-    inbuf[strlength] = EOF;
+    inbuf[inputLen] = EOF;
     char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
 
     size_t bufSize = 0;
