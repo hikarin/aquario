@@ -50,15 +50,21 @@ Symbol6;'(+ 1 2);(+ 1 2)
 Symbol7;(define x 'n) x;xn
 Symbol8;(define x 100) (define y x) y;xy100
 
+#print
+Print1;(print);\n#undef
+Print2;(print 1);1\n#undef
+Print3;(print 1 2 3);123\n#undef
+Print4;(print '(1 2 3 4 5));(1 2 3 4 5)\n#undef
+Print5;(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2);prints1\n(1 . 2)
+
 #comment TODO
 
 #lambda
 Lambda1;(define null? (lambda (x) (eq? x nil))) (null? '());null?#t
 Lambda2;(define len (lambda (x) (if (eq? x nil) 0 (+ 1 (len (cdr x)))))) (len '(1 2 3 4));len4
 Lambda3;(define fib (lambda (n) (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 15);fib987
-Lambda4;(define prints (lambda (x y) (print x) (cons x y))) (prints 1 2);prints1\n(1 . 2)
-Lambda5;(define list (lambda (x . y) (cons x y))) (list 1 2 3);list(1 2 3)
-Lambda6;(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst);listlst(1 2 (3 4 5))
-Lambda7;(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5);func((2 3 4 5) . 1)
-Lambda8;(define fib (lambda (n) (if (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 13);fib233
-Lambda9;(define <= (lambda (x y) (if (< x y) #t (= x y)))) (define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0);<=tak1
+Lambda4;(define list (lambda (x . y) (cons x y))) (list 1 2 3);list(1 2 3)
+Lambda5;(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst);listlst(1 2 (3 4 5))
+Lambda6;(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5);func((2 3 4 5) . 1)
+Lambda7;(define fib (lambda (n) (if (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 13);fib233
+Lambda8;(define <= (lambda (x y) (if (< x y) #t (= x y)))) (define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0);<=tak1

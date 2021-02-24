@@ -580,6 +580,7 @@ void compileProcedure(char* func, int num, InstQueue* instQ)
     addPushTail(instQ, num);
     addOneByteInstTail(instQ, DIV);
   } else if(strcmp(func, "print") == 0) {
+    addPushTail(instQ, num);
     addOneByteInstTail(instQ, PRINT);
   } else if(strcmp(func, "cons") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "cons");
@@ -1379,9 +1380,14 @@ void execute(char* buf, int* pc, int end)
       break;
     case PRINT:
       {
-	printCell(stdout, stack[stack_top-1]);
+       int num = ivalue(popArg());
+       for(int i=num-1; i>=0; i--) {
+	   printCell(stdout, stack[stack_top-i-1]);
+       }
+       for(int i=0; i<num; i++) {
+	   popArg();
+       }
 	AQ_PRINTF("\n");
-	popArg();
 	pushArg((Cell)AQ_UNDEF);
 	++(*pc);
       }
