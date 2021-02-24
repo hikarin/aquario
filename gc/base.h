@@ -1,4 +1,4 @@
-#include "../types.h"
+#include "../aquario.h"
 #include <stdlib.h>
 
 #define HEAP_SIZE (16 * 1024)
