@@ -51,7 +51,7 @@ To ensure that all GCs are working properly, you can do:
 
 ### For macOS or Linux
 
-$ make tests
+$ make test
 
 ### For Windows
 
