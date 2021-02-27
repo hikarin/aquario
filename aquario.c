@@ -18,6 +18,7 @@ static void term();
 static int heap_size = HEAP_SIZE;
 
 #define FUNCTION_STACK_SIZE  (1024)
+static int max_stack_top = 0;
 static int function_stack[FUNCTION_STACK_SIZE];
 static int function_stack_top = 0;
 static void push_function_stack(int f);
@@ -62,6 +63,21 @@ static aq_error_type err_type = ERR_TYPE_NONE;
     push_arg(string_cell(str));				\
     return;						\
   } 							\
+
+
+#define EXECUTE_INT_COMPARISON(op_name, _op) \
+    {  \
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name); \
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], op_name); \
+	int num2 = INT_VALUE(stack[stack_top-1]);	 \
+	int num1 = INT_VALUE(stack[stack_top-2]);	 \
+	Cell ret = (num1 _op num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE; \
+	pop_arg(); \
+	pop_arg(); \
+	push_arg(ret); \
+	++(*pc); \
+    } \
+	
 
 #if defined(_TEST)
 static char outbuf[1024 * 1024];
@@ -578,7 +594,7 @@ void compile_procedure(char* func, int num, inst_queue* queue)
   } else if(strcmp(func, "<") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "<");
     add_one_byte_inst_tail(queue, LT);
-    } else if(strcmp(func, "<=") == 0) {
+  } else if(strcmp(func, "<=") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "<=");
     add_one_byte_inst_tail(queue, LTE);
   } else if(strcmp(func, ">=") == 0) {
@@ -968,6 +984,7 @@ void load_file(char* filename )
   if(!is_error())
   {
       execute(buf, &pc, file_size);
+            handle_error();
   }
   else
   {
@@ -1285,70 +1302,20 @@ void execute(char* buf, int* pc, int end)
       }
       break;
     case EQUAL:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "=");
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], "=");
-	Cell num2 = stack[stack_top-1];
-	Cell num1 = stack[stack_top-2];
-	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pop_arg();
-	pop_arg();
-	push_arg(ret);
-	++(*pc);
-      }
-      break;
+	EXECUTE_INT_COMPARISON("=", ==);
+	break;
     case GT:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], ">");
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], ">");
-	int num2 = INT_VALUE(stack[stack_top-1]);
-	int num1 = INT_VALUE(stack[stack_top-2]);
-	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pop_arg();
-	pop_arg();
-	push_arg(ret);
-	++(*pc);
-      }
-      break;
+	EXECUTE_INT_COMPARISON(">", >);
+	break;
     case GTE:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], ">=");
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], ">=");
-	int num2 = INT_VALUE(stack[stack_top-1]);
-	int num1 = INT_VALUE(stack[stack_top-2]);
-	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pop_arg();
-	pop_arg();
-	push_arg(ret);
-	++(*pc);
-      }
-      break;
+	EXECUTE_INT_COMPARISON(">=", >=);
+	break;
     case LT:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "<");
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], "<");
-	int num2 = INT_VALUE(stack[stack_top-1]);
-	int num1 = INT_VALUE(stack[stack_top-2]);
-	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pop_arg();
-	pop_arg();
-	push_arg(ret);
-	++(*pc);
-      }
-      break;
+	EXECUTE_INT_COMPARISON("<", <);
+	break;
     case LTE:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "<=");
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], "<=");
-	int num2 = INT_VALUE(stack[stack_top-1]);
-	int num1 = INT_VALUE(stack[stack_top-2]);
-	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pop_arg();
-	pop_arg();
-	push_arg(ret);
-	++(*pc);
-      }
-      break;
+	EXECUTE_INT_COMPARISON("<=", <=);
+	break;
     case EQ:
       {
 	Cell p1 = pop_arg();
@@ -1692,6 +1659,7 @@ void push_function_stack(int f)
     err_type = ERR_STACK_OVERFLOW;
     return;
   }
+  printf("ok\n");
   function_stack[function_stack_top++] = f;
 }
 

@@ -23,6 +23,12 @@ Comparison6;(< 4 3);#f
 Comparison7;(> 2 3);#f
 Comparison8;(> 3 3);#f
 Comparison9;(> 4 3);#t
+Comparison10;(>= 10 5);#t
+Comparison11;(>= 3 10);#f
+Comparison12;(>= 5 5);#t
+Comparison13;(>= 3 4);#f
+Comparison14;(>= 7 8);#f
+Comparison15;(>= 3 3);#t
 
 #list
 List1;'(a b c);(a b c)
@@ -67,4 +73,4 @@ Lambda4;(define list (lambda (x . y) (cons x y))) (list 1 2 3);list(1 2 3)
 Lambda5;(define list (lambda (x . y) (cons x y))) (define lst '(3 4 5)) (list 1 2 lst);listlst(1 2 (3 4 5))
 Lambda6;(define func (lambda (a . b) (cons b a))) (func 1 2 3 4 5);func((2 3 4 5) . 1)
 Lambda7;(define fib (lambda (n) (if (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))) (fib 13);fib233
-Lambda8;(define <= (lambda (x y) (if (< x y) #t (= x y)))) (define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0);<=tak1
+Lambda8;(define tak (lambda (x y z) (if (<= x y) z (tak (tak (- x 1) y z) (tak (- y 1) z x) (tak (- z 1) x y))))) (tak 4 2 0);tak1
