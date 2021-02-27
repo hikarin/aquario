@@ -73,11 +73,11 @@ enum _opcode
 };
 typedef enum _opcode aq_opcode;
 
-#define AQ_FALSE  ((VALUE)0)
-#define AQ_TRUE   ((VALUE)2)
-#define AQ_NIL    ((VALUE)14)
-#define AQ_UNDEF  ((VALUE)6)
-#define AQ_SFRAME ((VALUE)10)
+#define AQ_FALSE  ((Cell)0)
+#define AQ_TRUE   ((Cell)2)
+#define AQ_NIL    ((Cell)14)
+#define AQ_UNDEF  ((Cell)6)
+#define AQ_SFRAME ((Cell)10)
 
 typedef unsigned long VALUE;
 
@@ -86,11 +86,11 @@ typedef unsigned long VALUE;
 #define AQ_INT_MAX           (0x7FFFFFFF>>1)
 #define AQ_INT_MIN           (-0x7FFFFFFF>>1)
 
-#define NIL_P(v)      ((VALUE)(v) == AQ_NIL)
-#define TRUE_P(v)     ((VALUE)(v) == AQ_TRUE)
-#define FALSE_P(v)    ((VALUE)(v) == AQ_FALSE)
-#define UNDEF_P(v)    ((VALUE)(v) == AQ_UNDEF)
-#define SFRAME_P(v)   ((VALUE)(v) == AQ_SFRAME)
+#define NIL_P(v)      ((v) == AQ_NIL)
+#define TRUE_P(v)     ((v) == AQ_TRUE)
+#define FALSE_P(v)    ((v) == AQ_FALSE)
+#define UNDEF_P(v)    ((v) == AQ_UNDEF)
+#define SFRAME_P(v)   ((v) == AQ_SFRAME)
 #define INTEGER_P(v)  ((VALUE)(v) & AQ_INTEGER_MASK)
 #define CELL_P(v)     ((v) != NULL && (((VALUE)(v) & AQ_IMMEDIATE_MASK) == 0))
 #define PAIR_P(p)     (CELL_P(p) && (p)->_type==T_PAIR)
@@ -207,13 +207,13 @@ void set_error(aq_error_type e);
 #define CDAR(p)         CDR(CAR(p))
 
 #define CHAR_VALUE(p)       ((p)->_object._char)
-#define STR_VALUE(p)         ((p)->_object._string)
+#define STR_VALUE(p)        ((p)->_object._string)
 #define INT_VALUE(p)        (((int)(p))>>1)
 #define PROC_VALUE(p)       ((p)->_object._proc)
 #define SYNTAX_VALUE(p)     ((p)->_object._proc)
-#define SYMBOL_VALUE(p)     STR_VALUE(p)
-#define LAMBDA_PARAM(p)     CAR(p)
-#define LAMBDA_EXP(p)       CDR(p)
+#define SYMBOL_VALUE(p)     (STR_VALUE(p))
+#define LAMBDA_PARAM(p)     (CAR(p))
+#define LAMBDA_EXP(p)       (CDR(p))
 #define LAMBDA_ADDR(p)      (CAR(p))
 #define LAMBDA_PARAM_NUM(p) (CDR(p))
 #define LAMBDA_FLAG(p)      ((p)->_flag)

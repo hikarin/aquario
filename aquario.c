@@ -64,21 +64,21 @@ static aq_error_type err_type = ERR_TYPE_NONE;
     return;						\
   } 							\
 
-#define EXECUTE_INT_COMPARISON(op_name, _op)                         \
-    {                                                                \
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name);              \
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], op_name);              \
-	int num2 = INT_VALUE(stack[stack_top-1]);	             \
-	int num1 = INT_VALUE(stack[stack_top-2]);	             \
-	Cell ret = (num1 _op num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE; \
-	pop_arg();                                                   \
-	pop_arg();                                                   \
-	push_arg(ret);                                               \
-        ++(*pc);                                                     \
-    }                                                                \
+#define EXECUTE_INT_COMPARISON(op_name, _op)             \
+    {                                                    \
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name);  \
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], op_name);  \
+	int num2 = INT_VALUE(stack[stack_top-1]);	 \
+	int num1 = INT_VALUE(stack[stack_top-2]);	 \
+	Cell ret = (num1 _op num2) ? AQ_TRUE : AQ_FALSE; \
+	pop_arg();                                       \
+	pop_arg();                                       \
+	push_arg(ret);                                   \
+        ++(*pc);                                         \
+    }                                                    \
 
 #define EXECUTE_PUSH_IMMEDIATE_VALUE(value)  \
-    push_arg((Cell)value);                   \
+    push_arg(value);                         \
     ++(*pc);                                 \
 
 #define EXECUTE_MATH_OPERATOR_WITH_CONSTANT(op_name, _op, num) \
@@ -109,7 +109,7 @@ void aq_ungetc(int c, FILE* fp)
 
 inline Cell new_cell(aq_type t, size_t size)
 {
-  Cell new_cell = (Cell)gc_malloc(size);
+  Cell new_cell = gc_malloc(size);
   new_cell->_type = t;
 
   return new_cell;
@@ -495,8 +495,8 @@ aq_inst* create_inst(aq_opcode op, int size)
   result->op = op;
   result->prev = NULL;
   result->next = NULL;
-  result->operand1._num  = (Cell)AQ_NIL;
-  result->operand2._num = (Cell)AQ_NIL;
+  result->operand1._num = AQ_NIL;
+  result->operand2._num = AQ_NIL;
   result->size = size;
   result->offset = 0;
   
@@ -708,7 +708,7 @@ void compile_lambda(inst_queue* queue, FILE* fp)
   add_inst_tail(queue, inst);
   
   int index = 0;
-  Cell symbol_list = (Cell)AQ_NIL;
+  Cell symbol_list = AQ_NIL;
   while((c = AQ_FGETC(fp)) != ')') {
     AQ_UNGETC(c, fp);
     char buf[LINESIZE];
@@ -736,7 +736,7 @@ void compile_lambda(inst_queue* queue, FILE* fp)
   }
 
   compile_list(queue, fp, symbol_list);  // body
-  while(symbol_list != (Cell)AQ_NIL) {
+  while(symbol_list != AQ_NIL) {
     Cell tmp = symbol_list;
     symbol_list = CDR(symbol_list);
     free(CAR(tmp));
@@ -869,7 +869,7 @@ Cell get_var(char* name)
   int key = 0;
   Cell chain = get_chain(name, &key);
   if(UNDEF_P(chain)) {
-    return (Cell)AQ_UNDEF;
+    return AQ_UNDEF;
   } else {
     return CDAR(chain);
   }
@@ -920,7 +920,7 @@ void init()
 {
   int i;
   for(i=0; i<ENVSIZE; ++i) {
-    env[i] = (Cell)AQ_UNDEF;
+    env[i] = AQ_UNDEF;
   }
   memset(stack, 0, STACKSIZE);
   stack_top = 0;
@@ -1127,7 +1127,7 @@ size_t write_inst(aq_inst* inst, char* buf)
 
 Cell get_operand(char* buf, int pc)
 {
-  return (Cell)(*(Cell*)&buf[pc]);
+  return *(Cell*)&buf[pc];
 }
 
 void execute(char* buf, int* pc, int end)
@@ -1304,7 +1304,7 @@ void execute(char* buf, int* pc, int end)
       {
 	Cell p1 = pop_arg();
 	Cell p2 = pop_arg();
-	Cell ret = (p1 == p2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
+	Cell ret = (p1 == p2) ? AQ_TRUE : AQ_FALSE;
 	push_arg(ret);
 	++(*pc);
       }
@@ -1319,7 +1319,7 @@ void execute(char* buf, int* pc, int end)
 	   pop_arg();
        }
 	AQ_PRINTF("\n");
-	push_arg((Cell)AQ_UNDEF);
+	push_arg(AQ_UNDEF);
 	++(*pc);
       }
       break;
@@ -1375,7 +1375,7 @@ void execute(char* buf, int* pc, int end)
 	Cell ret = get_var(str);
 	if(UNDEF_P(ret)) {
 	  SET_ERROR_WITH_STR(ERR_UNDEFINED_SYMBOL, str);
-	  push_arg((Cell)AQ_UNDEF);
+	  push_arg(AQ_UNDEF);
 	  exec = FALSE;
 	} else {
 	  push_arg(ret);
@@ -1393,7 +1393,7 @@ void execute(char* buf, int* pc, int end)
 	  for(i=0; i<num; i++) {
 	    pop_arg();
 	  }
-	  push_arg((Cell)AQ_UNDEF);
+	  push_arg(AQ_UNDEF);
 	  exec = FALSE;
 	} else {
 	  int param_num = INT_VALUE(LAMBDA_PARAM_NUM(func));
@@ -1404,7 +1404,7 @@ void execute(char* buf, int* pc, int end)
 	    ERR_WRONG_NUMBER_ARGS_DLIST(param_num, arg_num, "str");
 	    pop_arg();
 	    int num = arg_num - param_num + 1;
-	    Cell lst = (Cell)AQ_NIL;
+	    Cell lst = AQ_NIL;
 	    for(i=0; i<num; i++) {
 	      push_arg(lst);
 	      lst = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
@@ -1418,7 +1418,7 @@ void execute(char* buf, int* pc, int end)
 	  }
 	  int ret_addr  = *pc + strlen(str) + 1;
 	  push_arg(make_integer(ret_addr));
-	  push_arg((Cell)AQ_SFRAME);
+	  push_arg(AQ_SFRAME);
 	  push_function_stack(stack_top);
 	  
 	  // jump
@@ -1451,7 +1451,7 @@ void execute(char* buf, int* pc, int end)
 	  ERR_WRONG_NUMBER_ARGS_DLIST(param_num, arg_num, "lambda");
 	  pop_arg();
 	  int num = arg_num - param_num + 1;
-	  Cell lst = (Cell)AQ_NIL;
+	  Cell lst = AQ_NIL;
 	  for(i=0; i<num; i++) {
 	    push_arg(lst);
 	    lst = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
@@ -1466,7 +1466,7 @@ void execute(char* buf, int* pc, int end)
 	
 	int ret_addr  = *pc + 1;
 	push_arg(make_integer(ret_addr));
-	push_arg((Cell)AQ_SFRAME);
+	push_arg(AQ_SFRAME);
 	push_function_stack(stack_top);
 	
 	// jump
@@ -1643,7 +1643,6 @@ void push_function_stack(int f)
     err_type = ERR_STACK_OVERFLOW;
     return;
   }
-  printf("ok\n");
   function_stack[function_stack_top++] = f;
 }
 
