@@ -65,19 +65,18 @@ static aq_error_type err_type = ERR_TYPE_NONE;
   } 							\
 
 
-#define EXECUTE_INT_COMPARISON(op_name, _op) \
-    {  \
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name); \
-	ERR_INT_NOT_GIVEN(stack[stack_top-2], op_name); \
-	int num2 = INT_VALUE(stack[stack_top-1]);	 \
-	int num1 = INT_VALUE(stack[stack_top-2]);	 \
+#define EXECUTE_INT_COMPARISON(op_name, _op)                         \
+    {                                                                \
+	ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name);              \
+	ERR_INT_NOT_GIVEN(stack[stack_top-2], op_name);              \
+	int num2 = INT_VALUE(stack[stack_top-1]);	             \
+	int num1 = INT_VALUE(stack[stack_top-2]);	             \
 	Cell ret = (num1 _op num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE; \
-	pop_arg(); \
-	pop_arg(); \
-	push_arg(ret); \
-	++(*pc); \
-    } \
-	
+	pop_arg();                                                   \
+	pop_arg();                                                   \
+	push_arg(ret);                                               \
+        ++(*pc);                                                     \
+    }                                                                \
 
 #if defined(_TEST)
 static char outbuf[1024 * 1024];
