@@ -7,11 +7,12 @@ Aquario is a GC-oriented Lisp interpreter.
 * Supports for Implementing GC Algorithms
   (ex. root scan, object traverse, write barriers, etc.)
 * Multiple and Selectable Garbage Collectors:
-   - Mark-Sweep collector <= New!
+   - Mark-Sweep collector
    - Cheney's Copying collector
-   - Mark-Compact collector
    - Reference Counting
+   - Mark-Compact collector
    - Generational Collector
+   - Reference Counting with Zero Count Table
 
 ## Target persons
 
@@ -20,17 +21,42 @@ Aquario is a GC-oriented Lisp interpreter.
   * wants to implement Garbage Collector
   * loves Garbage Collection
 
-## How to run Aquario
+## How to run
 
-  Aquario can be built with the following command:
+### Prerequisite
+ * CMake
 
-    $ make
+### For macOS or Linux
+Make a directory to build the binary, execute `cmake` and `make`, then execute the generated binary `aquario`
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+$ ./aquario
+```
 
-  Then put the following command to run Aquario with Cheney's Copying collector:
+### For Windows
 
-    $ ./aquario -GC copy
+1. Launch CMake GUI
+2. Enter the source code path and the build path
+3. Press "Configure", then press "Generate"
+![cmake-gui](https://user-images.githubusercontent.com/188830/103162501-65f7db00-47bf-11eb-87bc-66ee9c02f47a.PNG)
+4. Open aquario.sln with Visual Studio
+5. Press "Build Solution"
+6. Press "Start Debugging" or F5 to launch Aquario
 
-  So far, Aquario accepts "ms", "copy", "mc", "ref" and "gen" with -GC option.
+## How to test
+To ensure that all GCs are working properly, you can do:
+
+### For macOS or Linux
+
+$ make tests
+
+### For Windows
+
+Switch to Folderview and click "Run All" in Text Explorer view.
+![visual-studio](https://user-images.githubusercontent.com/188830/103162525-b2dbb180-47bf-11eb-9c98-bb1341a39424.PNG)
 
 ## Future work
 
