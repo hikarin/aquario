@@ -64,7 +64,6 @@ static aq_error_type err_type = ERR_TYPE_NONE;
     return;						\
   } 							\
 
-
 #define EXECUTE_INT_COMPARISON(op_name, _op)                         \
     {                                                                \
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name);              \
@@ -77,6 +76,19 @@ static aq_error_type err_type = ERR_TYPE_NONE;
 	push_arg(ret);                                               \
         ++(*pc);                                                     \
     }                                                                \
+
+#define EXECUTE_PUSH_IMMEDIATE_VALUE(value)  \
+    push_arg((Cell)value);                   \
+    ++(*pc);                                 \
+
+#define EXECUTE_MATH_OPERATOR_WITH_CONSTANT(op_name, _op, num) \
+    {                                                          \
+        ERR_INT_NOT_GIVEN(stack[stack_top-1], op_name);        \
+        int ans = INT_VALUE(stack[stack_top-1]) _op num;       \
+        pop_arg();                                             \
+        push_arg(make_integer(ans));                           \
+        ++(*pc);                                               \
+    }
 
 #if defined(_TEST)
 static char outbuf[1024 * 1024];
@@ -1134,17 +1146,14 @@ void execute(char* buf, int* pc, int end)
       }
       break;
     case PUSH_NIL:
-      push_arg((Cell)AQ_NIL);
-      ++(*pc);
-      break;
+	EXECUTE_PUSH_IMMEDIATE_VALUE(AQ_NIL);
+	break;
     case PUSH_TRUE:
-      push_arg((Cell)AQ_TRUE);
-      ++(*pc);
-      break;
+	EXECUTE_PUSH_IMMEDIATE_VALUE(AQ_TRUE);
+	break;
     case PUSH_FALSE:
-      push_arg((Cell)AQ_FALSE);
-      ++(*pc);
-      break;
+	EXECUTE_PUSH_IMMEDIATE_VALUE(AQ_FALSE);
+	break;
     case ADD:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
@@ -1156,24 +1165,6 @@ void execute(char* buf, int* pc, int end)
 	  ans += INT_VALUE(stack[stack_top-1]);
 	  pop_arg();
 	}
-	push_arg(make_integer(ans));
-	++(*pc);
-      }
-      break;
-    case ADD1:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
-	int ans = INT_VALUE(stack[stack_top-1]) + 1;
-	pop_arg();
-	push_arg(make_integer(ans));
-	++(*pc);
-      }
-      break;
-    case ADD2:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
-	int ans = INT_VALUE(stack[stack_top-1]) + 2;
-	pop_arg();
 	push_arg(make_integer(ans));
 	++(*pc);
       }
@@ -1203,24 +1194,18 @@ void execute(char* buf, int* pc, int end)
 	++(*pc);
       }
       break;
+    case ADD1:
+	EXECUTE_MATH_OPERATOR_WITH_CONSTANT("+", +, 1);
+	break;
+    case ADD2:
+	EXECUTE_MATH_OPERATOR_WITH_CONSTANT("+", +, 2);
+	break;
     case SUB1:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	int ans = INT_VALUE(stack[stack_top-1]) - 1;
-	pop_arg();
-	push_arg(make_integer(ans));
-	++(*pc);
-      }
-      break;
+	EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", -, 1);
+	break;
     case SUB2:
-      {
-	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	int ans = INT_VALUE(stack[stack_top-1]) - 2;
-	pop_arg();
-	push_arg(make_integer(ans));
-	++(*pc);
-      }
-      break;
+	EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", -, 2);
+	break;
     case MUL:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "*");
