@@ -56,7 +56,7 @@ void copy_and_update(Cell* objp)
 }
 
 //Initialization.
-void gc_init_copy(GC_Init_Info* gc_info)
+void gc_init_copy(aq_gc_info* gc_info)
 {
   heap_size = get_heap_size();
 

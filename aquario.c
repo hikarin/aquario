@@ -7,10 +7,10 @@
 
 static void set_gc(char*);
 
-Boolean g_GC_stress;
+aq_bool g_GC_stress;
 
-static Cell getChain(char* name, int* key);
-static void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env);
+static Cell get_chain(char* name, int* key);
+static void register_var(Cell name_cell, Cell chain, Cell c, Cell* env);
 
 static void init();
 static void term();
@@ -18,24 +18,24 @@ static void term();
 static int heap_size = HEAP_SIZE;
 
 #define FUNCTION_STACK_SIZE  (1024)
-static int functionStack[FUNCTION_STACK_SIZE];
-static int functionStackTop = 0;
-static void pushFunctionStack(int f);
-static int popFunctionStack();
-static int getFunctionStackTop();
+static int function_stack[FUNCTION_STACK_SIZE];
+static int function_stack_top = 0;
+static void push_function_stack(int f);
+static int pop_function_stack();
+static int get_function_stack_top();
 
-static ErrorType errType = ERR_TYPE_NONE;
+static aq_error_type err_type = ERR_TYPE_NONE;
 
 #define SET_ERROR_WITH_STR(err, str)	   \
-  errType = err;			   \
-  pushArg(stringCell(str));		   \
+  err_type = err;			   \
+  push_arg(string_cell(str));		   \
   return;				   \
 
 #define ERR_WRONG_NUMBER_ARGS_BASE(required, given, str)		\
-  errType = ERR_TYPE_WRONG_NUMBER_ARG;					\
-  pushArg(makeInteger(required));					\
-  pushArg(makeInteger(given));						\
-  pushArg(stringCell(str));						\
+  err_type = ERR_TYPE_WRONG_NUMBER_ARG;					\
+  push_arg(make_integer(required));					\
+  push_arg(make_integer(given));					\
+  push_arg(string_cell(str));						\
   return;								\
     
 #define ERR_WRONG_NUMBER_ARGS(required, given, str)			\
@@ -49,17 +49,17 @@ static ErrorType errType = ERR_TYPE_NONE;
   }								\
 
 #define ERR_PAIR_NOT_GIVEN(str)				\
-  if(!isPair(stack[stack_top-1])) {			\
-    errType = ERR_TYPE_PAIR_NOT_GIVEN;			\
-    pushArg(stringCell(str));				\
+  if(!PAIR_P(stack[stack_top-1])) {			\
+    err_type = ERR_TYPE_PAIR_NOT_GIVEN;			\
+    push_arg(string_cell(str));				\
     return;						\
   }							\
 
 #define ERR_INT_NOT_GIVEN(num, str)			\
-  if(!isInteger(num)) {					\
-    errType = ERR_TYPE_INT_NOT_GIVEN;			\
-    pushArg(num);					\
-    pushArg(stringCell(str));				\
+  if(!INTEGER_P(num)) {					\
+    err_type = ERR_TYPE_INT_NOT_GIVEN;			\
+    push_arg(num);					\
+    push_arg(string_cell(str));				\
     return;						\
   } 							\
 
@@ -80,7 +80,7 @@ void aq_ungetc(int c, FILE* fp)
 }
 #endif
 
-inline Cell newCell(Type t, size_t size)
+inline Cell new_cell(aq_type t, size_t size)
 {
   Cell new_cell = (Cell)gc_malloc(size);
   new_cell->_type = t;
@@ -88,58 +88,57 @@ inline Cell newCell(Type t, size_t size)
   return new_cell;
 }
 
-Cell charCell(char ch)
+Cell char_cell(char ch)
 {
-  Cell c = newCell(T_CHAR, sizeof(struct cell));
-  chvalue(c) = ch;
+  Cell c = new_cell(T_CHAR, sizeof(struct cell));
+  CHAR_VALUE(c) = ch;
   return c;
 }
 
-Cell stringCell(char* str)
+Cell string_cell(char* str)
 {
-  int obj_size = sizeof(struct cell) + sizeof(char)*strlen(str) - sizeof(CellUnion)+1;
-  Cell c = newCell(T_STRING, obj_size);
-  STRCPY(strvalue(c), str);
+  int obj_size = sizeof(struct cell) + sizeof(char)*strlen(str) - sizeof(cell_union)+1;
+  Cell c = new_cell(T_STRING, obj_size);
+  STRCPY(STR_VALUE(c), str);
   return c;
 }
 
-Cell pairCell(Cell* a, Cell* d)
+Cell pair_cell(Cell* a, Cell* d)
 {
-  Cell cons = newCell(T_PAIR, sizeof(struct cell));
+  Cell cons = new_cell(T_PAIR, sizeof(struct cell));
 
-  gc_init_ptr(&cdr(cons), *d);
-  gc_init_ptr(&car(cons), *a);
+  gc_init_ptr(&CDR(cons), *d);
+  gc_init_ptr(&CAR(cons), *a);
   return cons;
 }
 
-Cell symbolCell(char* symbol)
+Cell symbol_cell(char* symbol)
 {
-  int obj_size = sizeof(struct cell) + sizeof(char)*strlen(symbol)-sizeof(CellUnion)+1;
-  Cell c = newCell(T_SYMBOL, obj_size);
-  STRCPY(symbolname(c), symbol);
+  int obj_size = sizeof(struct cell) + sizeof(char)*strlen(symbol)-sizeof(cell_union)+1;
+  Cell c = new_cell(T_SYMBOL, obj_size);
+  STRCPY(SYMBOL_VALUE(c), symbol);
   return c;
 }
 
-Cell lambdaCell(int addr, int paramNum, Boolean isParamDList)
+Cell lambda_cell(int addr, int param_num, aq_bool is_param_dlist)
 {
-  Cell l = newCell(T_LAMBDA, sizeof(struct cell));
-  lambdaAddr(l) = makeInteger(addr);
-  lambdaParamNum(l) = makeInteger(paramNum);
-  lambdaFlag(l) = isParamDList;
+  Cell l = new_cell(T_LAMBDA, sizeof(struct cell));
+  LAMBDA_ADDR(l) = make_integer(addr);
+  LAMBDA_PARAM_NUM(l) = make_integer(param_num);
+  LAMBDA_FLAG(l) = is_param_dlist;
   return l;
 }
 
-Cell makeInteger(int val)
+Cell make_integer(int val)
 {
   long lval = val;  
   return (Cell)((lval << 1) | AQ_INTEGER_MASK);
 }
 
-Boolean isdigitstr(char* str)
+aq_bool is_digit_str(char* str)
 {
-  int i;
   int len = strlen(str);
-  for(i=0;i<len;++i){
+  for(int i=0;i<len;++i){
     if(!isdigit(str[i])){
       if(len < 2 || i!=0 || (str[0] != '-' && str[0] != '+')){
 	return FALSE;
@@ -149,53 +148,38 @@ Boolean isdigitstr(char* str)
   return TRUE;
 }
 
-Boolean nullp(Cell c)
+void print_cons(FILE* fp, Cell c)
 {
-  return NIL_P(c) ? TRUE:FALSE;
-}
-
-Boolean truep(Cell c)
-{
-  return !( nullp(c) || notp(c) )?TRUE:FALSE;
-}
-
-Boolean notp(Cell c)
-{
-  return FALSE_P(c)?TRUE:FALSE;
-}
-
-void printCons(FILE* fp, Cell c)
-{
-  if(CELL_P(car(c)) && type(car(c)) == T_SYMBOL &&
-     strcmp(symbolname(car(c)), "quote") == 0) {
+  if(CELL_P(CAR(c)) && TYPE(CAR(c)) == T_SYMBOL &&
+     strcmp(SYMBOL_VALUE(CAR(c)), "quote") == 0) {
     AQ_FPRINTF(fp, "'");
-    printCell(fp, cadr(c));
+    print_cell(fp, CADR(c));
     return;
   }
   AQ_FPRINTF(fp, "(");
-  while(isPair(cdr(c))){
-    printCell(fp, car(c));
-    c = cdr(c);
-    if( isPair(c) && !nullp(car(c)) ){
+  while(PAIR_P(CDR(c))){
+    print_cell(fp, CAR(c));
+    c = CDR(c);
+    if(PAIR_P(c) && !NIL_P(CAR(c)) ){
       AQ_FPRINTF(fp, " ");
     }
   }
 
-  printCell(fp, car(c));
-  if(!nullp(cdr(c))){
+  print_cell(fp, CAR(c));
+  if(!NIL_P(CDR(c))){
     AQ_FPRINTF(fp, " . ");
-    printCell(fp, cdr(c));
+    print_cell(fp, CDR(c));
   }
   AQ_FPRINTF(fp, ")");
 }
 
-void printLineCell(FILE* fp, Cell c)
+void print_line_cell(FILE* fp, Cell c)
 {
-  printCell(fp, c);
+  print_cell(fp, c);
   AQ_FPRINTF(fp, "\n");
 }
 
-void printCell(FILE* fp, Cell c)
+void print_cell(FILE* fp, Cell c)
 {
   if(!CELL_P(c)){
     if(UNDEF_P(c)){
@@ -211,21 +195,21 @@ void printCell(FILE* fp, Cell c)
       AQ_FPRINTF(fp, "#f");
     }
     else if(INTEGER_P(c)){
-      AQ_FPRINTF(fp, "%d", ivalue(c));
+      AQ_FPRINTF(fp, "%d", INT_VALUE(c));
     }
   }else{
-    switch(type(c)){
+    switch(TYPE(c)){
     case T_CHAR:
-      AQ_FPRINTF(fp, "#\\%c", chvalue(c));
+      AQ_FPRINTF(fp, "#\\%c", CHAR_VALUE(c));
       break;
     case T_STRING:
-      AQ_FPRINTF(fp, "\"%s\"", strvalue(c));
+      AQ_FPRINTF(fp, "\"%s\"", STR_VALUE(c));
       break;
     case T_SYMBOL:
-      AQ_FPRINTF(fp, "%s", symbolname(c));
+      AQ_FPRINTF(fp, "%s", SYMBOL_VALUE(c));
       break;
     case T_PAIR:
-      printCons(fp, c);
+      print_cons(fp, c);
       break;
     case T_LAMBDA:
       AQ_FPRINTF(fp, "#closure");
@@ -237,7 +221,7 @@ void printCell(FILE* fp, Cell c)
   }
 }
 
-char* readTokenInDQuot(char* buf, int len, FILE* fp)
+char* read_double_quoted_token(char* buf, int len, FILE* fp)
 {
   int prev = EOF;
   char *strp = buf;
@@ -256,7 +240,7 @@ char* readTokenInDQuot(char* buf, int len, FILE* fp)
       }
     case EOF:
       set_error(ERR_TYPE_UNEXPECTED_TOKEN);
-      pushArg(stringCell("EOF"));
+      push_arg(string_cell("EOF"));
       return NULL;
     default:
       *strp = c;
@@ -269,7 +253,7 @@ char* readTokenInDQuot(char* buf, int len, FILE* fp)
   return buf;
 }
 
-char* readToken(char *buf, int len, FILE* fp)
+char* read_token(char *buf, int len, FILE* fp)
 {
   char *token = buf;
   for(;(token-buf)<len-1;){
@@ -303,7 +287,7 @@ char* readToken(char *buf, int len, FILE* fp)
 	*token = '\0';
 	return buf;
       }
-      return readTokenInDQuot(buf, len, fp);
+      return read_double_quoted_token(buf, len, fp);
     case ' ':
     case '\t':
     case '\n':
@@ -335,20 +319,20 @@ size_t compile(FILE* fp, char* buf, int offset)
   if(c == EOF) return 0;
   AQ_UNGETC(c, fp);
   
-  Inst* inst = createInst(NOP, 1);
-  InstQueue instQ;
-  instQ.head = inst;
-  instQ.tail = inst;
+  aq_inst* inst = create_inst(NOP, 1);
+  inst_queue queue;
+  queue.head = inst;
+  queue.tail = inst;
   inst->offset = offset;
-  compileElem(&instQ, fp, NULL);
+  compile_elem(&queue, fp, NULL);
     
-  if(isError()) {
+  if(is_error()) {
       return 0;
   }
-  return writeInst(instQ.head, buf);
+  return write_inst(queue.head, buf);
 }
 
-int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
+int compile_list(inst_queue* queue, FILE* fp, Cell symbol_list)
 {
   char c;
   int n = 0;
@@ -359,7 +343,7 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
       return n;
     case '.':
       set_error(ERR_TYPE_UNEXPECTED_TOKEN);
-      pushArg(stringCell("."));
+      push_arg(string_cell("."));
       return n;
     case ' ':
     case '\n':
@@ -367,12 +351,12 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
       continue;
     case EOF:
       set_error(ERR_TYPE_UNEXPECTED_TOKEN);
-      pushArg(stringCell("EOF"));
+      push_arg(string_cell("EOF"));
       return n;
     default:
       {
 	AQ_UNGETC(c, fp);
-	compileElem(instQ, fp, symbolList);
+	compile_elem(queue, fp, symbol_list);
 	n++;
       }
     }
@@ -380,111 +364,111 @@ int compileList(InstQueue* instQ, FILE* fp, Cell symbolList)
   return n;
 }
 
-void compileQuotedAtom(InstQueue* instQ, char* symbol, FILE* fp)
+void compile_quoted_atom(inst_queue* queue, char* symbol, FILE* fp)
 {
-  Inst* inst = createInstToken(instQ, symbol);
+  aq_inst* inst = create_inst_token(queue, symbol);
   if(inst) {
-    addInstTail(instQ, inst);
+    add_inst_tail(queue, inst);
   } else {
-    Inst* inst = createInstStr(PUSH_SYM, symbol);
-    addInstTail(instQ, inst);
+    aq_inst* inst = create_inst_str(PUSH_SYM, symbol);
+    add_inst_tail(queue, inst);
   }
 }
 
-void compileQuotedList(InstQueue* instQ, FILE* fp)
+void compile_quoted_list(inst_queue* queue, FILE* fp)
 {
   char buf[LINESIZE];
-  char* token = readToken(buf, sizeof(buf), fp);
+  char* token = read_token(buf, sizeof(buf), fp);
 
   if(strcmp(token, "(") == 0) {
-    compileQuotedList(instQ, fp);
-    compileQuotedList(instQ, fp);
-    addOneByteInstTail(instQ, CONS);
+    compile_quoted_list(queue, fp);
+    compile_quoted_list(queue, fp);
+    add_one_byte_inst_tail(queue, CONS);
   }else if(strcmp(token, ")") == 0) {
-    addOneByteInstTail(instQ, PUSH_NIL);
+    add_one_byte_inst_tail(queue, PUSH_NIL);
   }else if(strcmp(token, "'") == 0) {
-    compileQuote(instQ, fp);
-    compileQuotedList(instQ, fp);
-    addOneByteInstTail(instQ, CONS);
+    compile_quote(queue, fp);
+    compile_quoted_list(queue, fp);
+    add_one_byte_inst_tail(queue, CONS);
   }else if(strcmp(token, ".") == 0) {
-    token = readToken(buf, sizeof(buf), fp);
+    token = read_token(buf, sizeof(buf), fp);
     if(strcmp(token, "(") == 0) {
-      compileQuotedList(instQ, fp);
+      compile_quoted_list(queue, fp);
     }
     else if(strcmp(token, "'") == 0) {
-      compileQuote(instQ, fp);
+      compile_quote(queue, fp);
     } else {
-      compileQuotedAtom(instQ, token, fp);
+      compile_quoted_atom(queue, token, fp);
     }
-    token = readToken(buf, sizeof(buf), fp);
+    token = read_token(buf, sizeof(buf), fp);
     if(strcmp(token, ")") != 0) {
-      compileList(instQ, fp, NULL);
+      compile_list(queue, fp, NULL);
       SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_DOT_LIST, "");
     }
   }
   else {
-    compileQuotedAtom(instQ, token, fp);
+    compile_quoted_atom(queue, token, fp);
   
-    compileQuotedList(instQ, fp);
-    addOneByteInstTail(instQ, CONS);
+    compile_quoted_list(queue, fp);
+    add_one_byte_inst_tail(queue, CONS);
   }
 }
   
-void compileQuote(InstQueue* instQ, FILE* fp)
+void compile_quote(inst_queue* queue, FILE* fp)
 {
   char buf[LINESIZE];
-  char* token = readToken(buf, sizeof(buf), fp);
+  char* token = read_token(buf, sizeof(buf), fp);
 
-  Inst* inst = createInstStr(PUSH_SYM, "quote");
-  addInstTail(instQ, inst);
+  aq_inst* inst = create_inst_str(PUSH_SYM, "quote");
+  add_inst_tail(queue, inst);
   
   if(token[0]=='('){
-    compileQuotedList(instQ, fp);
+    compile_quoted_list(queue, fp);
   }
   else if(strcmp(token, "'") == 0) {
-    compileQuote(instQ, fp);
+    compile_quote(queue, fp);
   } else {
-    compileQuotedAtom(instQ, token, fp);
+    compile_quoted_atom(queue, token, fp);
   }
   
-  addOneByteInstTail(instQ, PUSH_NIL);
-  addOneByteInstTail(instQ, CONS);
-  addOneByteInstTail(instQ, CONS);
+  add_one_byte_inst_tail(queue, PUSH_NIL);
+  add_one_byte_inst_tail(queue, CONS);
+  add_one_byte_inst_tail(queue, CONS);
 }
  
-Inst* createInstChar(OPCODE op, char c)
+aq_inst* create_inst_char(aq_opcode op, char c)
 {
-  Inst* result = createInst(op, 3);
-  result->operand._char = c;
+  aq_inst* result = create_inst(op, 3);
+  result->operand1._char = c;
   
   return result;
 }
 
-Inst* createInstStr(OPCODE op, char* str)
+aq_inst* create_inst_str(aq_opcode op, char* str)
 {
   int len = strlen(str)+1;
-  Inst* result = createInst(op, len+1);
-  result->operand._string = malloc(sizeof(char)*len);
-  STRCPY(result->operand._string, str);
+  aq_inst* result = create_inst(op, len+1);
+  result->operand1._string = malloc(sizeof(char)*len);
+  STRCPY(result->operand1._string, str);
 
   return result;
 }
 
-Inst* createInstNum(OPCODE op, int num)
+aq_inst* create_inst_num(aq_opcode op, int num)
 {
-  Inst* result = createInst(op, 1+sizeof(Cell));
-  result->operand._num = makeInteger(num);
+  aq_inst* result = create_inst(op, 1+sizeof(Cell));
+  result->operand1._num = make_integer(num);
   
   return result;
 }
 
-Inst* createInst(OPCODE op, int size)
+aq_inst* create_inst(aq_opcode op, int size)
 {
-  Inst* result = (Inst*)malloc(sizeof(Inst));
+  aq_inst* result = (aq_inst*)malloc(sizeof(aq_inst));
   result->op = op;
   result->prev = NULL;
   result->next = NULL;
-  result->operand._num  = (Cell)AQ_NIL;
+  result->operand1._num  = (Cell)AQ_NIL;
   result->operand2._num = (Cell)AQ_NIL;
   result->size = size;
   result->offset = 0;
@@ -492,60 +476,60 @@ Inst* createInst(OPCODE op, int size)
   return result;
 }
 
-Inst* createInstToken(InstQueue* instQ, char* token)
+aq_inst* create_inst_token(inst_queue* queue, char* token)
 {
-  if(isdigitstr(token)) {
+  if(is_digit_str(token)) {
     int digit = atoi(token);
-    return createInstNum(PUSH, digit);
+    return create_inst_num(PUSH, digit);
   }
   else if(strcmp(token, "nil") == 0) {
-    return createInst(PUSH_NIL, 1);
+    return create_inst(PUSH_NIL, 1);
   }  
   else if(token[0] == '"'){
-    return createInstStr(PUSHS, &token[1]);
+    return create_inst_str(PUSHS, &token[1]);
   }
   else if(token[0] == '#'){
     if(token[1] == '\\' && strlen(token)==3){
-      return createInstChar(PUSH, token[2]); // TODO: PUSHC
+      return create_inst_char(PUSH, token[2]); // TODO: PUSHC
     }
     else if(strcmp(&token[1], "t") == 0){
-      return createInst(PUSH_TRUE, 1);
+      return create_inst(PUSH_TRUE, 1);
     }
     else if(strcmp(&token[1], "f") == 0){
-      return createInst(PUSH_FALSE, 1);
+      return create_inst(PUSH_FALSE, 1);
     }
     else{
-      return createInstStr(PUSHS, token);
+      return create_inst_str(PUSHS, token);
     }
   } else {
     return NULL;
   }
 }
 
-void compileToken(InstQueue* instQ, char* token, Cell symbolList)
+void compile_token(inst_queue* queue, char* token, Cell symbol_list)
 {
-  Inst* inst = createInstToken(instQ, token);
+  aq_inst* inst = create_inst_token(queue, token);
   if(inst) {
-    return addInstTail(instQ, inst);
+    return add_inst_tail(queue, inst);
   } else {
     int index = 0;
-    while(symbolList && !NIL_P(symbolList)) {
-      char* symbol = (char*)car(symbolList);
+    while(symbol_list && !NIL_P(symbol_list)) {
+      char* symbol = (char*)CAR(symbol_list);
       if(strcmp(symbol, token) == 0) {
-	Inst* inst = createInstNum(LOAD, index);
-	addInstTail(instQ, inst);
+	aq_inst* inst = create_inst_num(LOAD, index);
+	add_inst_tail(queue, inst);
 	return;
       }
       
-      symbolList = cdr(symbolList);
+      symbol_list = CDR(symbol_list);
       index++;
     }
-    Inst* inst = createInstStr(REF, token);
-    addInstTail(instQ, inst);
+    aq_inst* inst = create_inst_str(REF, token);
+    add_inst_tail(queue, inst);
   }
 }
 
-void addInstTail(InstQueue* queue, Inst* inst)
+void add_inst_tail(inst_queue* queue, aq_inst* inst)
 {
   inst->offset = queue->tail->offset + queue->tail->size;
   queue->tail->next = inst;
@@ -553,137 +537,137 @@ void addInstTail(InstQueue* queue, Inst* inst)
   queue->tail = inst;
 }
 
-void addPushTail(InstQueue* instQ, int num)
+void add_push_tail(inst_queue* queue, int num)
 {
-  return addInstTail(instQ, createInstNum(PUSH, num));
+  return add_inst_tail(queue, create_inst_num(PUSH, num));
 }
 
-void addOneByteInstTail(InstQueue* instQ, OPCODE op)
+void add_one_byte_inst_tail(inst_queue* queue, aq_opcode op)
 {
-  Inst* ret = createInst(op, 1);
-  return addInstTail(instQ, ret);
+  aq_inst* ret = create_inst(op, 1);
+  return add_inst_tail(queue, ret);
 }
 
-void compileProcedure(char* func, int num, InstQueue* instQ)
+void compile_procedure(char* func, int num, inst_queue* queue)
 {
   if(strcmp(func, "+") == 0) {
-    compileAdd(instQ, num);
+    compile_add(queue, num);
   } else if(strcmp(func, "-") == 0) {
-    compileSub(instQ, num);
+    compile_sub(queue, num);
   } else if(strcmp(func, "*") == 0) {
-    addPushTail(instQ, num);
-    addOneByteInstTail(instQ, MUL);
+    add_push_tail(queue, num);
+    add_one_byte_inst_tail(queue, MUL);
   } else if(strcmp(func, "/") == 0) {
-    addPushTail(instQ, num);
-    addOneByteInstTail(instQ, DIV);
+    add_push_tail(queue, num);
+    add_one_byte_inst_tail(queue, DIV);
   } else if(strcmp(func, "print") == 0) {
-    addPushTail(instQ, num);
-    addOneByteInstTail(instQ, PRINT);
+    add_push_tail(queue, num);
+    add_one_byte_inst_tail(queue, PRINT);
   } else if(strcmp(func, "cons") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "cons");
-    addOneByteInstTail(instQ, CONS);
+    add_one_byte_inst_tail(queue, CONS);
   } else if(strcmp(func, "car") == 0) {
     ERR_WRONG_NUMBER_ARGS(1, num, "car");
-    addOneByteInstTail(instQ, CAR);
+    add_one_byte_inst_tail(queue, CAR);
   } else if(strcmp(func, "cdr") == 0) {
     ERR_WRONG_NUMBER_ARGS(1, num, "cdr");
-    addOneByteInstTail(instQ, CDR);
+    add_one_byte_inst_tail(queue, CDR);
   } else if(strcmp(func, ">") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, ">");
-    addOneByteInstTail(instQ, GT);
+    add_one_byte_inst_tail(queue, GT);
   } else if(strcmp(func, "<") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "<");
-    addOneByteInstTail(instQ, LT);
+    add_one_byte_inst_tail(queue, LT);
     } else if(strcmp(func, "<=") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "<=");
-    addOneByteInstTail(instQ, LTE);
+    add_one_byte_inst_tail(queue, LTE);
   } else if(strcmp(func, ">=") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, ">=");
-    addOneByteInstTail(instQ, GTE);
+    add_one_byte_inst_tail(queue, GTE);
   } else if(strcmp(func, "=") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "=");
-    addOneByteInstTail(instQ, EQUAL);
+    add_one_byte_inst_tail(queue, EQUAL);
   } else if(strcmp(func, "eq?") == 0) {
     ERR_WRONG_NUMBER_ARGS(2, num, "eq?");
-    addOneByteInstTail(instQ, EQ);
+    add_one_byte_inst_tail(queue, EQ);
   } else {
-    addPushTail(instQ, num);
-    addInstTail(instQ, createInstStr(FUNC, func));
+    add_push_tail(queue, num);
+    add_inst_tail(queue, create_inst_str(FUNC, func));
   }
 }
 
-void compileAdd(InstQueue* instQ, int num)
+void compile_add(inst_queue* queue, int num)
 {
-  Inst* lastInst = instQ->tail;
-  if(lastInst && lastInst->op == PUSH && num == 2 ) {
-    if(lastInst->operand._num == makeInteger(1)) {
-      lastInst->op = ADD1;
-      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-      lastInst->size = 1;
+  aq_inst* last_inst = queue->tail;
+  if(last_inst && last_inst->op == PUSH && num == 2 ) {
+    if(last_inst->operand1._num == make_integer(1)) {
+      last_inst->op = ADD1;
+      last_inst->offset = last_inst->prev->offset + last_inst->prev->size;
+      last_inst->size = 1;
       return;
-    } else if(lastInst->operand._num == makeInteger(2)) {
-      lastInst->op = ADD2;
-      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-      lastInst->size = 1;
+    } else if(last_inst->operand1._num == make_integer(2)) {
+      last_inst->op = ADD2;
+      last_inst->offset = last_inst->prev->offset + last_inst->prev->size;
+      last_inst->size = 1;
       return;
     }
   }
-  addPushTail(instQ, num);
-  addOneByteInstTail(instQ, ADD);
+  add_push_tail(queue, num);
+  add_one_byte_inst_tail(queue, ADD);
 }
 
-void compileSub(InstQueue* instQ, int num)
+void compile_sub(inst_queue* queue, int num)
 {
-  Inst* lastInst = instQ->tail;
-  if(lastInst && lastInst->op == PUSH && num == 2) {
-    if(lastInst->operand._num == makeInteger(1)) {
-      lastInst->op = SUB1;
-      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-      lastInst->size = 1;
+  aq_inst* last_inst = queue->tail;
+  if(last_inst && last_inst->op == PUSH && num == 2) {
+    if(last_inst->operand1._num == make_integer(1)) {
+      last_inst->op = SUB1;
+      last_inst->offset = last_inst->prev->offset + last_inst->prev->size;
+      last_inst->size = 1;
       return;
-    } else if(lastInst->operand._num == makeInteger(2)) {
-      lastInst->op = SUB2;
-      lastInst->offset = lastInst->prev->offset + lastInst->prev->size;
-      lastInst->size = 1;
+    } else if(last_inst->operand1._num == make_integer(2)) {
+      last_inst->op = SUB2;
+      last_inst->offset = last_inst->prev->offset + last_inst->prev->size;
+      last_inst->size = 1;
       return;
     }
   }
-  addPushTail(instQ, num);
-  addOneByteInstTail(instQ, SUB);
+  add_push_tail(queue, num);
+  add_one_byte_inst_tail(queue, SUB);
 }
 
-void compileIf(InstQueue* instQ, FILE* fp, Cell symbolList)
+void compile_if(inst_queue* queue, FILE* fp, Cell symbol_list)
 {
-  compileElem(instQ, fp, symbolList);  // predicate
+  compile_elem(queue, fp, symbol_list);  // predicate
   
-  Inst* jneqInst = createInstNum(JNEQ, 0 /* placeholder */);
-  addInstTail(instQ, jneqInst);
-  compileElem(instQ, fp, symbolList);  // statement (TRUE)
-  if(isError()) {
+  aq_inst* jneq_inst = create_inst_num(JNEQ, 0 /* placeholder */);
+  add_inst_tail(queue, jneq_inst);
+  compile_elem(queue, fp, symbol_list);  // statement (TRUE)
+  if(is_error()) {
     SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_IF, "if");
   }
   
-  Inst* jmpInst = createInstNum(JMP, 0/* placeholder */);
-  addInstTail(instQ, jmpInst);
-  jneqInst->operand._num = makeInteger(instQ->tail->offset + instQ->tail->size);
+  aq_inst* jmp_inst = create_inst_num(JMP, 0/* placeholder */);
+  add_inst_tail(queue, jmp_inst);
+  jneq_inst->operand1._num = make_integer(queue->tail->offset + queue->tail->size);
   
   int c = AQ_FGETC(fp);
   AQ_UNGETC(c, fp);
   if(c ==')' ){
-    addOneByteInstTail(instQ, PUSH_NIL);
+    add_one_byte_inst_tail(queue, PUSH_NIL);
   } else {
-    compileElem(instQ, fp, symbolList);  // statement (FALSE)
+    compile_elem(queue, fp, symbol_list);  // statement (FALSE)
   }
   
-  jmpInst->operand._num = makeInteger(instQ->tail->offset + instQ->tail->size);
+  jmp_inst->operand1._num = make_integer(queue->tail->offset + queue->tail->size);
   
-  int num = compileList(instQ, fp, symbolList);
+  int num = compile_list(queue, fp, symbol_list);
   if(num > 0) {
     SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_IF, "if");
   }
 }
 
-void compileLambda(InstQueue* instQ, FILE* fp)
+void compile_lambda(inst_queue* queue, FILE* fp)
 {
   int c = AQ_FGETC(fp);
   if(c == ')') {
@@ -693,24 +677,24 @@ void compileLambda(InstQueue* instQ, FILE* fp)
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN, "lambda");
   }
   
-  Inst* inst = createInst(FUND, 1 + sizeof(Cell)*2);
-  addInstTail(instQ, inst);
+  aq_inst* inst = create_inst(FUND, 1 + sizeof(Cell)*2);
+  add_inst_tail(queue, inst);
   
   int index = 0;
-  Cell symbolList = (Cell)AQ_NIL;
+  Cell symbol_list = (Cell)AQ_NIL;
   while((c = AQ_FGETC(fp)) != ')') {
     AQ_UNGETC(c, fp);
     char buf[LINESIZE];
-    char* var = readToken(buf, sizeof(buf), fp);
+    char* var = read_token(buf, sizeof(buf), fp);
 
     if (strcmp(var, ".") == 0) {
-      var = readToken(buf, sizeof(buf), fp);
-      compileSymbolList(var, &symbolList);
+      var = read_token(buf, sizeof(buf), fp);
+      compile_symbol_list(var, &symbol_list);
 
-      var = readToken(buf, sizeof(buf), fp);
+      var = read_token(buf, sizeof(buf), fp);
       if (strcmp(var, ")") != 0) {
-	compileList(instQ, fp, NULL);
-	compileList(instQ, fp, NULL);
+	compile_list(queue, fp, NULL);
+	compile_list(queue, fp, NULL);
 	SET_ERROR_WITH_STR(ERR_TYPE_MALFORMED_DOT_LIST, "lambda");
       }
       
@@ -718,37 +702,37 @@ void compileLambda(InstQueue* instQ, FILE* fp)
       inst->op = FUNDD;
       break;
     } else {
-      compileSymbolList(var, &symbolList);
+      compile_symbol_list(var, &symbol_list);
       
       index++;
     }
   }
 
-  compileList(instQ, fp, symbolList);  // body
-  while(symbolList != (Cell)AQ_NIL) {
-    Cell tmp = symbolList;
-    symbolList = cdr(symbolList);
-    free(car(tmp));
+  compile_list(queue, fp, symbol_list);  // body
+  while(symbol_list != (Cell)AQ_NIL) {
+    Cell tmp = symbol_list;
+    symbol_list = CDR(symbol_list);
+    free(CAR(tmp));
     free(tmp);
   }
-  addOneByteInstTail(instQ, RET);
+  add_one_byte_inst_tail(queue, RET);
   
-  int addr = instQ->tail->offset + instQ->tail->size;
-  inst->operand._num = makeInteger(addr);
-  inst->operand2._num = makeInteger(index);
+  int addr = queue->tail->offset + queue->tail->size;
+  inst->operand1._num = make_integer(addr);
+  inst->operand2._num = make_integer(index);
 }
 
-void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
+void compile_define(inst_queue* queue, FILE* fp, Cell symbol_list)
 {
-  Inst* lastInst = instQ->tail;
+  aq_inst* last_inst = queue->tail;
   int c = AQ_FGETC(fp);
   if(c == ')') {
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
   AQ_UNGETC(c, fp);
   
-  compileElem(instQ, fp, NULL);
-  if(instQ->tail->op != REF){
+  compile_elem(queue, fp, NULL);
+  if(queue->tail->op != REF){
     while(AQ_FGETC(fp) != ')') {}
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
@@ -759,89 +743,89 @@ void compileDefine(InstQueue* instQ, FILE* fp, Cell symbolList)
   }
   AQ_UNGETC(c, fp);
 
-  instQ->tail = lastInst;
-  lastInst = lastInst->next;
-  compileElem(instQ, fp, symbolList);
-  if(isError()) {
+  queue->tail = last_inst;
+  last_inst = last_inst->next;
+  compile_elem(queue, fp, symbol_list);
+  if(is_error()) {
     while(AQ_FGETC(fp) != ')') {}
     return;
   }
 
-  lastInst->op = SET;
-  addInstTail(instQ, lastInst);
+  last_inst->op = SET;
+  add_inst_tail(queue, last_inst);
   
   char buf[LINESIZE];
-  char* token = readToken(buf, sizeof(buf), fp);
+  char* token = read_token(buf, sizeof(buf), fp);
   if(strcmp(token, ")") != 0) {
     while(AQ_FGETC(fp) != ')') {}
     SET_ERROR_WITH_STR(ERR_TYPE_TOO_MANY_EXPRESSIONS, "define");
   }
 }
 
-void compileElem(InstQueue* instQ, FILE* fp, Cell symbolList)
+void compile_elem(inst_queue* queue, FILE* fp, Cell symbol_list)
 {
   char buf[LINESIZE];
-  char* token = readToken(buf, sizeof(buf), fp);
+  char* token = read_token(buf, sizeof(buf), fp);
   if(token==NULL){
-    addOneByteInstTail(instQ, HALT);
+    add_one_byte_inst_tail(queue, HALT);
   }
   else if(token[0]=='('){
-    char* func = readToken(buf, sizeof(buf), fp);
+    char* func = read_token(buf, sizeof(buf), fp);
     if(strcmp(func, "(") == 0) {
       AQ_UNGETC('(', fp);
-      compileElem(instQ, fp, symbolList);
-      int num = compileList(instQ, fp, symbolList);
-      addPushTail(instQ, num);
-      addInstTail(instQ, createInstNum(SROT, num+1));
-      addOneByteInstTail(instQ, FUNCS);
+      compile_elem(queue, fp, symbol_list);
+      int num = compile_list(queue, fp, symbol_list);
+      add_push_tail(queue, num);
+      add_inst_tail(queue, create_inst_num(SROT, num+1));
+      add_one_byte_inst_tail(queue, FUNCS);
     }
     else if(strcmp(func, ")") == 0) {
-      addOneByteInstTail(instQ, PUSH_NIL);
+      add_one_byte_inst_tail(queue, PUSH_NIL);
     } else if(strcmp(func, "quote") == 0) {
-      compileQuote(instQ, fp);
-      addOneByteInstTail(instQ, CDR);
-      addOneByteInstTail(instQ, CAR);
+      compile_quote(queue, fp);
+      add_one_byte_inst_tail(queue, CDR);
+      add_one_byte_inst_tail(queue, CAR);
       
-      token = readToken(buf, sizeof(buf), fp);
+      token = read_token(buf, sizeof(buf), fp);
       if(strcmp(token, ")") != 0) {
-	int num = compileList(instQ, fp, NULL);
+	int num = compile_list(queue, fp, NULL);
 	ERR_WRONG_NUMBER_ARGS(1, num+2, "quote");
       }
     }else if(strcmp(func, "if") == 0) {
-      compileIf(instQ, fp, symbolList);
+      compile_if(queue, fp, symbol_list);
     } else if(strcmp(func, "define") == 0) {
-      compileDefine(instQ, fp, symbolList);
+      compile_define(queue, fp, symbol_list);
     } else if(strcmp(func, "lambda") == 0) {
-      compileLambda(instQ, fp);
+      compile_lambda(queue, fp);
     } else {
-      int num = compileList(instQ, fp, symbolList);
-      compileProcedure(func, num, instQ);
+      int num = compile_list(queue, fp, symbol_list);
+      compile_procedure(func, num, queue);
     }
   }
   else if(token[0]=='\''){
-    compileQuote(instQ, fp);
+    compile_quote(queue, fp);
 
-    addOneByteInstTail(instQ, CDR);
-    addOneByteInstTail(instQ, CAR);
+    add_one_byte_inst_tail(queue, CDR);
+    add_one_byte_inst_tail(queue, CAR);
   }
   else if(token[0]==')'){
     SET_ERROR_WITH_STR(ERR_TYPE_EXTRA_CLOSE_PARENTHESIS, "");
   }
   else{
-    compileToken(instQ, token, symbolList);
+    compile_token(queue, token, symbol_list);
   }
 }
 
-void compileSymbolList(char* var, Cell* symbolList)
+void compile_symbol_list(char* var, Cell* symbol_list)
 {
   Cell tmp = malloc(sizeof(struct cell));
   size_t len = strlen(var) + 1;
   char* sym = malloc(len);
   
   STRCPY(sym, var);
-  car(tmp) = (Cell)sym;
-  cdr(tmp) = *symbolList;
-  *symbolList = tmp;
+  CAR(tmp) = (Cell)sym;
+  CDR(tmp) = *symbol_list;
+  *symbol_list = tmp;
 }
 
 int hash(char* key)
@@ -853,55 +837,54 @@ int hash(char* key)
   return val;
 }
 
-Cell getVar(char* name)
+Cell get_var(char* name)
 {
   int key = 0;
-  Cell chain = getChain(name, &key);
+  Cell chain = get_chain(name, &key);
   if(UNDEF_P(chain)) {
     return (Cell)AQ_UNDEF;
   } else {
-    return cdar(chain);
+    return CDAR(chain);
   }
 }
 
-void setVar(char* name, Cell c)
+void set_var(char* name, Cell c)
 {
   int key = 0;
-  pushArg(c);
-  Cell nameCell = stringCell(name);
-  c = popArg();
-  Cell chain = getChain(name, &key);
-  registerVar(nameCell, chain, c, &env[key]);
+  push_arg(c);
+  Cell name_cell = string_cell(name);
+  c = pop_arg();
+  Cell chain = get_chain(name, &key);
+  register_var(name_cell, chain, c, &env[key]);
 }
 
-void registerVar(Cell nameCell, Cell chain, Cell c, Cell* env)
-
+void register_var(Cell name_cell, Cell chain, Cell c, Cell* env)
 {
   if(!UNDEF_P(chain)){
-    gc_write_barrier(chain, &cdr(car(chain)), c);
+    gc_write_barrier(chain, &CDAR(chain), c);
   } else{
-    pushArg(nameCell);
-    pushArg(c);
-    Cell entry = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
-    popArg();
-    popArg();
+    push_arg(name_cell);
+    push_arg(c);
+    Cell entry = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
+    pop_arg();
+    pop_arg();
 
-    pushArg(entry);
-    pushArg(*env);
-    Cell p = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
-    popArg();
-    popArg();
+    push_arg(entry);
+    push_arg(*env);
+    Cell p = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
+    pop_arg();
+    pop_arg();
   
     gc_write_barrier_root(env, p);
   }
 }
 
-Cell getChain(char* name, int* key)
+Cell get_chain(char* name, int* key)
 {
   *key = hash(name)%ENVSIZE;
   Cell chain = env[*key];
-  while(isPair(chain) && strcmp(name, strvalue(caar(chain)))!=0){
-    chain = cdr(chain);
+  while(PAIR_P(chain) && strcmp(name, STR_VALUE(CAAR(chain)))!=0){
+    chain = CDR(chain);
   }
   return chain;
 }
@@ -924,8 +907,8 @@ void term()
 
 void set_gc(char* gc_char)
 {
-  GC_Init_Info gc_info;
-  memset(&gc_info, 0, sizeof(GC_Init_Info));
+  aq_gc_info gc_info;
+  memset(&gc_info, 0, sizeof(aq_gc_info));
   gc_init( gc_char, heap_size, &gc_info );
 }
 
@@ -936,62 +919,62 @@ void load_file(char* filename )
   fopen_s( &fp, filename, "r");
 #else
   int len = strlen(filename);
-  char* abcFileName = malloc(sizeof(char*) * (len + 3));
-  STRCPY(abcFileName, filename);
-  char* ext = strrchr(abcFileName, '.');
+  char* abc_file_name = malloc(sizeof(char*) * (len + 3));
+  STRCPY(abc_file_name, filename);
+  char* ext = strrchr(abc_file_name, '.');
   if(ext) {
     *ext = '\0';
   }
-  strcat(abcFileName, ".abc");
+  strcat(abc_file_name, ".abc");
   
-  struct stat abcInfo;
-  struct stat lspInfo;
-  Boolean compiled = (stat(abcFileName, &abcInfo) == 0 &&
-		       stat(filename, &lspInfo) == 0 &&
-		       abcInfo.st_ctime > lspInfo.st_ctime);
+  struct stat abc_info;
+  struct stat lsp_info;
+  aq_bool compiled = (stat(abc_file_name, &abc_info) == 0 &&
+		       stat(filename, &lsp_info) == 0 &&
+		       abc_info.st_ctime > lsp_info.st_ctime);
   
   char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
   int pc = 0;
-  size_t fileSize = 0;
+  size_t file_size = 0;
   if(compiled) {
-    fp = fopen(abcFileName, "rb");
+    fp = fopen(abc_file_name, "rb");
     if(fp) {
-      fread(buf, abcInfo.st_size, 1, fp);
+      fread(buf, abc_info.st_size, 1, fp);
       fclose(fp);
-      fileSize = abcInfo.st_size;
+      file_size = abc_info.st_size;
     } else {
       set_error(ERR_FILE_NOT_FOUND);
-      pushArg(stringCell(abcFileName));
+      push_arg(string_cell(abc_file_name));
     }
   } else {
     fp = fopen(filename, "r");
     if(fp) {
 	size_t delta = 0;
-	while((delta = compile(fp, &buf[fileSize], fileSize)) > 0)
+	while((delta = compile(fp, &buf[file_size], file_size)) > 0)
 	{		
-	    fileSize += delta;
+	    file_size += delta;
 	}
 	fclose(fp);
 	
-	FILE* outputFile = fopen(abcFileName, "wb");
-	fwrite(buf, fileSize, 1, outputFile);
-	fclose(outputFile);
+	FILE* output_file = fopen(abc_file_name, "wb");
+	fwrite(buf, file_size, 1, output_file);
+	fclose(output_file);
 
     } else {
 	set_error(ERR_FILE_NOT_FOUND);
-	pushArg(stringCell(filename));
+	push_arg(string_cell(filename));
     }
   }
-  if(!isError())
+  if(!is_error())
   {
-      execute(buf, &pc, fileSize);
+      execute(buf, &pc, file_size);
   }
   else
   {
-      handleError();
+      handle_error();
    }
   
-  free(abcFileName);
+  free(abc_file_name);
   free(buf);
 #endif
 }
@@ -999,35 +982,35 @@ void load_file(char* filename )
 #if defined(_TEST)
 int do_test(char* input, char* correct_output)
 {
-    int outputLen = strlen(correct_output);
-    int i=outputLen-1;
+    int out_length = strlen(correct_output);
+    int i=out_length-1;
     while(i>0)
     {
 	if(correct_output[i] == 'n' && correct_output[i-1] == '\\')
 	{
 	    correct_output[i-1] = '\n';
-	    memcpy(&correct_output[i], &correct_output[i+1], outputLen-i);
-	    outputLen--;
+	    memcpy(&correct_output[i], &correct_output[i+1], out_length-i);
+	    out_length--;
 	}
 	i--;
     }
 
-    int inputLen = strlen(input);
-    strcpy(inbuf, input);
-    inbuf[inputLen] = EOF;
+    int in_length = strlen(input);
+    STRCPY(inbuf, input);
+    inbuf[in_length] = EOF;
     char* buf = (char*)malloc(sizeof(char) * 1024 * 1024);
-
-    size_t bufSize = 0;
+    
+    size_t buf_size = 0;
     size_t delta = 0;
     int pc = 0;
-    while((bufSize = compile(stdin, &buf[pc], pc)) > 0)
+    while((buf_size = compile(stdin, &buf[pc], pc)) > 0)
     {
-	execute(buf, &pc, pc+bufSize);
-	if(isError()) {
-	    handleError();
+	execute(buf, &pc, pc+buf_size);
+	if(is_error()) {
+	    handle_error();
 	} else {
-	    printCell(stdout, stack[stack_top-1]);
-	    popArg();
+	    print_cell(stdout, stack[stack_top-1]);
+	    pop_arg();
 	}
     }
 
@@ -1035,11 +1018,11 @@ int do_test(char* input, char* correct_output)
 }
 #endif
 
-size_t writeInst(Inst* inst, char* buf)
+size_t write_inst(aq_inst* inst, char* buf)
 {
   size_t size = 0;
   while(inst) {
-    OPCODE op = inst->op;
+    aq_opcode op = inst->op;
     buf[size] = (char)op;
     switch(op) {
     case PUSH:
@@ -1048,7 +1031,7 @@ size_t writeInst(Inst* inst, char* buf)
     case SROT:
     case LOAD:
       {
-	long val = ivalue(inst->operand._num);
+	long val = INT_VALUE(inst->operand1._num);
 	memcpy(&buf[++size], &val, sizeof(Cell));
 	size += sizeof(Cell);
       }
@@ -1059,21 +1042,21 @@ size_t writeInst(Inst* inst, char* buf)
     case PUSHS:
     case PUSH_SYM:
       {
-	char* str = inst->operand._string;
-    STRCPY(&buf[++size], str);
+	char* str = inst->operand1._string;
+	STRCPY(&buf[++size], str);
 	size += (strlen(str)+1);
-	free(inst->operand._string);
+	free(inst->operand1._string);
       }
       break;
     case FUND:
     case FUNDD:
       {
-	int addr = ivalue(inst->operand._num);
+	int addr = INT_VALUE(inst->operand1._num);
 	memcpy(&buf[++size], &addr, sizeof(Cell));
 	size += sizeof(Cell);
 	
-	int paramNum = ivalue(inst->operand2._num);
-	memcpy(&buf[size], &paramNum, sizeof(Cell));
+	int param_num = INT_VALUE(inst->operand2._num);
+	memcpy(&buf[size], &param_num, sizeof(Cell));
 	size += sizeof(Cell);
       }
       break;
@@ -1114,92 +1097,92 @@ size_t writeInst(Inst* inst, char* buf)
   return size;
 }
 
-Cell getOperand(char* buf, int pc)
+Cell get_operand(char* buf, int pc)
 {
   return (Cell)(*(Cell*)&buf[pc]);
 }
 
 void execute(char* buf, int* pc, int end)
 {
-  Boolean exec = TRUE;
+  aq_bool exec = TRUE;
   stack_top = 0;
   int i = 0;
-  while(exec != FALSE && (*pc) < end && !isError()) {
-    OPCODE op = buf[*pc];
+  while(exec != FALSE && (*pc) < end && !is_error()) {
+    aq_opcode op = buf[*pc];
     switch(op) {
     case PUSH:
       {
-	int value = (int)getOperand(buf, ++(*pc));
-	pushArg(makeInteger(value));
+	int value = (int)get_operand(buf, ++(*pc));
+	push_arg(make_integer(value));
 	*pc += sizeof(Cell);
       }
       break;
     case PUSH_NIL:
-      pushArg((Cell)AQ_NIL);
+      push_arg((Cell)AQ_NIL);
       ++(*pc);
       break;
     case PUSH_TRUE:
-      pushArg((Cell)AQ_TRUE);
+      push_arg((Cell)AQ_TRUE);
       ++(*pc);
       break;
     case PUSH_FALSE:
-      pushArg((Cell)AQ_FALSE);
+      push_arg((Cell)AQ_FALSE);
       ++(*pc);
       break;
     case ADD:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
-	int num = ivalue(stack[stack_top-1]);
-	popArg();
+	int num = INT_VALUE(stack[stack_top-1]);
+	pop_arg();
 	long ans = 0;
 	for(i=0; i<num; i++) {
 	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
-	  ans += ivalue(stack[stack_top-1]);
-	  popArg();
+	  ans += INT_VALUE(stack[stack_top-1]);
+	  pop_arg();
 	}
-	pushArg(makeInteger(ans));
+	push_arg(make_integer(ans));
 	++(*pc);
       }
       break;
     case ADD1:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
-	int ans = ivalue(stack[stack_top-1]) + 1;
-	popArg();
-	pushArg(makeInteger(ans));
+	int ans = INT_VALUE(stack[stack_top-1]) + 1;
+	pop_arg();
+	push_arg(make_integer(ans));
 	++(*pc);
       }
       break;
     case ADD2:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "+");
-	int ans = ivalue(stack[stack_top-1]) + 2;
-	popArg();
-	pushArg(makeInteger(ans));
+	int ans = INT_VALUE(stack[stack_top-1]) + 2;
+	pop_arg();
+	push_arg(make_integer(ans));
 	++(*pc);
       }
       break;
     case SUB:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	int num = ivalue(stack[stack_top-1]);
-	popArg();
+	int num = INT_VALUE(stack[stack_top-1]);
+	pop_arg();
 	if(num == 1) {
 	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	  int ans = -ivalue(stack[stack_top-1]);
-	  popArg();
-	  pushArg(makeInteger(ans));
+	  int ans = -INT_VALUE(stack[stack_top-1]);
+	  pop_arg();
+	  push_arg(make_integer(ans));
 	} else {
 	  long ans = 0;
 	  for(i=0; i<num-1; i++) {
 	    ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	    ans -= ivalue(stack[stack_top-1]);
-	    popArg();
+	    ans -= INT_VALUE(stack[stack_top-1]);
+	    pop_arg();
 	  }
 	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	  ans += ivalue(stack[stack_top-1]);
-	  popArg();
-	  pushArg(makeInteger(ans));
+	  ans += INT_VALUE(stack[stack_top-1]);
+	  pop_arg();
+	  push_arg(make_integer(ans));
 	}
 	++(*pc);
       }
@@ -1207,58 +1190,58 @@ void execute(char* buf, int* pc, int end)
     case SUB1:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	int ans = ivalue(stack[stack_top-1]) - 1;
-	popArg();
-	pushArg(makeInteger(ans));
+	int ans = INT_VALUE(stack[stack_top-1]) - 1;
+	pop_arg();
+	push_arg(make_integer(ans));
 	++(*pc);
       }
       break;
     case SUB2:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "-");
-	int ans = ivalue(stack[stack_top-1]) - 2;
-	popArg();
-	pushArg(makeInteger(ans));
+	int ans = INT_VALUE(stack[stack_top-1]) - 2;
+	pop_arg();
+	push_arg(make_integer(ans));
 	++(*pc);
       }
       break;
     case MUL:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "*");
-	int num = ivalue(stack[stack_top-1]);
-	popArg();
+	int num = INT_VALUE(stack[stack_top-1]);
+	pop_arg();
 	long ans = 1;
 	for(i=0; i<num; i++) {
 	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "*");
-	  ans *= ivalue(stack[stack_top-1]);
-	  popArg();
+	  ans *= INT_VALUE(stack[stack_top-1]);
+	  pop_arg();
 	}
-	pushArg(makeInteger(ans));
+	push_arg(make_integer(ans));
 	++(*pc);
       }
       break;
     case DIV:
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
-	int num = ivalue(stack[stack_top-1]);
-	popArg();
+	int num = INT_VALUE(stack[stack_top-1]);
+	pop_arg();
 	if(num == 1) {
 	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
-	  long ans = 1/ivalue(stack[stack_top-1]);
-	  popArg();
-	  pushArg(makeInteger(ans));
+	  long ans = 1/INT_VALUE(stack[stack_top-1]);
+	  pop_arg();
+	  push_arg(make_integer(ans));
 	} else {
 	  int div = 1;
 	  for(i=0; i<num-1; i++) {
 	    ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
-	    div *= ivalue(stack[stack_top-1]);
-	    popArg();
+	    div *= INT_VALUE(stack[stack_top-1]);
+	    pop_arg();
 	  }
 	  ERR_INT_NOT_GIVEN(stack[stack_top-1], "/");
-	  long ans = ivalue(stack[stack_top-1]);
-	  popArg();
+	  long ans = INT_VALUE(stack[stack_top-1]);
+	  pop_arg();
 	  ans = ans/div;
-	  pushArg(makeInteger(ans));
+	  push_arg(make_integer(ans));
 	}
 	++(*pc);
       }
@@ -1266,38 +1249,38 @@ void execute(char* buf, int* pc, int end)
     case RET:
       {
 	Cell val = stack[--stack_top];
-	while(!SFRAME_P(popArg())){}
-	int retAddr = ivalue(popArg());
-	int argNum = ivalue(popArg());
-	for(i=0; i<argNum; ++i) {
-	  popArg();
+	while(!SFRAME_P(pop_arg())){}
+	int ret_addr = INT_VALUE(pop_arg());
+	int arg_num = INT_VALUE(pop_arg());
+	for(i=0; i<arg_num; ++i) {
+	  pop_arg();
 	}
-	popFunctionStack();
+	pop_function_stack();
 	stack[stack_top++] = val;
-	*pc = retAddr;
+	*pc = ret_addr;
       }
       break;
     case CONS:
       {
-	Cell ret = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
-	popArg();
-	popArg();
+	Cell ret = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
+	pop_arg();
+	pop_arg();
 
-	pushArg(ret);
+	push_arg(ret);
 	++(*pc);
       }
       break;
     case CAR:
       {
 	ERR_PAIR_NOT_GIVEN("car");
-	gc_write_barrier_root(&stack[stack_top-1], car(stack[stack_top-1]));
+	gc_write_barrier_root(&stack[stack_top-1], CAR(stack[stack_top-1]));
 	++(*pc);
       }
       break;
     case CDR:
       {
 	ERR_PAIR_NOT_GIVEN("cdr");
-	gc_write_barrier_root(&stack[stack_top-1], cdr(stack[stack_top-1]));
+	gc_write_barrier_root(&stack[stack_top-1], CDR(stack[stack_top-1]));
 	++(*pc);
       }
       break;
@@ -1308,9 +1291,9 @@ void execute(char* buf, int* pc, int end)
 	Cell num2 = stack[stack_top-1];
 	Cell num1 = stack[stack_top-2];
 	Cell ret = (num1 == num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	popArg();
-	popArg();
-	pushArg(ret);
+	pop_arg();
+	pop_arg();
+	push_arg(ret);
 	++(*pc);
       }
       break;
@@ -1318,12 +1301,12 @@ void execute(char* buf, int* pc, int end)
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], ">");
 	ERR_INT_NOT_GIVEN(stack[stack_top-2], ">");
-	int num2 = ivalue(stack[stack_top-1]);
-	int num1 = ivalue(stack[stack_top-2]);
+	int num2 = INT_VALUE(stack[stack_top-1]);
+	int num1 = INT_VALUE(stack[stack_top-2]);
 	Cell ret = (num1 > num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	popArg();
-	popArg();
-	pushArg(ret);
+	pop_arg();
+	pop_arg();
+	push_arg(ret);
 	++(*pc);
       }
       break;
@@ -1331,12 +1314,12 @@ void execute(char* buf, int* pc, int end)
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], ">=");
 	ERR_INT_NOT_GIVEN(stack[stack_top-2], ">=");
-	int num2 = ivalue(stack[stack_top-1]);
-	int num1 = ivalue(stack[stack_top-2]);
+	int num2 = INT_VALUE(stack[stack_top-1]);
+	int num1 = INT_VALUE(stack[stack_top-2]);
 	Cell ret = (num1 >= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	popArg();
-	popArg();
-	pushArg(ret);
+	pop_arg();
+	pop_arg();
+	push_arg(ret);
 	++(*pc);
       }
       break;
@@ -1344,12 +1327,12 @@ void execute(char* buf, int* pc, int end)
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "<");
 	ERR_INT_NOT_GIVEN(stack[stack_top-2], "<");
-	int num2 = ivalue(stack[stack_top-1]);
-	int num1 = ivalue(stack[stack_top-2]);
+	int num2 = INT_VALUE(stack[stack_top-1]);
+	int num1 = INT_VALUE(stack[stack_top-2]);
 	Cell ret = (num1 < num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	popArg();
-	popArg();
-	pushArg(ret);
+	pop_arg();
+	pop_arg();
+	push_arg(ret);
 	++(*pc);
       }
       break;
@@ -1357,45 +1340,45 @@ void execute(char* buf, int* pc, int end)
       {
 	ERR_INT_NOT_GIVEN(stack[stack_top-1], "<=");
 	ERR_INT_NOT_GIVEN(stack[stack_top-2], "<=");
-	int num2 = ivalue(stack[stack_top-1]);
-	int num1 = ivalue(stack[stack_top-2]);
+	int num2 = INT_VALUE(stack[stack_top-1]);
+	int num1 = INT_VALUE(stack[stack_top-2]);
 	Cell ret = (num1 <= num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	popArg();
-	popArg();
-	pushArg(ret);
+	pop_arg();
+	pop_arg();
+	push_arg(ret);
 	++(*pc);
       }
       break;
     case EQ:
       {
-	Cell p1 = popArg();
-	Cell p2 = popArg();
+	Cell p1 = pop_arg();
+	Cell p2 = pop_arg();
 	Cell ret = (p1 == p2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE;
-	pushArg(ret);
+	push_arg(ret);
 	++(*pc);
       }
       break;
     case PRINT:
       {
-       int num = ivalue(popArg());
+       int num = INT_VALUE(pop_arg());
        for(int i=num-1; i>=0; i--) {
-	   printCell(stdout, stack[stack_top-i-1]);
+	   print_cell(stdout, stack[stack_top-i-1]);
        }
        for(int i=0; i<num; i++) {
-	   popArg();
+	   pop_arg();
        }
 	AQ_PRINTF("\n");
-	pushArg((Cell)AQ_UNDEF);
+	push_arg((Cell)AQ_UNDEF);
 	++(*pc);
       }
       break;
     case JNEQ:
       {
 	Cell c = stack[stack_top-1];
-	popArg();
+	pop_arg();
 	++(*pc);
-	if(!truep(c)) {
-	  int addr = (int)getOperand(buf, *pc);
+	if(!TRUE_P(c)) {
+	  int addr = (int)get_operand(buf, *pc);
 	  *pc = addr;
 	} else {
 	  *pc += sizeof(Cell);
@@ -1404,7 +1387,7 @@ void execute(char* buf, int* pc, int end)
       break;
     case JMP:
       {
-	int addr = (int)getOperand(buf, ++(*pc));
+	int addr = (int)get_operand(buf, ++(*pc));
 	*pc = addr;
       }
       break;
@@ -1413,38 +1396,38 @@ void execute(char* buf, int* pc, int end)
 	// this is for on-memory
 	Cell val = stack[stack_top-1];
 	char* str = &buf[++(*pc)];
-	setVar(str, val);
-	popArg();
-	pushArg(symbolCell(str));
+	set_var(str, val);
+	pop_arg();
+	push_arg(symbol_cell(str));
 	*pc += (strlen(str)+1);
       }
       break;
     case PUSHS:
       {
 	char* str = &buf[++(*pc)];
-	Cell strCell = stringCell(str);
-	pushArg(strCell);
+	Cell str_cell = string_cell(str);
+	push_arg(str_cell);
 	*pc += (strlen(str)+1);
       }
       break;
     case PUSH_SYM:
       {
 	char* sym = &buf[++(*pc)];
-	Cell symCell = symbolCell(sym);
-	pushArg(symCell);
+	Cell symCell = symbol_cell(sym);
+	push_arg(symCell);
 	*pc += (strlen(sym)+1);
       }
       break;
     case REF:
       {
 	char* str = &buf[++(*pc)];
-	Cell ret = getVar(str);
+	Cell ret = get_var(str);
 	if(UNDEF_P(ret)) {
 	  SET_ERROR_WITH_STR(ERR_UNDEFINED_SYMBOL, str);
-	  pushArg((Cell)AQ_UNDEF);
+	  push_arg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
-	  pushArg(ret);
+	  push_arg(ret);
 	  *pc += (strlen(str)+1);
 	}
       }
@@ -1452,43 +1435,43 @@ void execute(char* buf, int* pc, int end)
     case FUNC:
       {
 	char* str = &buf[++(*pc)];
-	Cell func = getVar(str);
+	Cell func = get_var(str);
 	if(UNDEF_P(func)) {
 	  SET_ERROR_WITH_STR(ERR_UNDEFINED_SYMBOL, str);
-	  int num = ivalue(popArg());
+	  int num = INT_VALUE(pop_arg());
 	  for(i=0; i<num; i++) {
-	    popArg();
+	    pop_arg();
 	  }
-	  pushArg((Cell)AQ_UNDEF);
+	  push_arg((Cell)AQ_UNDEF);
 	  exec = FALSE;
 	} else {
-	  int paramNum = ivalue(lambdaParamNum(func));
-	  int argNum = ivalue(stack[stack_top-1]);
-	  int funcAddr = ivalue(lambdaAddr(func));
-	  Boolean isParamDList = lambdaFlag(func);
-	  if(isParamDList) {
-	    ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum, "str");
-	    popArg();
-	    int num = argNum - paramNum + 1;
+	  int param_num = INT_VALUE(LAMBDA_PARAM_NUM(func));
+	  int arg_num = INT_VALUE(stack[stack_top-1]);
+	  int func_addr = INT_VALUE(LAMBDA_ADDR(func));
+	  aq_bool is_param_dlist = LAMBDA_FLAG(func);
+	  if(is_param_dlist) {
+	    ERR_WRONG_NUMBER_ARGS_DLIST(param_num, arg_num, "str");
+	    pop_arg();
+	    int num = arg_num - param_num + 1;
 	    Cell lst = (Cell)AQ_NIL;
 	    for(i=0; i<num; i++) {
-	      pushArg(lst);
-	      lst = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
-	      popArg();
-	      popArg();
+	      push_arg(lst);
+	      lst = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
+	      pop_arg();
+	      pop_arg();
 	    }
-	    pushArg(lst);
-	    pushArg(makeInteger(paramNum));
+	    push_arg(lst);
+	    push_arg(make_integer(param_num));
 	  } else {
-	    ERR_WRONG_NUMBER_ARGS(paramNum, argNum, "str");
+	    ERR_WRONG_NUMBER_ARGS(param_num, arg_num, "str");
 	  }
-	  int retAddr  = *pc + strlen(str) + 1;
-	  pushArg(makeInteger(retAddr));
-	  pushArg((Cell)AQ_SFRAME);
-	  pushFunctionStack(stack_top);
+	  int ret_addr  = *pc + strlen(str) + 1;
+	  push_arg(make_integer(ret_addr));
+	  push_arg((Cell)AQ_SFRAME);
+	  push_function_stack(stack_top);
 	  
 	  // jump
-	  *pc = funcAddr;
+	  *pc = func_addr;
 	}
       }
       break;
@@ -1496,52 +1479,52 @@ void execute(char* buf, int* pc, int end)
     case FUNDD:
       {
 	// jump
-	int defEnd = (int)getOperand(buf, ++(*pc));
-	int defStart = *pc + sizeof(Cell) * 2;
+	int def_end = (int)get_operand(buf, ++(*pc));
+	int def_start = *pc + sizeof(Cell) * 2;
 	*pc += sizeof(Cell);
-	int paramNum = (int)getOperand(buf, *pc);
-	Cell l = lambdaCell(defStart, paramNum, (op == FUNDD) ? TRUE : FALSE);
-	pushArg(l);
-	*pc = defEnd;
+	int param_num = (int)get_operand(buf, *pc);
+	Cell l = lambda_cell(def_start, param_num, (op == FUNDD) ? TRUE : FALSE);
+	push_arg(l);
+	*pc = def_end;
       }
       break;
     case FUNCS:
       {
 	Cell func = stack[stack_top-1];
-      	int paramNum = ivalue(lambdaParamNum(func));
-	int funcAddr = ivalue(lambdaAddr(func));
-	Boolean isParamDList = lambdaFlag(func);
-	popArg();
-	int argNum = ivalue(stack[stack_top-1]);
-	if(isParamDList) {
-	  ERR_WRONG_NUMBER_ARGS_DLIST(paramNum, argNum, "lambda");
-	  popArg();
-	  int num = argNum - paramNum + 1;
+      	int param_num = INT_VALUE(LAMBDA_PARAM_NUM(func));
+	int func_addr = INT_VALUE(LAMBDA_ADDR(func));
+	aq_bool is_param_dlist = LAMBDA_FLAG(func);
+	pop_arg();
+	int arg_num = INT_VALUE(stack[stack_top-1]);
+	if(is_param_dlist) {
+	  ERR_WRONG_NUMBER_ARGS_DLIST(param_num, arg_num, "lambda");
+	  pop_arg();
+	  int num = arg_num - param_num + 1;
 	  Cell lst = (Cell)AQ_NIL;
 	  for(i=0; i<num; i++) {
-	    pushArg(lst);
-	    lst = pairCell(&stack[stack_top-2], &stack[stack_top-1]);
-	    popArg();
-	    popArg();
+	    push_arg(lst);
+	    lst = pair_cell(&stack[stack_top-2], &stack[stack_top-1]);
+	    pop_arg();
+	    pop_arg();
 	  }
-	  pushArg(lst);
-	  pushArg(makeInteger(paramNum));
+	  push_arg(lst);
+	  push_arg(make_integer(param_num));
 	} else {
-	  ERR_WRONG_NUMBER_ARGS(paramNum, argNum, "lambda");
+	  ERR_WRONG_NUMBER_ARGS(param_num, arg_num, "lambda");
 	}
 	
-	int retAddr  = *pc + 1;
-	pushArg(makeInteger(retAddr));
-	pushArg((Cell)AQ_SFRAME);
-	pushFunctionStack(stack_top);
+	int ret_addr  = *pc + 1;
+	push_arg(make_integer(ret_addr));
+	push_arg((Cell)AQ_SFRAME);
+	push_function_stack(stack_top);
 	
 	// jump
-	*pc = funcAddr;
+	*pc = func_addr;
       }
       break;
     case SROT:
       {
-	int n = (int)getOperand(buf, ++(*pc));
+	int n = (int)get_operand(buf, ++(*pc));
 	Cell val = stack[stack_top-(n+1)];
 	for(i=n; i>0; i--) {
 	  stack[stack_top-(i+1)] = stack[stack_top-i];
@@ -1552,10 +1535,10 @@ void execute(char* buf, int* pc, int end)
       break;
     case LOAD:
       {
-	int offset = (int)getOperand(buf, ++(*pc));
-	int index = getFunctionStackTop() - offset - 4;
+	int offset = (int)get_operand(buf, ++(*pc));
+	int index = get_function_stack_top() - offset - 4;
 	Cell val = stack[index];
-	pushArg(val);
+	push_arg(val);
 	*pc += sizeof(Cell);
       }
       break;
@@ -1575,44 +1558,44 @@ void execute(char* buf, int* pc, int end)
   }
 }
 
-Boolean isError() {
-  return (errType != ERR_TYPE_NONE);
+aq_bool is_error() {
+  return (err_type != ERR_TYPE_NONE);
 }
 
-void set_error(ErrorType e)
+void set_error(aq_error_type e)
 {
-  errType = e;
+  err_type = e;
 }
 
-void handleError()
+void handle_error()
 {
-  if(!isError()) return;
+  if(!is_error()) return;
 
   FILE* fp = stdout; // TODO
   AQ_FPRINTF(fp, "[ERROR] ");
   
-  switch(errType) {
+  switch(err_type) {
   case ERR_TYPE_WRONG_NUMBER_ARG:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: wrong number of argnuments: required ", strvalue(str));
-      printCell(fp, stack[stack_top-2]);
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: wrong number of argnuments: required ", STR_VALUE(str));
+      print_cell(fp, stack[stack_top-2]);
       AQ_FPRINTF(fp, ", but given ");
-      printLineCell(fp, stack[stack_top-1]);
+      print_line_cell(fp, stack[stack_top-1]);
     }
     break;
   case ERR_TYPE_PAIR_NOT_GIVEN:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: pair required, but given ", strvalue(str));
-      printLineCell(fp, stack[stack_top-1]);
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: pair required, but given ", STR_VALUE(str));
+      print_line_cell(fp, stack[stack_top-1]);
     }
     break;
   case ERR_TYPE_INT_NOT_GIVEN:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: number required, but given ", strvalue(str));
-      printLineCell(fp, stack[stack_top-1]);
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: number required, but given ", STR_VALUE(str));
+      print_line_cell(fp, stack[stack_top-1]);
     }
     break;
   case ERR_TYPE_MALFORMED_IF:
@@ -1622,20 +1605,20 @@ void handleError()
     break;
   case ERR_TYPE_SYMBOL_LIST_NOT_GIVEN:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: symbol list not goven\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: symbol list not goven\n", STR_VALUE(str));
     }
     break;
   case ERR_TYPE_MALFORMED_DOT_LIST:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: malformed dot list\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: malformed dot list\n", STR_VALUE(str));
     }
     break;
   case ERR_TYPE_TOO_MANY_EXPRESSIONS:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: too many expressions given\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: too many expressions given\n", STR_VALUE(str));
     }
     break;
   case ERR_TYPE_EXTRA_CLOSE_PARENTHESIS:
@@ -1645,14 +1628,14 @@ void handleError()
     break;
   case ERR_TYPE_SYMBOL_NOT_GIVEN:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: symbol not given\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: symbol not given\n", STR_VALUE(str));
     }
     break;
   case ERR_TYPE_SYNTAX_ERROR:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "%s: syntax error\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "%s: syntax error\n", STR_VALUE(str));
     }
     break;
   case ERR_TYPE_GENERAL_ERROR:
@@ -1673,14 +1656,14 @@ void handleError()
     break;
   case ERR_TYPE_UNEXPECTED_TOKEN:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "unexpected token: %s\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "unexpected token: %s\n", STR_VALUE(str));
     }
     break;
   case ERR_UNDEFINED_SYMBOL:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "undefined symbol: %s\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "undefined symbol: %s\n", STR_VALUE(str));
     }
     break;
   case ERR_HEAP_EXHAUSTED:
@@ -1690,50 +1673,40 @@ void handleError()
     break;
   case  ERR_FILE_NOT_FOUND:
     {
-      Cell str = popArg();
-      AQ_FPRINTF(fp, "cannot open file: %s\n", strvalue(str));
+      Cell str = pop_arg();
+      AQ_FPRINTF(fp, "cannot open file: %s\n", STR_VALUE(str));
     }
     break;
   case ERR_TYPE_NONE:
     return;
   }
   while(stack_top > 0) {
-    popArg();
+    pop_arg();
   }
-  errType = ERR_TYPE_NONE;
+  err_type = ERR_TYPE_NONE;
 }
 
-void pushFunctionStack(int f)
+void push_function_stack(int f)
 {
-  if(functionStackTop >= FUNCTION_STACK_SIZE) {
-    errType = ERR_STACK_OVERFLOW;
+  if(function_stack_top >= FUNCTION_STACK_SIZE) {
+    err_type = ERR_STACK_OVERFLOW;
     return;
   }
-  functionStack[functionStackTop++] = f;
+  function_stack[function_stack_top++] = f;
 }
 
-int popFunctionStack()
+int pop_function_stack()
 {
-  if(functionStackTop <= 0) {
-    errType = ERR_STACK_UNDERFLOW;
+  if(function_stack_top <= 0) {
+    err_type = ERR_STACK_UNDERFLOW;
     return -1;
   }
-  return functionStack[--functionStackTop];
+  return function_stack[--function_stack_top];
 }
 
-int getFunctionStackTop()
+int get_function_stack_top()
 {
-  return functionStack[functionStackTop-1];
-}
-
-Boolean isEndInput(int c)
-{
-#if defined( _TEST )
-  if(c == EOF || c == '\n') return TRUE;
-#else
-  if(c == EOF) return TRUE;
-#endif
-  return FALSE;
+  return function_stack[function_stack_top-1];
 }
 
 void repl()
@@ -1742,13 +1715,13 @@ void repl()
   int pc = 0;
   while(1) {
     AQ_PRINTF(">");
-    size_t bufSize = compile(stdin, &buf[pc], pc);
-    execute(buf, &pc, pc+bufSize);
-    if(isError()) {
-      handleError();
+    size_t buf_size = compile(stdin, &buf[pc], pc);
+    execute(buf, &pc, pc+buf_size);
+    if(is_error()) {
+      handle_error();
     } else {
-      printLineCell(stdout, stack[stack_top-1]);
-      popArg();
+      print_line_cell(stdout, stack[stack_top-1]);
+      pop_arg();
     }
   }
   free(buf);
@@ -1782,5 +1755,5 @@ int main(int argc, char *argv[])
   }
 #endif
   term();
-  return isError();
+  return is_error();
 }

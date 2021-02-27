@@ -4,7 +4,7 @@
 typedef struct rc_zct_header{
   int obj_size;
   int ref_cnt;
-  Boolean in_zct;
+  aq_bool in_zct;
 }RC_ZCT_Header;
 
 static void gc_start_reference_coun();
@@ -36,34 +36,34 @@ static Cell pop_reference_coun();
 #define IN_ZCT(obj) (((RC_ZCT_Header*)(obj)-1)->in_zct)
 
 //Initialization.
-void gc_init_rc_zct(GC_Init_Info* gc_info)
+void gc_init_rc_zct(aq_gc_info* gc_info)
 {
   heap     = (char*)aq_heap;
   freelist = (Free_Chunk*)heap;
   freelist->chunk_size = get_heap_size();
   freelist->next       = NULL;
 
-  gc_info->gc_malloc        = gc_malloc_reference_coun;
-  gc_info->gc_start         = gc_start_reference_coun;
-  gc_info->gc_write_barrier = gc_write_barrier_reference_coun;
+  gc_info->gc_malloc             = gc_malloc_reference_coun;
+  gc_info->gc_start              = gc_start_reference_coun;
+  gc_info->gc_write_barrier      = gc_write_barrier_reference_coun;
   gc_info->gc_write_barrier_root = gc_write_barrier_root_reference_coun;
-  gc_info->gc_init_ptr      = gc_init_ptr_reference_coun;
-  gc_info->gc_memcpy        = gc_memcpy_reference_coun;
-  gc_info->gc_term          = gc_term_reference_coun;
-  gc_info->gc_pushArg       = push_reference_coun;
-  gc_info->gc_popArg        = pop_reference_coun;
+  gc_info->gc_init_ptr           = gc_init_ptr_reference_coun;
+  gc_info->gc_memcpy             = gc_memcpy_reference_coun;
+  gc_info->gc_term               = gc_term_reference_coun;
+  gc_info->gc_push_arg           = push_reference_coun;
+  gc_info->gc_pop_arg            = pop_reference_coun;
 
   zct_index = 0;
 }
 
 void push_reference_coun(Cell c)
 {
-  pushArg_default(c);
+  push_arg_default(c);
 }
 
 Cell pop_reference_coun()
 {
-  return popArg_default();
+  return pop_arg_default();
 }
 
 //Allocation.

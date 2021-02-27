@@ -2,7 +2,7 @@
 
 typedef struct marksweep_gc_header{
   int obj_size;
-  Boolean mark_bit;
+  aq_bool mark_bit;
 }MarkSweep_GC_Header;
 
 //mark table: a bit per WORD
@@ -46,7 +46,7 @@ void mark_object(Cell* objp)
 }
 
 //Initialization.
-void gc_init_marksweep(GC_Init_Info* gc_info)
+void gc_init_marksweep(aq_gc_info* gc_info)
 {
   //mark stack.
   int mark_stack_size = sizeof(Cell) * MARK_STACK_SIZE;

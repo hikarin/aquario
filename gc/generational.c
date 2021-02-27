@@ -52,7 +52,7 @@ static void gc_term_generational();
 
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
-static Boolean is_nersary_obj(Cell* objp);
+static aq_bool is_nersary_obj(Cell* objp);
 
 //nersary space.
 static char* from_space    = NULL;
@@ -101,7 +101,7 @@ static void mark();
 static void compact();
 
 //Initialization.
-void gc_init_generational(GC_Init_Info* gc_info)
+void gc_init_generational(aq_gc_info* gc_info)
 {
   int size_int   = sizeof(int);
   int rest_size  = get_heap_size();
@@ -273,7 +273,7 @@ void copy_and_update(Cell* objp)
   }
 }
 
-Boolean is_nersary_obj(Cell* objp)
+aq_bool is_nersary_obj(Cell* objp)
 {
   if(IS_NERSARY(*objp)){
     return TRUE;

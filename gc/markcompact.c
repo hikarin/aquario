@@ -4,7 +4,7 @@
 typedef struct markcompact_gc_header{
   int obj_size;
   Cell forwarding;
-  Boolean mark_bit;
+  aq_bool mark_bit;
 }MarkCompact_GC_Header;
 
 static void gc_start_markcompact();
@@ -71,7 +71,7 @@ void move_object(Cell obj)
 }
 
 //Initialization.
-void gc_init_markcompact(GC_Init_Info* gc_info)
+void gc_init_markcompact(aq_gc_info* gc_info)
 {
   //mark stack.
   int mark_stack_size = sizeof(Cell) * MARK_STACK_SIZE;

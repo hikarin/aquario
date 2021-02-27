@@ -30,33 +30,33 @@ static Cell pop_reference_count();
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--);
 
 //Initialization.
-void gc_init_reference_count(GC_Init_Info* gc_info)
+void gc_init_reference_count(aq_gc_info* gc_info)
 {
   heap     = (char*)aq_heap;
   freelist = (Free_Chunk*)heap;
   freelist->chunk_size = get_heap_size();
   freelist->next       = NULL;
 
-  gc_info->gc_malloc        = gc_malloc_reference_count;
-  gc_info->gc_start         = gc_start_reference_count;
-  gc_info->gc_write_barrier = gc_write_barrier_reference_count;
+  gc_info->gc_malloc             = gc_malloc_reference_count;
+  gc_info->gc_start              = gc_start_reference_count;
+  gc_info->gc_write_barrier      = gc_write_barrier_reference_count;
   gc_info->gc_write_barrier_root = gc_write_barrier_root_reference_count;
-  gc_info->gc_init_ptr      = gc_init_ptr_reference_count;
-  gc_info->gc_memcpy        = gc_memcpy_reference_count;
-  gc_info->gc_term          = gc_term_reference_count;
-  gc_info->gc_pushArg       = push_reference_count;
-  gc_info->gc_popArg        = pop_reference_count;
+  gc_info->gc_init_ptr           = gc_init_ptr_reference_count;
+  gc_info->gc_memcpy             = gc_memcpy_reference_count;
+  gc_info->gc_term               = gc_term_reference_count;
+  gc_info->gc_push_arg           = push_reference_count;
+  gc_info->gc_pop_arg            = pop_reference_count;
 }
 
 void push_reference_count(Cell c)
 {
   increment_count(&c);
-  pushArg_default(c);
+  push_arg_default(c);
 }
 
 Cell pop_reference_count()
 {
-  Cell c = popArg_default();
+  Cell c = pop_arg_default();
   decrement_count(&c);
   return c;
 }

@@ -9,8 +9,8 @@ static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //writ
 static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
 static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
 
-Cell popArg_default();
-void pushArg_default(Cell c);
+Cell pop_arg_default();
+void push_arg_default(Cell c);
 
 #if defined( _DEBUG )
 static int total_malloc_size;
@@ -18,22 +18,22 @@ static int total_malloc_size;
 
 //definitions of Garbage Collectors' name.
 #define GC_STR_COPYING         "copy"
-void gc_init_copy(GC_Init_Info* gc_init);
+void gc_init_copy(aq_gc_info* gc_init);
 
 #define GC_STR_MARKCOMPACT     "mc"
-void gc_init_markcompact(GC_Init_Info* gc_info);
+void gc_init_markcompact(aq_gc_info* gc_info);
 
 #define GC_STR_GENERATIONAL    "gen"
-void gc_init_generational(GC_Init_Info* gc_info);
+void gc_init_generational(aq_gc_info* gc_info);
 
 #define GC_STR_REFERENCE_COUNT "ref"
-void gc_init_reference_count(GC_Init_Info* gc_info);
+void gc_init_reference_count(aq_gc_info* gc_info);
 
 #define GC_STR_RC_ZCT          "zct"
-void gc_init_rc_zct(GC_Init_Info* gc_info);
+void gc_init_rc_zct(aq_gc_info* gc_info);
 
 #define GC_STR_MARK_SWEEP      "ms"
-void gc_init_marksweep(GC_Init_Info* gc_info);
+void gc_init_marksweep(aq_gc_info* gc_info);
 
 static char* _gc_char = "";
 static int heap_size = 0;
@@ -45,8 +45,8 @@ static void (*_gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
 static void (*_gc_init_ptr) (Cell* cellp, Cell newcell);
 static void (*_gc_memcpy) (char* dst, char* src, size_t size);
 static void (*_gc_term) ();
-static void (*_pushArg) (Cell c);
-static Cell (*_popArg) ();
+static void (*_push_arg) (Cell c);
+static Cell (*_pop_arg) ();
 static void (*_gc_write_barrier_root) (Cell* srcp, Cell dst);
 
 int get_heap_size()
@@ -54,7 +54,7 @@ int get_heap_size()
   return heap_size;
 }
 
-void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
+void gc_init(char* gc_char, int h_size, aq_gc_info* gc_init)
 {
 #if defined( _DEBUG )
   total_malloc_size = 0;
@@ -103,13 +103,13 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
     gc_init->gc_memcpy = gc_memcpy_default;
   }
 
-  if(!gc_init->gc_pushArg){
+  if(!gc_init->gc_push_arg){
     //option.
-    gc_init->gc_pushArg = pushArg_default;
+    gc_init->gc_push_arg = push_arg_default;
   }
-  if(!gc_init->gc_popArg){
+  if(!gc_init->gc_pop_arg){
     //option.
-    gc_init->gc_popArg = popArg_default;
+    gc_init->gc_pop_arg = pop_arg_default;
   }
 
   _gc_malloc        = gc_init->gc_malloc;
@@ -119,8 +119,8 @@ void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
   _gc_init_ptr      = gc_init->gc_init_ptr;
   _gc_memcpy        = gc_init->gc_memcpy;
   _gc_term          = gc_init->gc_term;
-  _pushArg          = gc_init->gc_pushArg;
-  _popArg           = gc_init->gc_popArg;
+  _push_arg         = gc_init->gc_push_arg;
+  _pop_arg          = gc_init->gc_pop_arg;
 }
 
 void gc_term_base()
@@ -128,13 +128,13 @@ void gc_term_base()
   AQ_FREE(aq_heap);
 }
 
-Cell popArg_default()
+Cell pop_arg_default()
 {
   Cell c = stack[ --stack_top ];
   return c;
 }
 
-void pushArg_default(Cell c)
+void push_arg_default(Cell c)
 {
   stack[stack_top++] = c;
 }
@@ -160,17 +160,17 @@ void trace_roots(void (*trace) (Cell* cellp)){
 
 void trace_object( Cell cell, void (*trace) (Cell* cellp)){
   if( cell ){
-    switch(type(cell)){
+    switch(TYPE(cell)){
     case T_CHAR:
       break;
     case T_STRING:
       break;
     case T_PAIR:
-      if( CELL_P(car(cell)) ){
-	trace(&(car(cell)));
+      if( CELL_P(CAR(cell)) ){
+	trace(&(CAR(cell)));
       }
-      if( CELL_P(cdr(cell)) ){
-	trace(&(cdr(cell)));
+      if( CELL_P(CDR(cell)) ){
+	trace(&(CDR(cell)));
       }
       break;
     case T_PROC:
@@ -183,24 +183,24 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
       break;
     default:
       printf("trace_object: Object Corrupted(%p).\n", cell);
-      printf("%d\n", type(cell));
+      printf("%d\n", TYPE(cell));
       exit(-1);
     }
   }
 }
 
-Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
+aq_bool trace_object_bool(Cell cell, aq_bool (*trace) (Cell* cellp)){
   if( cell ){
-    switch(type(cell)){
+    switch(TYPE(cell)){
     case T_CHAR:
       break;
     case T_STRING:
       break;
     case T_PAIR:
-      if( CELL_P(car(cell)) && trace(&(car(cell))) ){
+      if( CELL_P(CAR(cell)) && trace(&(CAR(cell))) ){
 	return TRUE;
       }
-      if( CELL_P(cdr(cell)) && trace(&(cdr(cell))) ){
+      if( CELL_P(CDR(cell)) && trace(&(CDR(cell))) ){
 	return TRUE;
       }
       break;
@@ -214,7 +214,7 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
       break;
     default:
       printf("trace_object_bool: Object Corrupted(%p).\n", cell);
-      printf("%d\n", type(cell));
+      printf("%d\n", TYPE(cell));
       exit(-1);
     }
   }
@@ -361,17 +361,17 @@ void gc_term ()
   _gc_term();
 }
 
-void pushArg (Cell c)
+void push_arg(Cell c)
 {
-  _pushArg(c);
+  _push_arg(c);
   if(stack_top >= STACKSIZE) {
     set_error(ERR_STACK_OVERFLOW);
   }
 }
 
-Cell popArg ()
+Cell pop_arg()
 {
-  Cell c = _popArg();
+  Cell c = _pop_arg();
   if(stack_top < 0) {
     set_error(ERR_STACK_UNDERFLOW);
   }
@@ -381,7 +381,7 @@ Cell popArg ()
 void heap_exhausted_error()
 {
   set_error(ERR_HEAP_EXHAUSTED);
-  handleError();
+  handle_error();
   exit(-1);
 }
 
