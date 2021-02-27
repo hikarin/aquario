@@ -1,10 +1,11 @@
 #include "base.h"
 #include <string.h>
 
-typedef struct reference_count_header{
+struct _reference_count_header{
   int obj_size;
   int ref_cnt;
-}Reference_Count_Header;
+};
+typedef struct _reference_count_header reference_count_header;
 
 static void gc_start_reference_count();
 static inline void* gc_malloc_reference_count(size_t size);
@@ -18,14 +19,14 @@ static void decrement_count(Cell* objp);
 static void gc_term_reference_count();
 
 static char* heap           = NULL;
-static Free_Chunk* freelist = NULL;
+static free_chunk* freelist = NULL;
 
 static void push_reference_count(Cell c);
 static Cell pop_reference_count();
 
-#define GET_OBJECT_SIZE(obj) (((Reference_Count_Header*)(obj)-1)->obj_size)
+#define GET_OBJECT_SIZE(obj) (((reference_count_header*)(obj)-1)->obj_size)
 
-#define REF_CNT(obj) (((Reference_Count_Header*)(obj)-1)->ref_cnt)
+#define REF_CNT(obj) (((reference_count_header*)(obj)-1)->ref_cnt)
 #define INC_REF_CNT(obj) (REF_CNT(obj)++);
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--);
 
@@ -33,7 +34,7 @@ static Cell pop_reference_count();
 void gc_init_reference_count(aq_gc_info* gc_info)
 {
   heap     = (char*)aq_heap;
-  freelist = (Free_Chunk*)heap;
+  freelist = (free_chunk*)heap;
   freelist->chunk_size = get_heap_size();
   freelist->next       = NULL;
 
@@ -64,16 +65,16 @@ Cell pop_reference_count()
 //Allocation.
 void* gc_malloc_reference_count( size_t size )
 {
-  size += sizeof(Reference_Count_Header);
-  int allocate_size = (sizeof( Reference_Count_Header ) + size + 3 ) / 4 * 4;
-  Free_Chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
+  size += sizeof(reference_count_header);
+  int allocate_size = (sizeof( reference_count_header ) + size + 3 ) / 4 * 4;
+  free_chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
     heap_exhausted_error();
   }else if(chunk->chunk_size > allocate_size){
     //size of chunk might be larger than it is required.
     allocate_size = chunk->chunk_size;
   }
-  Reference_Count_Header* new_header = (Reference_Count_Header*)chunk;
+  reference_count_header* new_header = (reference_count_header*)chunk;
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
   REF_CNT(ret)         = 0;
@@ -86,7 +87,7 @@ void reclaim_obj( Cell obj )
   REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
   
-  Free_Chunk* obj_top = (Free_Chunk*)((Reference_Count_Header*)obj - 1);
+  free_chunk* obj_top = (free_chunk*)((reference_count_header*)obj - 1);
   size_t obj_size = GET_OBJECT_SIZE( obj );
   put_chunk_to_freelist(&freelist, obj_top, obj_size);
 }

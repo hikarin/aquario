@@ -5,11 +5,11 @@
 #define AQ_MALLOC  malloc
 #define AQ_FREE    free
 
-struct free_chunk;
-typedef struct free_chunk{
+struct _free_chunk{
   int chunk_size;
-  struct free_chunk* next;
-}Free_Chunk;
+  struct _free_chunk* next;
+};
+typedef struct _free_chunk free_chunk;
 
 void trace_roots(void (*trace) (Cell* cellp));
 void trace_object( Cell cell, void (*trace) (Cell* cellp) );
@@ -20,8 +20,8 @@ void push_arg_default(Cell c);
 
 void gc_term_base();
 
-Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size );
-void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size );
+free_chunk* aq_get_free_chunk( free_chunk** freelistp, size_t size );
+void put_chunk_to_freelist( free_chunk** freelistp, free_chunk* chunk, size_t size );
 void heap_exhausted_error();
 
 #if defined( _DEBUG )

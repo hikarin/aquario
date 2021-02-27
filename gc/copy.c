@@ -1,10 +1,12 @@
 #include "base.h"
 #include <string.h>
 
-typedef struct copy_gc_header{
+struct _copy_header{
   int obj_size;
   Cell forwarding;
-}Copy_GC_Header;
+};
+typedef struct _copy_header copy_header;
+
 
 static void gc_start_copy();
 static inline void* gc_malloc_copy(size_t size);
@@ -13,10 +15,10 @@ static void gc_term_copy();
 static void* copy_object(Cell obj);
 static void copy_and_update(Cell* objp);
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( Copy_GC_Header ) + (size) < from_space + heap_size/2 )
-#define GET_OBJECT_SIZE(obj) (((Copy_GC_Header*)(obj)-1)->obj_size)
+#define IS_ALLOCATABLE( size ) (top + sizeof( copy_header ) + (size) < from_space + heap_size/2 )
+#define GET_OBJECT_SIZE(obj) (((copy_header*)(obj)-1)->obj_size)
 
-#define FORWARDING(obj) (((Copy_GC_Header*)(obj)-1)->forwarding)
+#define FORWARDING(obj) (((copy_header*)(obj)-1)->forwarding)
 #define IS_COPIED(obj) (FORWARDING(obj) != (obj) || !(from_space <= (char*)(obj) && (char*)(obj) < from_space+heap_size/2))
 
 static char* from_space  = NULL;
@@ -37,13 +39,13 @@ void* copy_object(Cell obj)
   if( IS_COPIED(obj) ){
     return FORWARDING(obj);
   }
-  Copy_GC_Header* new_header = (Copy_GC_Header*)top;
-  Copy_GC_Header* old_header = ((Copy_GC_Header*)obj)-1;
+  copy_header* new_header = (copy_header*)top;
+  copy_header* old_header = ((copy_header*)obj)-1;
   size = GET_OBJECT_SIZE(obj);
   memcpy(new_header, old_header, size);
   top += size;
   
-  new_cell = (Cell)(((Copy_GC_Header*)new_header)+1);
+  new_cell = (Cell)(((copy_header*)new_header)+1);
   FORWARDING(obj) = new_cell;
   FORWARDING(new_cell) = new_cell;
 
@@ -81,9 +83,9 @@ void* gc_malloc_copy( size_t size )
       heap_exhausted_error();
     }
   }
-  Copy_GC_Header* new_header = (Copy_GC_Header*)top;
+  copy_header* new_header = (copy_header*)top;
   Cell ret = (Cell)(new_header+1);
-  int allocate_size = ( sizeof(Copy_GC_Header) + size + 3 ) / 4 * 4;
+  int allocate_size = ( sizeof(copy_header) + size + 3 ) / 4 * 4;
   top += allocate_size;
   FORWARDING(ret) = ret;
   new_header->obj_size = allocate_size;
@@ -101,7 +103,7 @@ void gc_start_copy()
   //Trace all objects that are in to space but not scanned.
   char* scanned = to_space;
   while( scanned < top ){
-    Cell cell = (Cell)(((Copy_GC_Header*)scanned) + 1);
+    Cell cell = (Cell)(((copy_header*)scanned) + 1);
     trace_object(cell, copy_and_update);
     scanned += GET_OBJECT_SIZE(cell);
   }

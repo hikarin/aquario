@@ -1,11 +1,12 @@
 #include "base.h"
 #include <string.h>
 
-typedef struct rc_zct_header{
+struct _rc_zct_header{
   int obj_size;
   int ref_cnt;
   aq_bool in_zct;
-}RC_ZCT_Header;
+};
+typedef struct _rc_zct_header rc_zct_header;
 
 static void gc_start_reference_coun();
 static inline void* gc_malloc_reference_coun(size_t size);
@@ -19,7 +20,7 @@ static void decrement_count(Cell* objp);
 static void gc_term_reference_coun();
 
 static char* heap           = NULL;
-static Free_Chunk* freelist = NULL;
+static free_chunk* freelist = NULL;
 static int zct_index        = 0;
 static void add_zct(Cell c);
 #define ZCT_SIZE (10)
@@ -28,18 +29,18 @@ static Cell ZCT[ZCT_SIZE];
 static void push_reference_coun(Cell c);
 static Cell pop_reference_coun();
 
-#define GET_OBJECT_SIZE(obj) (((RC_ZCT_Header*)(obj)-1)->obj_size)
+#define GET_OBJECT_SIZE(obj) (((rc_zct_header*)(obj)-1)->obj_size)
 
-#define REF_CNT(obj) (((RC_ZCT_Header*)(obj)-1)->ref_cnt)
+#define REF_CNT(obj) (((rc_zct_header*)(obj)-1)->ref_cnt)
 #define INC_REF_CNT(obj) (REF_CNT(obj)++);
 #define DEC_REF_CNT(obj) (REF_CNT(obj)--);
-#define IN_ZCT(obj) (((RC_ZCT_Header*)(obj)-1)->in_zct)
+#define IN_ZCT(obj) (((rc_zct_header*)(obj)-1)->in_zct)
 
 //Initialization.
 void gc_init_rc_zct(aq_gc_info* gc_info)
 {
   heap     = (char*)aq_heap;
-  freelist = (Free_Chunk*)heap;
+  freelist = (free_chunk*)heap;
   freelist->chunk_size = get_heap_size();
   freelist->next       = NULL;
 
@@ -69,16 +70,16 @@ Cell pop_reference_coun()
 //Allocation.
 void* gc_malloc_reference_coun( size_t size )
 {
-  size += sizeof(RC_ZCT_Header);
-  int allocate_size = (sizeof( RC_ZCT_Header ) + size + 3 ) / 4 * 4;
-  Free_Chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
+  size += sizeof(rc_zct_header);
+  int allocate_size = (sizeof( rc_zct_header ) + size + 3 ) / 4 * 4;
+  free_chunk* chunk = aq_get_free_chunk( &freelist, allocate_size );
   if( !chunk ){
       gc_start_reference_coun();    
   }else if(chunk->chunk_size > allocate_size){
     //size of chunk might be larger than it is required.
     allocate_size = chunk->chunk_size;
   }
-  RC_ZCT_Header* new_header = (RC_ZCT_Header*)chunk;
+  rc_zct_header* new_header = (rc_zct_header*)chunk;
   Cell ret = (Cell)(new_header+1);
   GET_OBJECT_SIZE(ret) = allocate_size;
   REF_CNT(ret) = 0;
@@ -92,7 +93,7 @@ void reclaim_obj( Cell obj )
   REF_CNT(obj) = -1;
   trace_object( obj, decrement_count );
   
-  Free_Chunk* obj_top = (Free_Chunk*)((RC_ZCT_Header*)obj - 1);
+  free_chunk* obj_top = (free_chunk*)((rc_zct_header*)obj - 1);
   size_t obj_size = GET_OBJECT_SIZE( obj );
   put_chunk_to_freelist(&freelist, obj_top, obj_size);
 }

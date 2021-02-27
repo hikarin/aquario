@@ -1,11 +1,12 @@
 #include "base.h"
 #include <string.h>
 
-typedef struct markcompact_gc_header{
+struct _markcompact_gc_header{
   int obj_size;
   Cell forwarding;
   aq_bool mark_bit;
-}MarkCompact_GC_Header;
+};
+typedef struct _markcompact_gc_header markcompact_gc_header;
 
 static void gc_start_markcompact();
 static inline void* gc_malloc_markcompact(size_t size);
@@ -13,13 +14,13 @@ static void gc_term_markcompact();
 
 static int heap_size = 0;
 
-#define IS_ALLOCATABLE( size ) (top + sizeof( MarkCompact_GC_Header ) + (size) < heap + heap_size )
-#define GET_OBJECT_SIZE(obj) (((MarkCompact_GC_Header*)(obj)-1)->obj_size)
+#define IS_ALLOCATABLE( size ) (top + sizeof( markcompact_gc_header ) + (size) < heap + heap_size )
+#define GET_OBJECT_SIZE(obj) (((markcompact_gc_header*)(obj)-1)->obj_size)
 
-#define FORWARDING(obj) (((MarkCompact_GC_Header*)(obj)-1)->forwarding)
-#define IS_MARKED(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit)
-#define SET_MARK(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit=TRUE)
-#define CLEAR_MARK(obj) (((MarkCompact_GC_Header*)(obj)-1)->mark_bit=FALSE)
+#define FORWARDING(obj) (((markcompact_gc_header*)(obj)-1)->forwarding)
+#define IS_MARKED(obj) (((markcompact_gc_header*)(obj)-1)->mark_bit)
+#define SET_MARK(obj) (((markcompact_gc_header*)(obj)-1)->mark_bit=TRUE)
+#define CLEAR_MARK(obj) (((markcompact_gc_header*)(obj)-1)->mark_bit=FALSE)
 
 static char* heap        = NULL;
 static char* top         = NULL;
@@ -38,14 +39,6 @@ static void slide();
 static void mark();
 static void compact();
 
-typedef struct mc_measure
-{
-  double mark_elapsed_time;
-  double compaction_elapsed_time;
-}MC_Measure;
-
-static MC_Measure measure;
-
 void mark_object(Cell* objp)
 {
   Cell obj = *objp;
@@ -62,10 +55,10 @@ void mark_object(Cell* objp)
 void move_object(Cell obj)
 {
   long size = GET_OBJECT_SIZE(obj);
-  MarkCompact_GC_Header* new_header = ((MarkCompact_GC_Header*)(FORWARDING(obj)))-1;
-  MarkCompact_GC_Header* old_header = ((MarkCompact_GC_Header*)obj)-1;
+  markcompact_gc_header* new_header = ((markcompact_gc_header*)(FORWARDING(obj)))-1;
+  markcompact_gc_header* old_header = ((markcompact_gc_header*)obj)-1;
   memcpy(new_header, old_header, size);
-  Cell new_cell = (Cell)(((MarkCompact_GC_Header*)new_header)+1);
+  Cell new_cell = (Cell)(((markcompact_gc_header*)new_header)+1);
 
   FORWARDING(new_cell) = new_cell;
 }
@@ -88,9 +81,6 @@ void gc_init_markcompact(aq_gc_info* gc_info)
   gc_info->gc_init_ptr      = NULL;
   gc_info->gc_memcpy        = NULL;
   gc_info->gc_term          = gc_term_markcompact;
-  
-  measure.mark_elapsed_time  = 0.0;
-  measure.compaction_elapsed_time = 0.0;
 }
 
 //Allocation.
@@ -102,9 +92,9 @@ void* gc_malloc_markcompact( size_t size )
       heap_exhausted_error();
     }
   }
-  MarkCompact_GC_Header* new_header = (MarkCompact_GC_Header*)top;
+  markcompact_gc_header* new_header = (markcompact_gc_header*)top;
   Cell ret = (Cell)(new_header+1);
-  int allocate_size = (sizeof(MarkCompact_GC_Header) + size + 3) / 4 * 4;
+  int allocate_size = (sizeof(markcompact_gc_header) + size + 3) / 4 * 4;
   top += allocate_size;
   FORWARDING(ret) = ret;
   CLEAR_MARK(ret);
@@ -126,10 +116,10 @@ void calc_new_address()
   Cell cell = NULL;
   int obj_size = 0;
   while( scanned < top ){
-    cell = (Cell)((MarkCompact_GC_Header*)scanned+1);
+    cell = (Cell)((markcompact_gc_header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
-      FORWARDING(cell) = (Cell)((MarkCompact_GC_Header*)new_top+1);
+      FORWARDING(cell) = (Cell)((markcompact_gc_header*)new_top+1);
       new_top += obj_size;
     }
     scanned += obj_size;
@@ -143,7 +133,7 @@ void update_pointer()
   int obj_size = 0;
   trace_roots(update);
   while( scanned < top ){
-    cell = (Cell)((MarkCompact_GC_Header*)scanned+1);
+    cell = (Cell)((markcompact_gc_header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       trace_object(cell, update);
@@ -158,7 +148,7 @@ void slide()
   Cell cell = NULL;
   int obj_size = 0;
   while( scanned < top ){
-    cell = (Cell)((MarkCompact_GC_Header*)scanned+1);
+    cell = (Cell)((markcompact_gc_header*)scanned+1);
     obj_size = GET_OBJECT_SIZE(cell);
     if( IS_MARKED(cell) ){
       CLEAR_MARK(cell);

@@ -242,22 +242,22 @@ void gc_memcpy_default(char* dst, char* src, size_t size)
   memcpy( dst, src, size );
 }
 
-Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
+free_chunk* aq_get_free_chunk( free_chunk** freelistp, size_t size )
 {
   //returns a chunk which size is larger than required size.
-  Free_Chunk** chunk = freelistp;
-  Free_Chunk* ret = NULL;
+  free_chunk** chunk = freelistp;
+  free_chunk* ret = NULL;
   while(*chunk){
-    Free_Chunk* tmp = *chunk;
+    free_chunk* tmp = *chunk;
     if(tmp->chunk_size >= size){
       //a chunk found.
       ret = tmp;
-      if(tmp->chunk_size >= size + sizeof(Free_Chunk)){
+      if(tmp->chunk_size >= size + sizeof(free_chunk)){
 	int chunk_size = tmp->chunk_size - size;
-	Free_Chunk* next = tmp->next;
+	free_chunk* next = tmp->next;
 	tmp->chunk_size = size;
 	
-	tmp = (Free_Chunk*)((char*)tmp+size);
+	tmp = (free_chunk*)((char*)tmp+size);
 	tmp->chunk_size = chunk_size;
 	tmp->next = next;
 	*chunk = tmp;
@@ -272,9 +272,9 @@ Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
   return ret;
 }
 
-void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size )
+void put_chunk_to_freelist( free_chunk** freelistp, free_chunk* chunk, size_t size )
 {
-  Free_Chunk* freelist = *freelistp;
+  free_chunk* freelist = *freelistp;
   if(!freelist){
     //No object in freelist.
     *freelistp        = chunk;
@@ -291,23 +291,23 @@ void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t si
     }
     *freelistp = chunk;
   }else{
-    Free_Chunk* tmp = NULL;
+    free_chunk* tmp = NULL;
     for( tmp = freelist; tmp->next; tmp = tmp->next ){
       if( (char*)tmp < (char*)chunk && (char*)chunk < (char*)tmp->next ){
 	//Coalesce.
 	if( (char*)tmp + tmp->chunk_size == (char*)chunk ){
 	  if( (char*)chunk + size == (char*)tmp->next ){
-	    //Coalesce with previous and next Free_Chunk.
+	    //Coalesce with previous and next free_chunk.
 	    tmp->chunk_size += (size + tmp->next->chunk_size);
 	    tmp->next        = tmp->next->next;
 	  }else{
-	    //Coalesce with previous Free_Chunk.
+	    //Coalesce with previous free_chunk.
 	    tmp->chunk_size += size;
 	  }
 	}else if( (char*)chunk + size == (char*)tmp->next ){
-	  //Coalesce with next Free_Chunk.
+	  //Coalesce with next free_chunk.
 	  size_t new_size      = tmp->next->chunk_size + size;
-	  Free_Chunk* new_next = tmp->next->next;
+	  free_chunk* new_next = tmp->next->next;
 	  chunk->chunk_size  = new_size;
 	  chunk->next        = new_next;
 	  tmp->next            = chunk;
