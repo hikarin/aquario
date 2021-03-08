@@ -94,6 +94,9 @@ static aq_error_type err_type = ERR_TYPE_NONE;
     ++(*pc);                                                   \
   }
 
+#define SKIP_CLOSE_PARENTHESIS() \
+  while (AQ_FGETC(fp) != ')') {}
+
 #if defined(_TEST)
 static char outbuf[1024 * 1024];
 static int outbuf_index = 0;
@@ -814,9 +817,7 @@ void compile_lambda(inst_queue *queue, FILE *fp)
   }
   else if (c != '(')
   {
-    while ((c = AQ_FGETC(fp)) != ')')
-    {
-    }
+    SKIP_CLOSE_PARENTHESIS();
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_LIST_NOT_GIVEN, "lambda");
   }
 
@@ -884,9 +885,7 @@ void compile_define(inst_queue *queue, FILE *fp, Cell symbol_list)
   compile_elem(queue, fp, NULL);
   if (queue->tail->op != OP_REF)
   {
-    while (AQ_FGETC(fp) != ')')
-    {
-    }
+    SKIP_CLOSE_PARENTHESIS();
     SET_ERROR_WITH_STR(ERR_TYPE_SYMBOL_NOT_GIVEN, "define");
   }
 
@@ -902,9 +901,7 @@ void compile_define(inst_queue *queue, FILE *fp, Cell symbol_list)
   compile_elem(queue, fp, symbol_list);
   if (is_error())
   {
-    while (AQ_FGETC(fp) != ')')
-    {
-    }
+    SKIP_CLOSE_PARENTHESIS();
     return;
   }
 
@@ -915,9 +912,7 @@ void compile_define(inst_queue *queue, FILE *fp, Cell symbol_list)
   char *token = read_token(buf, sizeof(buf), fp);
   if (strcmp(token, ")") != 0)
   {
-    while (AQ_FGETC(fp) != ')')
-    {
-    }
+    SKIP_CLOSE_PARENTHESIS();
     SET_ERROR_WITH_STR(ERR_TYPE_TOO_MANY_EXPRESSIONS, "define");
   }
 }
