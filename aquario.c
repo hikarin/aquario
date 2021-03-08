@@ -279,16 +279,13 @@ char *read_double_quoted_token(char *buf, int len, FILE *fp)
     switch (c)
     {
     case '"':
+      *strp = c;
       if (prev != '\\')
       {
-        *strp = c;
-        goto BreakLoop;
+          *strp = '\0';
+          return buf;
       }
-      else
-      {
-        *strp = c;
-        break;
-      }
+      break;
     case EOF:
       set_error(ERR_TYPE_UNEXPECTED_TOKEN);
       push_arg(string_cell("EOF"));
@@ -299,7 +296,6 @@ char *read_double_quoted_token(char *buf, int len, FILE *fp)
       break;
     }
   }
-BreakLoop:
   *strp = '\0';
   return buf;
 }
