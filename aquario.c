@@ -1737,64 +1737,40 @@ void handle_error()
   switch (err_type)
   {
   case ERR_TYPE_WRONG_NUMBER_ARG:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: wrong number of argnuments: required ", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: wrong number of argnuments: required ", STR_VALUE(pop_arg()));
     print_cell(fp, stack[stack_top - 2]);
     AQ_FPRINTF(fp, ", but given ");
     print_line_cell(fp, stack[stack_top - 1]);
     break;
-  }
   case ERR_TYPE_PAIR_NOT_GIVEN:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: pair required, but given ", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: pair required, but given ", STR_VALUE(pop_arg()));
     print_line_cell(fp, stack[stack_top - 1]);
     break;
-  }
   case ERR_TYPE_INT_NOT_GIVEN:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: number required, but given ", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: number required, but given ", STR_VALUE(pop_arg()));
     print_line_cell(fp, stack[stack_top - 1]);
     break;
-  }
   case ERR_TYPE_MALFORMED_IF:
     AQ_FPRINTF(fp, "malformed if\n");
     break;
   case ERR_TYPE_SYMBOL_LIST_NOT_GIVEN:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: symbol list not goven\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: symbol list not goven\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_TYPE_MALFORMED_DOT_LIST:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: malformed dot list\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: malformed dot list\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_TYPE_TOO_MANY_EXPRESSIONS:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: too many expressions given\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: too many expressions given\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_TYPE_EXTRA_CLOSE_PARENTHESIS:
     AQ_FPRINTF(fp, "extra close parenthesis\n");
     break;
   case ERR_TYPE_SYMBOL_NOT_GIVEN:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: symbol not given\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: symbol not given\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_TYPE_SYNTAX_ERROR:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "%s: syntax error\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "%s: syntax error\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_TYPE_GENERAL_ERROR:
     // Not expected to reach here.
     AQ_FPRINTF(fp, "error\n");
@@ -1806,26 +1782,17 @@ void handle_error()
     AQ_FPRINTF(fp, "stack underflow\n");
     break;
   case ERR_TYPE_UNEXPECTED_TOKEN:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "unexpected token: %s\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "unexpected token: %s\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_UNDEFINED_SYMBOL:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "undefined symbol: %s\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "undefined symbol: %s\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_HEAP_EXHAUSTED:
     AQ_FPRINTF(fp, "heap exhausted\n");
     break;
   case ERR_FILE_NOT_FOUND:
-  {
-    Cell str = pop_arg();
-    AQ_FPRINTF(fp, "cannot open file: %s\n", STR_VALUE(str));
+    AQ_FPRINTF(fp, "cannot open file: %s\n", STR_VALUE(pop_arg()));
     break;
-  }
   case ERR_TYPE_NONE:
     return;
   }
