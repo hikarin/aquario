@@ -95,7 +95,9 @@ static aq_error_type err_type = ERR_TYPE_NONE;
   }
 
 #define SKIP_CLOSE_PARENTHESIS() \
-  while (AQ_FGETC(fp) != ')') {}
+  while (AQ_FGETC(fp) != ')')    \
+  {                              \
+  }
 
 #if defined(_TEST)
 static char outbuf[1024 * 1024];
@@ -285,8 +287,8 @@ char *read_double_quoted_token(char *buf, int len, FILE *fp)
       *strp = c;
       if (prev != '\\')
       {
-          *strp = '\0';
-          return buf;
+        *strp = '\0';
+        return buf;
       }
       break;
     case EOF:
