@@ -1303,9 +1303,9 @@ size_t write_inst(aq_inst *inst, char *buf)
   return size;
 }
 
-Cell get_operand(char *buf, int pc)
+int get_operand(char *buf, int pc)
 {
-  return (Cell)(*(Cell *)&buf[pc]);
+  return (int)(*(Cell *)&buf[pc]);
 }
 
 void execute(char *buf, int *pc, int end)
@@ -1320,7 +1320,7 @@ void execute(char *buf, int *pc, int end)
     {
     case OP_PUSH:
     {
-      int value = (int)get_operand(buf, ++(*pc));
+      int value = get_operand(buf, ++(*pc));
       push_arg(make_integer(value));
       *pc += sizeof(Cell);
       break;
@@ -1525,7 +1525,7 @@ void execute(char *buf, int *pc, int end)
       ++(*pc);
       if (!TRUE_P(c))
       {
-        int addr = (int)get_operand(buf, *pc);
+        int addr = get_operand(buf, *pc);
         *pc = addr;
       }
       else
@@ -1536,7 +1536,7 @@ void execute(char *buf, int *pc, int end)
     }
     case OP_JMP:
     {
-      int addr = (int)get_operand(buf, ++(*pc));
+      int addr = get_operand(buf, ++(*pc));
       *pc = addr;
       break;
     }
@@ -1639,10 +1639,10 @@ void execute(char *buf, int *pc, int end)
     case OP_FUNDD:
     {
       // jump
-      int def_end = (int)get_operand(buf, ++(*pc));
+      int def_end = get_operand(buf, ++(*pc));
       int def_start = *pc + sizeof(Cell) * 2;
       *pc += sizeof(Cell);
-      int param_num = (int)get_operand(buf, *pc);
+      int param_num = get_operand(buf, *pc);
       Cell l = lambda_cell(def_start, param_num, (op == OP_FUNDD) ? TRUE : FALSE);
       push_arg(l);
       *pc = def_end;
@@ -1688,7 +1688,7 @@ void execute(char *buf, int *pc, int end)
     }
     case OP_SROT:
     {
-      int n = (int)get_operand(buf, ++(*pc));
+      int n = get_operand(buf, ++(*pc));
       Cell val = stack[stack_top - (n + 1)];
       for (i = n; i > 0; i--)
       {
@@ -1700,7 +1700,7 @@ void execute(char *buf, int *pc, int end)
     }
     case OP_LOAD:
     {
-      int offset = (int)get_operand(buf, ++(*pc));
+      int offset = get_operand(buf, ++(*pc));
       int index = get_function_stack_top() - offset - 4;
       Cell val = stack[index];
       push_arg(val);
