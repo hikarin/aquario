@@ -5,7 +5,7 @@
 #define AQ_MALLOC  malloc
 #define AQ_FREE    free
 
-struct _free_chunk{
+struct _free_chunk {
   int chunk_size;
   struct _free_chunk* next;
 };
