@@ -88,7 +88,7 @@ static aq_error_type err_type = ERR_TYPE_NONE;
 #define EXECUTE_MATH_OPERATOR_WITH_CONSTANT(op_name, _op, num) \
   {                                                            \
     ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name);          \
-    int ans = INT_VALUE(stack[stack_top - 1]) _op num;         \
+    int ans = num _op INT_VALUE(stack[stack_top - 1]);         \
     pop_arg();                                                 \
     push_arg(make_integer(ans));                               \
     ++(*pc);                                                   \
@@ -97,6 +97,22 @@ static aq_error_type err_type = ERR_TYPE_NONE;
 #define SKIP_CLOSE_PARENTHESIS() \
   while (AQ_FGETC(fp) != ')')    \
   {                              \
+  }
+
+#define EXECUTE_MATH_OPERATION(op_name, _op, initial)   \
+  {                                                     \
+    ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name);   \
+    int num = INT_VALUE(stack[stack_top - 1]);          \
+    pop_arg();                                          \
+    long ans = initial;                                 \
+    for (i = 0; i < num; i++)                           \
+    {                                                   \
+      ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name); \
+      ans _op INT_VALUE(stack[stack_top - 1]);          \
+      pop_arg();                                        \
+    }                                                   \
+    push_arg(make_integer(ans));                        \
+    ++(*pc);                                            \
   }
 
 #if defined(_TEST)
@@ -666,7 +682,7 @@ void compile_procedure(char *func, int num, inst_queue *queue)
   }
   else if (strcmp(func, "/") == 0)
   {
-    add_push_tail(queue, num);
+    add_push_tail(queue, num - 1);
     add_one_byte_inst_tail(queue, OP_DIV);
   }
   else if (strcmp(func, "print") == 0)
@@ -770,7 +786,7 @@ void compile_sub(inst_queue *queue, int num)
       return;
     }
   }
-  add_push_tail(queue, num);
+  add_push_tail(queue, num - 1);
   add_one_byte_inst_tail(queue, OP_SUB);
 }
 
@@ -1327,51 +1343,6 @@ void execute(char *buf, int *pc, int end)
     case OP_PUSH_FALSE:
       EXECUTE_PUSH_IMMEDIATE_VALUE(AQ_FALSE);
       break;
-    case OP_ADD:
-    {
-      ERR_INT_NOT_GIVEN(stack[stack_top - 1], "+");
-      int num = INT_VALUE(stack[stack_top - 1]);
-      pop_arg();
-      long ans = 0;
-      for (i = 0; i < num; i++)
-      {
-        ERR_INT_NOT_GIVEN(stack[stack_top - 1], "+");
-        ans += INT_VALUE(stack[stack_top - 1]);
-        pop_arg();
-      }
-      push_arg(make_integer(ans));
-      ++(*pc);
-      break;
-    }
-    case OP_SUB:
-    {
-      ERR_INT_NOT_GIVEN(stack[stack_top - 1], "-");
-      int num = INT_VALUE(stack[stack_top - 1]);
-      pop_arg();
-      if (num == 1)
-      {
-        ERR_INT_NOT_GIVEN(stack[stack_top - 1], "-");
-        int ans = -INT_VALUE(stack[stack_top - 1]);
-        pop_arg();
-        push_arg(make_integer(ans));
-      }
-      else
-      {
-        long ans = 0;
-        for (i = 0; i < num - 1; i++)
-        {
-          ERR_INT_NOT_GIVEN(stack[stack_top - 1], "-");
-          ans -= INT_VALUE(stack[stack_top - 1]);
-          pop_arg();
-        }
-        ERR_INT_NOT_GIVEN(stack[stack_top - 1], "-");
-        ans += INT_VALUE(stack[stack_top - 1]);
-        pop_arg();
-        push_arg(make_integer(ans));
-      }
-      ++(*pc);
-      break;
-    }
     case OP_ADD1:
       EXECUTE_MATH_OPERATOR_WITH_CONSTANT("+", +, 1);
       break;
@@ -1379,55 +1350,49 @@ void execute(char *buf, int *pc, int end)
       EXECUTE_MATH_OPERATOR_WITH_CONSTANT("+", +, 2);
       break;
     case OP_SUB1:
-      EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", -, 1);
+      EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", +, -1);
       break;
     case OP_SUB2:
-      EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", -, 2);
+      EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", +, -2);
       break;
-    case OP_MUL:
+    case OP_ADD:
+      EXECUTE_MATH_OPERATION("+", +=, 0);
+      break;
+    case OP_SUB:
     {
-      ERR_INT_NOT_GIVEN(stack[stack_top - 1], "*");
+      ERR_INT_NOT_GIVEN(stack[stack_top - 1], "-");
       int num = INT_VALUE(stack[stack_top - 1]);
-      pop_arg();
-      long ans = 1;
-      for (i = 0; i < num; i++)
+      if (num == 0)
       {
-        ERR_INT_NOT_GIVEN(stack[stack_top - 1], "*");
-        ans *= INT_VALUE(stack[stack_top - 1]);
         pop_arg();
+        EXECUTE_MATH_OPERATOR_WITH_CONSTANT("-", *, -1)
       }
-      push_arg(make_integer(ans));
-      ++(*pc);
+      else
+      {
+        EXECUTE_MATH_OPERATION("-", +=, 0);
+        int result = INT_VALUE(pop_arg());
+        push_arg(make_integer(INT_VALUE(pop_arg()) - result));
+      }
       break;
     }
+    case OP_MUL:
+      EXECUTE_MATH_OPERATION("*", *=, 1);
+      break;
     case OP_DIV:
     {
       ERR_INT_NOT_GIVEN(stack[stack_top - 1], "/");
       int num = INT_VALUE(stack[stack_top - 1]);
-      pop_arg();
-      if (num == 1)
+      if (num == 0)
       {
-        ERR_INT_NOT_GIVEN(stack[stack_top - 1], "/");
-        long ans = 1 / INT_VALUE(stack[stack_top - 1]);
         pop_arg();
-        push_arg(make_integer(ans));
+        EXECUTE_MATH_OPERATOR_WITH_CONSTANT("/", /, 1);
       }
       else
       {
-        int div = 1;
-        for (i = 0; i < num - 1; i++)
-        {
-          ERR_INT_NOT_GIVEN(stack[stack_top - 1], "/");
-          div *= INT_VALUE(stack[stack_top - 1]);
-          pop_arg();
-        }
-        ERR_INT_NOT_GIVEN(stack[stack_top - 1], "/");
-        long ans = INT_VALUE(stack[stack_top - 1]);
-        pop_arg();
-        ans = ans / div;
-        push_arg(make_integer(ans));
+        EXECUTE_MATH_OPERATION("/", *=, 1);
+        int result = INT_VALUE(pop_arg());
+        push_arg(make_integer(INT_VALUE(pop_arg()) / result));
       }
-      ++(*pc);
       break;
     }
     case OP_RET:
@@ -1810,7 +1775,6 @@ void push_function_stack(int f)
     err_type = ERR_STACK_OVERFLOW;
     return;
   }
-  printf("ok\n");
   function_stack[function_stack_top++] = f;
 }
 
