@@ -25,7 +25,7 @@ static void push_function_stack(int f);
 static int pop_function_stack();
 static int get_function_stack_top();
 
-#define STACK_OFFSET(offset) (stack[stack_top - ((offset)+1)])
+#define STACK_OFFSET(offset) (stack[stack_top - ((offset) + 1)])
 #define STACK_TOP (STACK_OFFSET(0))
 #define STACK_TOP_NEXT (STACK_OFFSET(1))
 
