@@ -25,6 +25,10 @@ static void push_function_stack(int f);
 static int pop_function_stack();
 static int get_function_stack_top();
 
+#define STACK_OFFSET(offset) (stack[stack_top - ((offset)+1)])
+#define STACK_TOP (STACK_OFFSET(0))
+#define STACK_TOP_NEXT (STACK_OFFSET(1))
+
 static aq_error_type err_type = ERR_TYPE_NONE;
 
 #define SET_ERROR_WITH_STR(err, str) \
@@ -52,7 +56,7 @@ static aq_error_type err_type = ERR_TYPE_NONE;
   }
 
 #define ERR_PAIR_NOT_GIVEN(str)         \
-  if (!PAIR_P(stack[stack_top - 1]))    \
+  if (!PAIR_P(STACK_TOP))               \
   {                                     \
     err_type = ERR_TYPE_PAIR_NOT_GIVEN; \
     push_arg(string_cell(str));         \
@@ -70,10 +74,10 @@ static aq_error_type err_type = ERR_TYPE_NONE;
 
 #define EXECUTE_INT_COMPARISON(op_name, _op)                     \
   {                                                              \
-    ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name);            \
-    ERR_INT_NOT_GIVEN(stack[stack_top - 2], op_name);            \
-    int num2 = INT_VALUE(stack[stack_top - 1]);                  \
-    int num1 = INT_VALUE(stack[stack_top - 2]);                  \
+    ERR_INT_NOT_GIVEN(STACK_TOP, op_name);                       \
+    ERR_INT_NOT_GIVEN(STACK_TOP_NEXT, op_name);                  \
+    int num2 = INT_VALUE(STACK_TOP);                             \
+    int num1 = INT_VALUE(STACK_TOP_NEXT);                        \
     Cell ret = (num1 _op num2) ? (Cell)AQ_TRUE : (Cell)AQ_FALSE; \
     pop_arg();                                                   \
     pop_arg();                                                   \
@@ -87,8 +91,8 @@ static aq_error_type err_type = ERR_TYPE_NONE;
 
 #define EXECUTE_MATH_OPERATOR_WITH_CONSTANT(op_name, _op, num) \
   {                                                            \
-    ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name);          \
-    int ans = num _op INT_VALUE(stack[stack_top - 1]);         \
+    ERR_INT_NOT_GIVEN(STACK_TOP, op_name);                     \
+    int ans = num _op INT_VALUE(STACK_TOP);                    \
     pop_arg();                                                 \
     push_arg(make_integer(ans));                               \
     ++(*pc);                                                   \
@@ -99,20 +103,20 @@ static aq_error_type err_type = ERR_TYPE_NONE;
   {                              \
   }
 
-#define EXECUTE_MATH_OPERATION(op_name, _op, initial)   \
-  {                                                     \
-    ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name);   \
-    int num = INT_VALUE(stack[stack_top - 1]);          \
-    pop_arg();                                          \
-    long ans = initial;                                 \
-    for (i = 0; i < num; i++)                           \
-    {                                                   \
-      ERR_INT_NOT_GIVEN(stack[stack_top - 1], op_name); \
-      ans _op INT_VALUE(stack[stack_top - 1]);          \
-      pop_arg();                                        \
-    }                                                   \
-    push_arg(make_integer(ans));                        \
-    ++(*pc);                                            \
+#define EXECUTE_MATH_OPERATION(op_name, _op, initial) \
+  {                                                   \
+    ERR_INT_NOT_GIVEN(STACK_TOP, op_name);            \
+    int num = INT_VALUE(STACK_TOP);                   \
+    pop_arg();                                        \
+    long ans = initial;                               \
+    for (i = 0; i < num; i++)                         \
+    {                                                 \
+      ERR_INT_NOT_GIVEN(STACK_TOP, op_name);          \
+      ans _op INT_VALUE(STACK_TOP);                   \
+      pop_arg();                                      \
+    }                                                 \
+    push_arg(make_integer(ans));                      \
+    ++(*pc);                                          \
   }
 
 #if defined(_TEST)
@@ -1063,13 +1067,13 @@ void register_var(Cell name_cell, Cell chain, Cell c, Cell *env)
   {
     push_arg(name_cell);
     push_arg(c);
-    Cell entry = pair_cell(&stack[stack_top - 2], &stack[stack_top - 1]);
+    Cell entry = pair_cell(&STACK_TOP_NEXT, &STACK_TOP);
     pop_arg();
     pop_arg();
 
     push_arg(entry);
     push_arg(*env);
-    Cell p = pair_cell(&stack[stack_top - 2], &stack[stack_top - 1]);
+    Cell p = pair_cell(&STACK_TOP_NEXT, &STACK_TOP);
     pop_arg();
     pop_arg();
 
@@ -1222,7 +1226,7 @@ int do_test(char *input, char *correct_output)
     }
     else
     {
-      print_cell(stdout, stack[stack_top - 1]);
+      print_cell(stdout, STACK_TOP);
       pop_arg();
     }
   }
@@ -1360,8 +1364,8 @@ void execute(char *buf, int *pc, int end)
       break;
     case OP_SUB:
     {
-      ERR_INT_NOT_GIVEN(stack[stack_top - 1], "-");
-      int num = INT_VALUE(stack[stack_top - 1]);
+      ERR_INT_NOT_GIVEN(STACK_TOP, "-");
+      int num = INT_VALUE(STACK_TOP);
       if (num == 0)
       {
         pop_arg();
@@ -1380,8 +1384,8 @@ void execute(char *buf, int *pc, int end)
       break;
     case OP_DIV:
     {
-      ERR_INT_NOT_GIVEN(stack[stack_top - 1], "/");
-      int num = INT_VALUE(stack[stack_top - 1]);
+      ERR_INT_NOT_GIVEN(STACK_TOP, "/");
+      int num = INT_VALUE(STACK_TOP);
       if (num == 0)
       {
         pop_arg();
@@ -1414,7 +1418,7 @@ void execute(char *buf, int *pc, int end)
     }
     case OP_CONS:
     {
-      Cell ret = pair_cell(&stack[stack_top - 2], &stack[stack_top - 1]);
+      Cell ret = pair_cell(&STACK_TOP_NEXT, &STACK_TOP);
       pop_arg();
       pop_arg();
 
@@ -1425,14 +1429,14 @@ void execute(char *buf, int *pc, int end)
     case OP_CAR:
     {
       ERR_PAIR_NOT_GIVEN("car");
-      gc_write_barrier_root(&stack[stack_top - 1], CAR(stack[stack_top - 1]));
+      gc_write_barrier_root(&STACK_TOP, CAR(STACK_TOP));
       ++(*pc);
       break;
     }
     case OP_CDR:
     {
       ERR_PAIR_NOT_GIVEN("cdr");
-      gc_write_barrier_root(&stack[stack_top - 1], CDR(stack[stack_top - 1]));
+      gc_write_barrier_root(&STACK_TOP, CDR(STACK_TOP));
       ++(*pc);
       break;
     }
@@ -1465,7 +1469,7 @@ void execute(char *buf, int *pc, int end)
       int num = INT_VALUE(pop_arg());
       for (int i = num - 1; i >= 0; i--)
       {
-        print_cell(stdout, stack[stack_top - i - 1]);
+        print_cell(stdout, STACK_OFFSET(i));
       }
       for (int i = 0; i < num; i++)
       {
@@ -1478,7 +1482,7 @@ void execute(char *buf, int *pc, int end)
     }
     case OP_JNEQ:
     {
-      Cell c = stack[stack_top - 1];
+      Cell c = STACK_TOP;
       pop_arg();
       ++(*pc);
       if (!TRUE_P(c))
@@ -1501,7 +1505,7 @@ void execute(char *buf, int *pc, int end)
     case OP_SET:
     {
       // this is for on-memory
-      Cell val = stack[stack_top - 1];
+      Cell val = STACK_TOP;
       char *str = &buf[++(*pc)];
       set_var(str, val);
       pop_arg();
@@ -1560,7 +1564,7 @@ void execute(char *buf, int *pc, int end)
       else
       {
         int param_num = INT_VALUE(LAMBDA_PARAM_NUM(func));
-        int arg_num = INT_VALUE(stack[stack_top - 1]);
+        int arg_num = INT_VALUE(STACK_TOP);
         int func_addr = INT_VALUE(LAMBDA_ADDR(func));
         aq_bool is_param_dlist = LAMBDA_FLAG(func);
         if (is_param_dlist)
@@ -1572,7 +1576,7 @@ void execute(char *buf, int *pc, int end)
           for (i = 0; i < num; i++)
           {
             push_arg(lst);
-            lst = pair_cell(&stack[stack_top - 2], &stack[stack_top - 1]);
+            lst = pair_cell(&STACK_TOP_NEXT, &STACK_TOP);
             pop_arg();
             pop_arg();
           }
@@ -1608,12 +1612,12 @@ void execute(char *buf, int *pc, int end)
     }
     case OP_FUNCS:
     {
-      Cell func = stack[stack_top - 1];
+      Cell func = STACK_TOP;
       int param_num = INT_VALUE(LAMBDA_PARAM_NUM(func));
       int func_addr = INT_VALUE(LAMBDA_ADDR(func));
       aq_bool is_param_dlist = LAMBDA_FLAG(func);
       pop_arg();
-      int arg_num = INT_VALUE(stack[stack_top - 1]);
+      int arg_num = INT_VALUE(STACK_TOP);
       if (is_param_dlist)
       {
         ERR_WRONG_NUMBER_ARGS_DLIST(param_num, arg_num, "lambda");
@@ -1623,7 +1627,7 @@ void execute(char *buf, int *pc, int end)
         for (i = 0; i < num; i++)
         {
           push_arg(lst);
-          lst = pair_cell(&stack[stack_top - 2], &stack[stack_top - 1]);
+          lst = pair_cell(&STACK_TOP_NEXT, &STACK_TOP);
           pop_arg();
           pop_arg();
         }
@@ -1647,12 +1651,12 @@ void execute(char *buf, int *pc, int end)
     case OP_SROT:
     {
       int n = get_operand(buf, ++(*pc));
-      Cell val = stack[stack_top - (n + 1)];
+      Cell val = STACK_OFFSET(n);
       for (i = n; i > 0; i--)
       {
-        stack[stack_top - (i + 1)] = stack[stack_top - i];
+        STACK_OFFSET(i) = STACK_OFFSET(i);
       }
-      stack[stack_top - 1] = val;
+      STACK_TOP = val;
       *pc += sizeof(Cell);
       break;
     }
@@ -1703,17 +1707,17 @@ void handle_error()
   {
   case ERR_TYPE_WRONG_NUMBER_ARG:
     AQ_FPRINTF(fp, "%s: wrong number of argnuments: required ", STR_VALUE(pop_arg()));
-    print_cell(fp, stack[stack_top - 2]);
+    print_cell(fp, STACK_TOP_NEXT);
     AQ_FPRINTF(fp, ", but given ");
-    print_line_cell(fp, stack[stack_top - 1]);
+    print_line_cell(fp, STACK_TOP);
     break;
   case ERR_TYPE_PAIR_NOT_GIVEN:
     AQ_FPRINTF(fp, "%s: pair required, but given ", STR_VALUE(pop_arg()));
-    print_line_cell(fp, stack[stack_top - 1]);
+    print_line_cell(fp, STACK_TOP);
     break;
   case ERR_TYPE_INT_NOT_GIVEN:
     AQ_FPRINTF(fp, "%s: number required, but given ", STR_VALUE(pop_arg()));
-    print_line_cell(fp, stack[stack_top - 1]);
+    print_line_cell(fp, STACK_TOP);
     break;
   case ERR_TYPE_MALFORMED_IF:
     AQ_FPRINTF(fp, "malformed if\n");
@@ -1808,7 +1812,7 @@ void repl()
     }
     else
     {
-      print_line_cell(stdout, stack[stack_top - 1]);
+      print_line_cell(stdout, STACK_TOP);
       pop_arg();
     }
   }
