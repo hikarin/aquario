@@ -1,202 +1,205 @@
-#if !defined( __GC_BASE_H__ )
+#if !defined(__GC_BASE_H__)
 #define __GC_BASE_H__
 
-#include <stdlib.h>
-#include "../aquario.h"
 #include "base.h"
-#include "copy.h"
-#include "markcompact.h"
-#include "reference_count.h"
-#include "generational.h"
-#include "marksweep.h"
+#include <string.h>
 
-static void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell);   //write barrier;
-static void gc_write_barrier_root_default(Cell* cellp, Cell cell);        //write barrier;
-static void gc_init_ptr_default(Cell* cellp, Cell cell);                  //init pointer;
-static void gc_memcpy_default(char* dst, char* src, size_t size);         //memcpy;
-static void printMeasure_default();
+static void gc_write_barrier_default(Cell obj, Cell *cellp, Cell cell); //write barrier;
+static void gc_write_barrier_root_default(Cell *cellp, Cell cell);      //write barrier;
+static void gc_init_ptr_default(Cell *cellp, Cell cell);                //init pointer;
+static void gc_memcpy_default(char *dst, char *src, size_t size);       //memcpy;
 
-Cell popArg_default();
-void pushArg_default(Cell c);
+Cell pop_arg_default();
+void push_arg_default(Cell c);
 
-#if defined( _DEBUG )
+#if defined(_DEBUG)
 static int total_malloc_size;
 #endif
 
-#if defined( _MEASURE )
-static void printMeasureInfo();
-#endif
-
 //definitions of Garbage Collectors' name.
-#define GC_STR_COPYING         "copy"
-#define GC_STR_MARKCOMPACT     "mc"
-#define GC_STR_GENERATIONAL    "gen"
-#define GC_STR_REFERENCE_COUNT "ref"
-#define GC_STR_MARK_SWEEP      "ms"
-static char* _gc_char = "";
+#define GC_STR_COPYING "copy"
+void gc_init_copy(aq_gc_info *gc_init);
 
+#define GC_STR_MARKCOMPACT "mc"
+void gc_init_markcompact(aq_gc_info *gc_info);
+
+#define GC_STR_GENERATIONAL "gen"
+void gc_init_generational(aq_gc_info *gc_info);
+
+#define GC_STR_REFERENCE_COUNT "ref"
+void gc_init_reference_count(aq_gc_info *gc_info);
+
+#define GC_STR_RC_ZCT "zct"
+void gc_init_rc_zct(aq_gc_info *gc_info);
+
+#define GC_STR_MARK_SWEEP "ms"
+void gc_init_marksweep(aq_gc_info *gc_info);
+
+static char *_gc_char = "";
 static int heap_size = 0;
-static GC_Measure_Info measure_info;
 
 // variable
-static void* (*_gc_malloc) (size_t size);
-static void (*_gc_start) ();
-static void (*_gc_write_barrier) (Cell cell, Cell* cellp, Cell newcell);
-static void (*_gc_init_ptr) (Cell* cellp, Cell newcell);
-static void (*_gc_memcpy) (char* dst, char* src, size_t size);
-static void (*_gc_term) ();
-static void (*_pushArg) (Cell c);
-static Cell (*_popArg) ();
-static void (*_gc_write_barrier_root) (Cell* srcp, Cell dst);
-static void (*_printMeasure) ();
-
+static void *(*_gc_malloc)(size_t size);
+static void (*_gc_start)();
+static void (*_gc_write_barrier)(Cell cell, Cell *cellp, Cell newcell);
+static void (*_gc_init_ptr)(Cell *cellp, Cell newcell);
+static void (*_gc_memcpy)(char *dst, char *src, size_t size);
+static void (*_gc_term)();
+static void (*_push_arg)(Cell c);
+static Cell (*_pop_arg)();
+static void (*_gc_write_barrier_root)(Cell *srcp, Cell dst);
 
 int get_heap_size()
 {
   return heap_size;
 }
 
-void gc_init(char* gc_char, int h_size, GC_Init_Info* gc_init)
+void gc_init(char *gc_char, int h_size, aq_gc_info *gc_init)
 {
-#if defined( _DEBUG )
+#if defined(_DEBUG)
   total_malloc_size = 0;
 #endif
   heap_size = h_size;
   aq_heap = AQ_MALLOC(heap_size);
-  if( strcmp( gc_char, GC_STR_COPYING ) == 0 ){
+  if (strcmp(gc_char, GC_STR_COPYING) == 0)
+  {
     gc_init_copy(gc_init);
     _gc_char = GC_STR_COPYING;
-  }else if( strcmp( gc_char, GC_STR_MARKCOMPACT ) == 0 ){
+  }
+  else if (strcmp(gc_char, GC_STR_MARKCOMPACT) == 0)
+  {
     gc_init_markcompact(gc_init);
     _gc_char = GC_STR_MARKCOMPACT;
-  }else if( strcmp( gc_char, GC_STR_GENERATIONAL ) == 0 ){
+  }
+  else if (strcmp(gc_char, GC_STR_GENERATIONAL) == 0)
+  {
     gc_init_generational(gc_init);
     _gc_char = GC_STR_GENERATIONAL;
-  }else if( strcmp( gc_char, GC_STR_REFERENCE_COUNT ) == 0 ){
+  }
+  else if (strcmp(gc_char, GC_STR_REFERENCE_COUNT) == 0)
+  {
     gc_init_reference_count(gc_init);
     _gc_char = GC_STR_REFERENCE_COUNT;
-  }else if( strcmp( gc_char, GC_STR_MARK_SWEEP ) == 0 ){
+  }
+  else if (strcmp(gc_char, GC_STR_RC_ZCT) == 0)
+  {
+    gc_init_rc_zct(gc_init);
+    printf("ZCT\n");
+    _gc_char = GC_STR_RC_ZCT;
+  }
+  else if (strcmp(gc_char, GC_STR_MARK_SWEEP) == 0)
+  {
     gc_init_marksweep(gc_init);
     _gc_char = GC_STR_MARK_SWEEP;
-  }else{
+  }
+  else
+  {
     //default.
     gc_init_marksweep(gc_init);
     _gc_char = GC_STR_MARK_SWEEP;
   }
-  if(!gc_init->gc_write_barrier){
+  if (!gc_init->gc_write_barrier)
+  {
     //option.
     gc_init->gc_write_barrier = gc_write_barrier_default;
   }
-  if(!gc_init->gc_write_barrier_root){
+  if (!gc_init->gc_write_barrier_root)
+  {
     //option.
     gc_init->gc_write_barrier_root = gc_write_barrier_root_default;
   }
 
-  if(!gc_init->gc_init_ptr){
+  if (!gc_init->gc_init_ptr)
+  {
     //option.
     gc_init->gc_init_ptr = gc_init_ptr_default;
   }
-  if(!gc_init->gc_memcpy){
+  if (!gc_init->gc_memcpy)
+  {
     //option.
     gc_init->gc_memcpy = gc_memcpy_default;
   }
 
-  if(!gc_init->gc_pushArg){
+  if (!gc_init->gc_push_arg)
+  {
     //option.
-    gc_init->gc_pushArg = pushArg_default;
+    gc_init->gc_push_arg = push_arg_default;
   }
-  if(!gc_init->gc_popArg){
+  if (!gc_init->gc_pop_arg)
+  {
     //option.
-    gc_init->gc_popArg = popArg_default;
-  }
-  if(!gc_init->printMeasure){
-    //option.
-    gc_init->printMeasure = printMeasure_default;
+    gc_init->gc_pop_arg = pop_arg_default;
   }
 
-  _gc_malloc        = gc_init->gc_malloc;
-  _gc_start         = gc_init->gc_start;
+  _gc_malloc = gc_init->gc_malloc;
+  _gc_start = gc_init->gc_start;
   _gc_write_barrier = gc_init->gc_write_barrier;
   _gc_write_barrier_root = gc_init->gc_write_barrier_root;
-  _gc_init_ptr      = gc_init->gc_init_ptr;
-  _gc_memcpy        = gc_init->gc_memcpy;
-  _gc_term          = gc_init->gc_term;
-  _pushArg          = gc_init->gc_pushArg;
-  _popArg           = gc_init->gc_popArg;
-
-  _printMeasure     = gc_init->printMeasure;
-
-  measure_info.gc_count = 0;
-  measure_info.live_object_count = 0;
-  measure_info.live_object_size = 0;
-  measure_info.gc_elapsed_time = 0.0f;
-  measure_info.total_elapsed_time = 0.0f;
+  _gc_init_ptr = gc_init->gc_init_ptr;
+  _gc_memcpy = gc_init->gc_memcpy;
+  _gc_term = gc_init->gc_term;
+  _push_arg = gc_init->gc_push_arg;
+  _pop_arg = gc_init->gc_pop_arg;
 }
 
 void gc_term_base()
 {
   AQ_FREE(aq_heap);
-#if defined( _MEASURE )
-  printMeasureInfo();
-#endif
 }
 
-void printMeasureInfo()
+Cell pop_arg_default()
 {
-  AQ_PRINTF("\n\n");
-  AQ_PRINTF("GC Name: %s\n", _gc_char);
-  AQ_PRINTF("GC count:             %8d\n", measure_info.gc_count);
-  AQ_PRINTF("live object count:  %10d\n", measure_info.live_object_count);
-  AQ_PRINTF("live object size:   %10d\n", measure_info.live_object_size);
-  AQ_PRINTF("GC elapsed time:    %.8f\n", measure_info.gc_elapsed_time);
-  AQ_PRINTF("Total elapsed time: %.8f\n", measure_info.total_elapsed_time);
-
-  _printMeasure();
-}
-
-Cell popArg_default()
-{
-  Cell c = stack[ --stack_top ];
+  Cell c = stack[--stack_top];
   return c;
 }
 
-void pushArg_default(Cell c)
+void push_arg_default(Cell c)
 {
   stack[stack_top++] = c;
 }
 
-void trace_roots(void (*trace) (Cell* cellp)){
+void trace_roots(void (*trace)(Cell *cellp))
+{
   //trace machine stack.
   int scan = stack_top;
-  while(scan > 0){
-    Cell* c = &stack[ --scan ];
-    if(CELL_P(*c)){
-      trace( c );
+  while (scan > 0)
+  {
+    Cell *c = &stack[--scan];
+    if (CELL_P(*c))
+    {
+      trace(c);
     }
   }
 
   //trace env.
   int i;
-  for( i=0; i<ENVSIZE; i++ ){
-    if(!UNDEF_P(env[i])){
-      trace( &env[i] );
+  for (i = 0; i < ENVSIZE; i++)
+  {
+    if (!UNDEF_P(env[i]))
+    {
+      trace(&env[i]);
     }
   }
 }
 
-void trace_object( Cell cell, void (*trace) (Cell* cellp)){
-  if( cell ){
-    switch(type(cell)){
+void trace_object(Cell cell, void (*trace)(Cell *cellp))
+{
+  if (cell)
+  {
+    switch (TYPE(cell))
+    {
     case T_CHAR:
       break;
     case T_STRING:
       break;
     case T_PAIR:
-      if( CELL_P(car(cell)) ){
-	trace(&(car(cell)));
+      if (CELL_P(CAR(cell)))
+      {
+        trace(&(CAR(cell)));
       }
-      if( CELL_P(cdr(cell)) ){
-	trace(&(cdr(cell)));
+      if (CELL_P(CDR(cell)))
+      {
+        trace(&(CDR(cell)));
       }
       break;
     case T_PROC:
@@ -209,25 +212,30 @@ void trace_object( Cell cell, void (*trace) (Cell* cellp)){
       break;
     default:
       printf("trace_object: Object Corrupted(%p).\n", cell);
-      printf("%d\n", type(cell));
+      printf("%d\n", TYPE(cell));
       exit(-1);
     }
   }
 }
 
-Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
-  if( cell ){
-    switch(type(cell)){
+aq_bool trace_object_bool(Cell cell, aq_bool (*trace)(Cell *cellp))
+{
+  if (cell)
+  {
+    switch (TYPE(cell))
+    {
     case T_CHAR:
       break;
     case T_STRING:
       break;
     case T_PAIR:
-      if( CELL_P(car(cell)) && trace(&(car(cell))) ){
-	return TRUE;
+      if (CELL_P(CAR(cell)) && trace(&(CAR(cell))))
+      {
+        return TRUE;
       }
-      if( CELL_P(cdr(cell)) && trace(&(cdr(cell))) ){
-	return TRUE;
+      if (CELL_P(CDR(cell)) && trace(&(CDR(cell))))
+      {
+        return TRUE;
       }
       break;
     case T_PROC:
@@ -240,7 +248,7 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
       break;
     default:
       printf("trace_object_bool: Object Corrupted(%p).\n", cell);
-      printf("%d\n", type(cell));
+      printf("%d\n", TYPE(cell));
       exit(-1);
     }
   }
@@ -248,47 +256,52 @@ Boolean trace_object_bool(Cell cell, Boolean (*trace) (Cell* cellp)){
   return FALSE;
 }
 
-void gc_write_barrier_default(Cell obj, Cell* cellp, Cell cell)
+void gc_write_barrier_default(Cell obj, Cell *cellp, Cell cell)
 {
   *cellp = cell;
 }
 
-void gc_write_barrier_root_default(Cell* cellp, Cell cell)
+void gc_write_barrier_root_default(Cell *cellp, Cell cell)
 {
   *cellp = cell;
 }
 
-void gc_init_ptr_default(Cell* cellp, Cell cell)
+void gc_init_ptr_default(Cell *cellp, Cell cell)
 {
   *cellp = cell;
 }
 
-void gc_memcpy_default(char* dst, char* src, size_t size)
+void gc_memcpy_default(char *dst, char *src, size_t size)
 {
-  memcpy( dst, src, size );
+  memcpy(dst, src, size);
 }
 
-Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
+free_chunk *aq_get_free_chunk(free_chunk **freelistp, size_t size)
 {
   //returns a chunk which size is larger than required size.
-  Free_Chunk** chunk = freelistp;
-  Free_Chunk* ret = NULL;
-  while(*chunk){
-    Free_Chunk* tmp = *chunk;
-    if(tmp->chunk_size >= size){
+  free_chunk **chunk = freelistp;
+  free_chunk *ret = NULL;
+  while (*chunk)
+  {
+    free_chunk *tmp = *chunk;
+    if (tmp->chunk_size >= size)
+    {
       //a chunk found.
       ret = tmp;
-      if(tmp->chunk_size >= size + sizeof(Free_Chunk)){
-	int chunk_size = tmp->chunk_size - size;
-	Free_Chunk* next = tmp->next;
-	tmp->chunk_size = size;
-	
-	tmp = (Free_Chunk*)((char*)tmp+size);
-	tmp->chunk_size = chunk_size;
-	tmp->next = next;
-	*chunk = tmp;
-      }else{
-	*chunk = tmp->next;
+      if (tmp->chunk_size >= size + sizeof(free_chunk))
+      {
+        int chunk_size = tmp->chunk_size - size;
+        free_chunk *next = tmp->next;
+        tmp->chunk_size = size;
+
+        tmp = (free_chunk *)((char *)tmp + size);
+        tmp->chunk_size = chunk_size;
+        tmp->next = next;
+        *chunk = tmp;
+      }
+      else
+      {
+        *chunk = tmp->next;
       }
       break;
     }
@@ -298,107 +311,127 @@ Free_Chunk* aq_get_free_chunk( Free_Chunk** freelistp, size_t size )
   return ret;
 }
 
-void put_chunk_to_freelist( Free_Chunk** freelistp, Free_Chunk* chunk, size_t size )
+void put_chunk_to_freelist(free_chunk **freelistp, free_chunk *chunk, size_t size)
 {
-  Free_Chunk* freelist = *freelistp;
-  if(!freelist){
+  free_chunk *freelist = *freelistp;
+  if (!freelist)
+  {
     //No object in freelist.
-    *freelistp        = chunk;
+    *freelistp = chunk;
     chunk->chunk_size = size;
-    chunk->next       = NULL;
-  }else if( chunk < freelist ){
-    if( (char*)chunk + size == (char*)freelist ){
+    chunk->next = NULL;
+  }
+  else if (chunk < freelist)
+  {
+    if ((char *)chunk + size == (char *)freelist)
+    {
       //Coalesce.
-      chunk->next       = freelist->next;
+      chunk->next = freelist->next;
       chunk->chunk_size = size + freelist->chunk_size;
-    }else{
-      chunk->next       = freelist;
+    }
+    else
+    {
+      chunk->next = freelist;
       chunk->chunk_size = size;
     }
     *freelistp = chunk;
-  }else{
-    Free_Chunk* tmp = NULL;
-    for( tmp = freelist; tmp->next; tmp = tmp->next ){
-      if( (char*)tmp < (char*)chunk && (char*)chunk < (char*)tmp->next ){
-	//Coalesce.
-	if( (char*)tmp + tmp->chunk_size == (char*)chunk ){
-	  if( (char*)chunk + size == (char*)tmp->next ){
-	    //Coalesce with previous and next Free_Chunk.
-	    tmp->chunk_size += (size + tmp->next->chunk_size);
-	    tmp->next        = tmp->next->next;
-	  }else{
-	    //Coalesce with previous Free_Chunk.
-	    tmp->chunk_size += size;
-	  }
-	}else if( (char*)chunk + size == (char*)tmp->next ){
-	  //Coalesce with next Free_Chunk.
-	  size_t new_size      = tmp->next->chunk_size + size;
-	  Free_Chunk* new_next = tmp->next->next;
-	  chunk->chunk_size  = new_size;
-	  chunk->next        = new_next;
-	  tmp->next            = chunk;
-	}else{
-	  //Just put obj into freelist.
-	  chunk->chunk_size  = size;
-	  chunk->next        = tmp->next;
-	  tmp->next            = chunk;
-	}
-	return;
+  }
+  else
+  {
+    free_chunk *tmp = NULL;
+    for (tmp = freelist; tmp->next; tmp = tmp->next)
+    {
+      if ((char *)tmp < (char *)chunk && (char *)chunk < (char *)tmp->next)
+      {
+        //Coalesce.
+        if ((char *)tmp + tmp->chunk_size == (char *)chunk)
+        {
+          if ((char *)chunk + size == (char *)tmp->next)
+          {
+            //Coalesce with previous and next free_chunk.
+            tmp->chunk_size += (size + tmp->next->chunk_size);
+            tmp->next = tmp->next->next;
+          }
+          else
+          {
+            //Coalesce with previous free_chunk.
+            tmp->chunk_size += size;
+          }
+        }
+        else if ((char *)chunk + size == (char *)tmp->next)
+        {
+          //Coalesce with next free_chunk.
+          size_t new_size = tmp->next->chunk_size + size;
+          free_chunk *new_next = tmp->next->next;
+          chunk->chunk_size = new_size;
+          chunk->next = new_next;
+          tmp->next = chunk;
+        }
+        else
+        {
+          //Just put obj into freelist.
+          chunk->chunk_size = size;
+          chunk->next = tmp->next;
+          tmp->next = chunk;
+        }
+        return;
       }
     }
-    tmp->next           = chunk;
-    chunk->next       = NULL;
+    tmp->next = chunk;
+    chunk->next = NULL;
     chunk->chunk_size = size;
   }
 }
 
-void* gc_malloc(size_t size)
+void *gc_malloc(size_t size)
 {
   return _gc_malloc(size);
 }
 
-void gc_start ()
+void gc_start()
 {
   _gc_start();
 }
 
-void gc_write_barrier (Cell cell, Cell* cellp, Cell newcell)
+void gc_write_barrier(Cell cell, Cell *cellp, Cell newcell)
 {
   _gc_write_barrier(cell, cellp, newcell);
 }
 
-void gc_write_barrier_root (Cell* srcp, Cell dst)
+void gc_write_barrier_root(Cell *srcp, Cell dst)
 {
   _gc_write_barrier_root(srcp, dst);
 }
 
-void gc_init_ptr (Cell* cellp, Cell newcell)
+void gc_init_ptr(Cell *cellp, Cell newcell)
 {
   _gc_init_ptr(cellp, newcell);
 }
 
-void gc_memcpy (char* dst, char* src, size_t size)
+void gc_memcpy(char *dst, char *src, size_t size)
 {
   _gc_memcpy(dst, src, size);
 }
 
-void gc_term ()
+void gc_term()
 {
   _gc_term();
 }
 
-void pushArg (Cell c)
+void push_arg(Cell c)
 {
-  _pushArg(c);
-  if(stack_top >= STACKSIZE) {
+  _push_arg(c);
+  if (stack_top >= STACKSIZE)
+  {
     set_error(ERR_STACK_OVERFLOW);
   }
 }
 
-Cell popArg ()
+Cell pop_arg()
 {
-  Cell c = _popArg();
-  if(stack_top < 0) {
+  Cell c = _pop_arg();
+  if (stack_top < 0)
+  {
     set_error(ERR_STACK_UNDERFLOW);
   }
   return c;
@@ -407,31 +440,14 @@ Cell popArg ()
 void heap_exhausted_error()
 {
   set_error(ERR_HEAP_EXHAUSTED);
-  handleError();
-  printMeasureInfo();
+  handle_error();
   exit(-1);
 }
 
-void printMeasure_default()
-{
-  //Noting.
-}
-
-GC_Measure_Info* get_measure_info()
-{
-  return &measure_info;
-}
-
-void increase_live_object(int size_delta, int count_delta)
-{
-  measure_info.live_object_size += size_delta;
-  measure_info.live_object_count += count_delta;
-}
-
-#if defined( _DEBUG )
+#if defined(_DEBUG)
 size_t get_total_malloc_size()
 {
   return total_malloc_size;
 }
 #endif //_DEBUG
-#endif	//!__GC_BASE_H__
+#endif //!__GC_BASE_H__
